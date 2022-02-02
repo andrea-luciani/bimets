@@ -6,7 +6,7 @@
 Get Time Series Year-Period
 }
 \description{
-This function returns a two-element list (or a two-columns matrix in the case of \code{JOIN=TRUE}) built with the the years and the periods of the input time series observations. Users can provide the output list names. \code{TSDATES} is an alias for \code{GETYEARPERIOD}.
+This function returns a two-element list (or a two-columns matrix in the case of \code{JOIN=TRUE}) built with of the years and the periods of the input time series observations. Users can provide the output list names.
 }
 \usage{
 GETYEARPERIOD(x=NULL, YEARS='YEAR', PERIODS='PRD', JOIN=FALSE, avoidCompliance=FALSE, ...)
@@ -52,27 +52,27 @@ This function returns an object of class \code{list()}. If \code{JOIN=TRUE}, thi
 \examples{
   
   #create quarterly ts
-  n=20
-  ts1=TSERIES((n:1),START=c(2000,1),FREQ=4)
-  myYP=GETYEARPERIOD(ts1)
+  n<-20
+  ts1<-TSERIES((n:1),START=c(2000,1),FREQ=4)
+  myYP<-GETYEARPERIOD(ts1)
   print(myYP$YEAR) #print 2000 2000 ... 
   print(myYP$PRD) #print 1 2 3 4 1 2 ...
   
   #create monthly ts
-  ts1=TSERIES((n:1),START=c(2000,1),FREQ='M')
-  myYP=GETYEARPERIOD(ts1)
+  ts1<-TSERIES((n:1),START=c(2000,1),FREQ='M')
+  myYP<-GETYEARPERIOD(ts1)
   print(myYP$YEAR) #print 2000 2000 ... 
   print(myYP$PRD) #print 1 2 3 4 5 6 7 ...
   
   #create yearly ts
-  ts1=TSERIES((1:n),START=c(2000,1),FREQ=1)
-  myYP=GETYEARPERIOD(ts1,YEARS='YEARSS', PERIODS='PRDSS')
+  ts1<-TSERIES((1:n),START=c(2000,1),FREQ=1)
+  myYP<-GETYEARPERIOD(ts1,YEARS='YEARSS', PERIODS='PRDSS')
   print(myYP$YEARSS) #print 2000 2001 2002 ... 
   print(myYP$PRDSS) #print 1 1 1 1.....
   
   #JOIN=TRUE
-  ts1=TSERIES((n:1),START=c(2000,1),FREQ='M')
-  myYP=GETYEARPERIOD(ts1,JOIN=TRUE)
+  ts1<-TSERIES((n:1),START=c(2000,1),FREQ='M')
+  myYP<-GETYEARPERIOD(ts1,JOIN=TRUE)
   print(myYP) #print 2000 2000 ... 
   #      [,1] [,2]
   #[1,] 2000    1

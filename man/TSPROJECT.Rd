@@ -55,7 +55,7 @@ This function returns a BIMETS time series, or a numerical array if the argument
 \examples{
 		
 	#create yearly ts
-	ts1=TSERIES((1:10),START=c(2000,1),FREQ=1)
+	ts1<-TSERIES((1:10),START=c(2000,1),FREQ=1)
   	
 	print(TSPROJECT(ts1,TSRANGE=c(2002,1,2005,1)))	#print projected ts from 2002 to 2005
 	

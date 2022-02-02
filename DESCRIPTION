@@ -1,17 +1,17 @@
 Package: bimets
 Type: Package
 Title: Time Series and Econometric Modeling
-Version: 1.5.3
-Date: 2021-02-04
-Authors@R: c(person("Andrea", "Luciani", email = "andrea.luciani@bancaditalia.it", role = c("aut", "cre")), person("Roberto", "Stok", email = "roberto.stok@bancaditalia.it", role = c("aut")), person("Bank of Italy",role = c("cph")))
+Version: 2.0.1
+Date: 2022-01-01
+Authors@R: c(person("Andrea", "Luciani", email = "andrea.luciani@bancaditalia.it", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-7372-358X")), person("Roberto", "Stok", email = "roberto.stok@bancaditalia.it", role = c("aut")), person("Bank of Italy",role = c("cph")))
 Maintainer: Andrea Luciani <andrea.luciani@bancaditalia.it>
-Author: Andrea Luciani [aut, cre], Roberto Stok [aut], Bank of Italy [cph]
+Author: Andrea Luciani [aut, cre] (<https://orcid.org/0000-0002-7372-358X>), Roberto Stok [aut], Bank of Italy [cph]
 ByteCompile: no
-Description: Time series analysis, (dis)aggregation and manipulation, e.g. time series extension, merge, projection, lag, lead, delta, moving and cumulative average and product, selection by index, date and year-period, conversion to daily, monthly, quarterly, (semi)annually. Simultaneous equation models definition, estimation, simulation and forecasting with coefficient restrictions, error autocorrelation, exogenization, add-factors, impact and interim multipliers analysis, conditional equation evaluation, endogenous targeting and model renormalization.
+Description: Time series analysis, (dis)aggregation and manipulation, e.g. time series extension, merge, projection, lag, lead, delta, moving and cumulative average and product, selection by index, date and year-period, conversion to daily, monthly, quarterly, (semi)annually. Simultaneous equation models definition, estimation, simulation and forecasting with coefficient restrictions, error autocorrelation, exogenization, add-factors, impact and interim multipliers analysis, conditional equation evaluation, endogenous targeting and model renormalization, structural stability, stochastic simulation and forecast, optimal control.
 Depends: R (>= 3.3), xts, zoo
 Imports: stats
 LazyData: true
 License: GPL-3
 Encoding: UTF-8
 NeedsCompilation: no
-Packaged: 2021-02-04 16:22:53 UTC; m025732
+Packaged: 2022-01-06 16:25:19 UTC; m025732

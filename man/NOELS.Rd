@@ -40,13 +40,13 @@ This function returns an array of class \code{c()}.
 
 \examples{
 
-	out_NOELS=NOELS(c(1,2,3,4),c(5,6,7))
+	out_NOELS<-NOELS(c(1,2,3,4),c(5,6,7))
 	print(out_NOELS) #print c(4,3)
 	
-	out_NOELS=NOELS(TSERIES(c(1,2,3,4),START=c(2000,1),FREQ=1),c(5,6,7))
+	out_NOELS<-NOELS(TSERIES(c(1,2,3,4),START=c(2000,1),FREQ=1),c(5,6,7))
 	print(out_NOELS) #print c(4,3)
 	
-	out_NOELS=NOELS('aaa','bb')
+	out_NOELS<-NOELS('aaa','bb')
 	print(out_NOELS) #print c(3,2)
 	
 }

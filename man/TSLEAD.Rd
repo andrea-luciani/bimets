@@ -45,10 +45,10 @@ This function returns a BIMETS time series built by leading the input time serie
 \examples{
 	
 	#DEFINE TS
-	n=10
+	n<-10
 	
-	ts1=TSERIES(n:1,START=c(2000,1),FREQ=1)
-	ts1[5]=NA
+	ts1<-TSERIES(n:1,START=c(2000,1),FREQ=1)
+	ts1[5]<-NA
 	
 	#print TSLEAD
 	TABIT(ts1,TSLEAD(ts1,5))

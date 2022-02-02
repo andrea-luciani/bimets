@@ -8,7 +8,7 @@ Time Series Percentage Lag Differences (Delta Percentage)
 }
 \description{
 This function returns the \code{O}-order, \code{L}-lag percentage differences of the input time series.
-If the input time series frequency is a multiple of the \code{L} lag argument, then it is possible to set the argument \code{ANNUALIZE=TRUE} in order to have the percent changes returned at annual rates, i.e. raised to power of \code{frequency/L}.
+If the input time series frequency is a multiple of the \code{L} lag argument, then it is possible to set the argument \code{ANNUALIZE=TRUE} in order to have the percent changes returned at annual rates, i.e. raised to the power of \code{frequency/L}.
 }
 \usage{
 TSDELTAP(x = NULL, L = 1, ANNUALIZE = FALSE, avoidCompliance = FALSE, ...)
@@ -47,12 +47,12 @@ This function returns a BIMETS time series.
 \examples{
 	
 	#TS Q
-	n=10;
-	ts1=TSERIES(n:0,START=c(2000,1),FREQ='Q')
+	n<-10;
+	ts1<-TSERIES(n:0,START=c(2000,1),FREQ='Q')
 	TABIT(ts1,TSDELTAP(ts1,1))
 	
 	#TS 366
-	ts1=TSERIES(seq(1,length=10,by=-0.001),START=c(2000,1),FREQ=366)
+	ts1<-TSERIES(seq(1,length=10,by=-0.001),START=c(2000,1),FREQ=366)
 	TABIT(ts1,TSDELTAP(ts1,1,ANNUALIZE=TRUE))
 	
 	}

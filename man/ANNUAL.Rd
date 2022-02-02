@@ -45,15 +45,15 @@ This function returns a yearly BIMETS time series.
 \examples{
 	
 	#TS DAILY TO ANNUAL
-	n=366
-	ts1=TIMESERIES(0:n,START=c(2000,1),FREQ='D')
-	ts1[10]=NA
+	n<-366
+	ts1<-TIMESERIES(0:n,START=c(2000,1),FREQ='D')
+	ts1[10]<-NA
 	TABIT(ANNUAL(ts1,fun='NAVE'))
 	
 	#TS DAILY TO ANNUAL
-	n=36
-	ts1=TIMESERIES(0:n,START=c(2000,1),FREQ='M')
-	ts1[10]=NA
+	n<-36
+	ts1<-TIMESERIES(0:n,START=c(2000,1),FREQ='M')
+	ts1[10]<-NA
 	TABIT(YEARLY(ts1,fun='SUM'))
 }	
 

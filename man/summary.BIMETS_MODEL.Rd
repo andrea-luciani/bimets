@@ -58,34 +58,41 @@ This function prints basic information about a BIMETS model, i.e.:\cr\cr
 
 
 #define model
-myModelDefinition=
+myModelDefinition<-
 "MODEL
+
 COMMENT> Modified Klein Model 1 of the U.S. Economy with PDL,
 COMMENT> autocorrelation on errors, restrictions and conditional evaluations
+
 COMMENT> Consumption
 BEHAVIORAL> cn
 TSRANGE 1925 1 1941 1
 EQ> cn = a1 + a2*p + a3*TSLAG(p,1) + a4*(w1+w2)
 COEFF> a1 a2 a3 a4
 ERROR> AUTO(2)
+
 COMMENT> Investment
 BEHAVIORAL> i
 TSRANGE 1923 1 1941 1
 EQ> i = b1 + b2*p + b3*TSLAG(p,1) + b4*TSLAG(k,1)
 COEFF> b1 b2 b3 b4
 RESTRICT> b2 + b3 = 1
+
 COMMENT> Demand for Labor
 BEHAVIORAL> w1
 TSRANGE 1925 1 1941 1
 EQ> w1 = c1 + c2*(y+t-w2) + c3*TSLAG(y+t-w2,1) + c4*time
 COEFF> c1 c2 c3 c4
 PDL> c3 1 3
+
 COMMENT> Gross National Product
 IDENTITY> y
 EQ> y = cn + i + g - t
+
 COMMENT> Profits
 IDENTITY> p
 EQ> p = y - (w1+w2)
+
 COMMENT> Capital Stock with switches
 IDENTITY> k
 EQ> k = TSLAG(k,1) + i
@@ -93,10 +100,11 @@ IF> i > 0
 IDENTITY> k
 EQ> k = TSLAG(k,1)
 IF> i <= 0
+
 END"
 
 #define model data
-myModelData=list(
+myModelData<-list(
   cn
   =TIMESERIES(39.8,41.9,45,49.2,50.6,52.6,55.1,56.2,57.3,57.8,55,50.9,
               45.6,46.5,48.7,51.3,57.7,58.7,57.5,61.6,65,69.7,
@@ -141,7 +149,7 @@ myModelData=list(
 
 
 #load model 
-myModel=LOAD_MODEL(modelText=myModelDefinition)
+myModel<-LOAD_MODEL(modelText=myModelDefinition)
 
 #model summary
 summary(myModel)
@@ -158,10 +166,10 @@ summary(myModel)
 #simulated:        FALSE
 
 #load data into the model
-myModel=LOAD_MODEL_DATA(myModel,myModelData,showWarnings = TRUE)
+myModel<-LOAD_MODEL_DATA(myModel,myModelData,showWarnings = TRUE)
 
 #estimate the model
-myModel=ESTIMATE(myModel)
+myModel<-ESTIMATE(myModel)
 
 #model summary
 print(myModel)

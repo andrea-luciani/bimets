@@ -44,8 +44,8 @@ This function returns a BIMETS time series.
 
 \examples{
 
-	#random TS
-	n=10
-	ts1=TSERIES(1:n,START=c(2000,1),FREQ='A')
+	#sequence TS
+	n<-10
+	ts1<-TSERIES(1:n,START=c(2000,1),FREQ='A')
 	TABIT(ts1,TSDELTALOG(ts1,1))
 }

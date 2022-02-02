@@ -7,7 +7,7 @@
 Print Time Series Data
 }
 \description{
-This function prints, in an human-readable format, the content of a list of time series. Time series can be subsetted with the projection argument \code{TSRANGE}.
+This function prints, in a human-readable format, the content of a list of time series. Time series can be subsetted with the projection argument \code{TSRANGE}.
 }
 \usage{
 TABIT(..., 
@@ -22,7 +22,7 @@ TABIT(...,
 Input list of time series that must satisfy the compliance control check defined in \code{\link[=is.bimets]{is.bimets}}.
 }
   \item{TSRANGE}{
-Optional date range of data presentation. \code{TSRANGE} must be specified as a numerical array composed by starting year, staring period, ending year and ending period of projection, \cr i.e. \code{TSRANGE=c(START_YEAR,START_PERIOD,END_YEAR,END_PERIOD)}. 
+The optional date range of data presentation. \code{TSRANGE} must be specified as a numerical array composed by starting year, staring period, ending year and ending period of projection, \cr i.e. \code{TSRANGE=c(START_YEAR,START_PERIOD,END_YEAR,END_PERIOD)}. 
 }
   \item{digits}{
   Controls the number of digits to print out. Valid values are 1 to 22 with a default of 7.
@@ -52,10 +52,10 @@ This function prints out time series data and returns a \code{NULL} value.
 \examples{
 
 #create monthly series
-ts1=TSERIES(INTS(1,15),START=c(2000,1),FREQ=12)
-ts2=TSERIES(INTS(1,15),START=c(2001,1),FREQ=12)
-ts3=TSERIES(rnorm(15),START=c(2002,1),FREQ=12)
-ts4=TSERIES(rep(NA,15),START=c(2001,4),FREQ=12)
+ts1<-TSERIES(INTS(1,15),START=c(2000,1),FREQ=12)
+ts2<-TSERIES(INTS(1,15),START=c(2001,1),FREQ=12)
+ts3<-TSERIES(rnorm(15),START=c(2002,1),FREQ=12)
+ts4<-TSERIES(rep(NA,15),START=c(2001,4),FREQ=12)
 
 TABIT(ts1,ts2,ts3,ts4)
 # print...
@@ -82,10 +82,10 @@ TABIT(ts1,ts2,ts3,ts4)
 
 #create quarterly series, set TSRANGE then print with 3 digits
 
-ts1=TSERIES(INTS(1,15),START=c(2000,1),FREQ=4)
-ts2=TSERIES(INTS(1,15),START=c(2001,1),FREQ=4)
-ts3=TSERIES(rnorm(15),START=c(2002,1),FREQ=4)
-ts4=TSERIES(rep(NA,15),START=c(2001,4),FREQ=4)
+ts1<-TSERIES(INTS(1,15),START=c(2000,1),FREQ=4)
+ts2<-TSERIES(INTS(1,15),START=c(2001,1),FREQ=4)
+ts3<-TSERIES(rnorm(15),START=c(2002,1),FREQ=4)
+ts4<-TSERIES(rep(NA,15),START=c(2001,4),FREQ=4)
 
 TABIT(ts1,ts2,ts3,ts4,TSRANGE=c(1991,3,2003,2),digits=3)
 
@@ -111,10 +111,10 @@ TABIT(ts1,ts2,ts3,ts4,TSRANGE=c(1991,3,2003,2),digits=3)
 
 #create daily series and set TSRANGE
 
-ts1=TSERIES(INTS(1,25),START=c(2000,1),FREQ=366)
-ts2=TSERIES(INTS(1,25),START=c(2000,10),FREQ=366)
-ts3=TSERIES(rnorm(25),START=c(2000,20),FREQ=366)
-ts4=TSERIES(rep(NA,25),START=c(2000,30),FREQ=366)
+ts1<-TSERIES(INTS(1,25),START=c(2000,1),FREQ=366)
+ts2<-TSERIES(INTS(1,25),START=c(2000,10),FREQ=366)
+ts3<-TSERIES(rnorm(25),START=c(2000,20),FREQ=366)
+ts4<-TSERIES(rep(NA,25),START=c(2000,30),FREQ=366)
 
 TABIT(ts1,ts2,ts3,ts4,TSRANGE=c(2000,5,2000,35))
 

@@ -21,7 +21,7 @@ MOVTOT(x = NULL, L = NULL, DIRECTION = NULL, avoidCompliance = FALSE, ...)
 Input numerical array or time series that must satisfy the compliance control check defined in \code{\link[=is.bimets]{is.bimets}}.
 }
   \item{L}{
-Length of the sum. Must be a positive integer.
+Length of the sum. It must be a positive integer.
 }
   \item{DIRECTION}{if \code{x} is a time series, given \code{y} as output and \code{x} as input: \cr
 \bold{AHEAD}: the output observation value in index \code{n} will be \cr \code{y[n] = sum(x[n],x[n+1],...,x[n+L-1])}.\cr
@@ -54,20 +54,20 @@ This function returns an object of the same class of the input, i.e. an array or
 \examples{
   
 	#input data	
-	inputArray=c(1,2,3,4,NA,1,2,3,4,5)
+	inputArray<-c(1,2,3,4,NA,1,2,3,4,5)
 	
 	#array lag 3
-	out_movtot=MOVSUM(inputArray,3)
+	out_movtot<-MOVSUM(inputArray,3)
 	print(out_movtot)
 
 	#ts lag 4 centered with missings	
-	ts1=TSERIES(inputArray,START=c(2000,1),FREQ='A')
-	out_movtot=MOVSUM(ts1,4,'CENTER')
+	ts1<-TSERIES(inputArray,START=c(2000,1),FREQ='A')
+	out_movtot<-MOVSUM(ts1,4,'CENTER')
 	TABIT(out_movtot)
 	
 	#ts daily	
-	ts1=TSERIES(inputArray,START=c(2000,1),FREQ='D')
-	out_movtot=MSUM(ts1,3)
+	ts1<-TSERIES(inputArray,START=c(2000,1),FREQ='D')
+	out_movtot<-MSUM(ts1,3)
 	TABIT(ts1,out_movtot)
 	
 	

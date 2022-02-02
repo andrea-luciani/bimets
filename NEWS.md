@@ -1,6 +1,11 @@
 
 **bimets Change-Log**
 
+*bimets ver. 2.0.1 - Jan. 2022*
+
+* added `STOCHSIMULATE`
+* added `OPTIMIZE`
+
 *bimets ver. 1.5.3 - Mar. 2021*
 
 * fixed information messages on `MULTMATRIX`
@@ -19,7 +24,6 @@
 *bimets ver. 1.5.1 - Jun. 2020*
 
 * fixed typos on `MDL` LHS function examples
-* updated README.Md
 * fixed bug `TSERIES()` with `character` input data
 
 *bimets ver. 1.5.0 - May 2020*
@@ -56,49 +60,49 @@
 
 *bimets ver. 1.4.0 - Nov. 2018*
 
-* Refined simulation capabilities.
-* Refined modeling documentation.
+* Refined simulation capabilities
+* Refined modeling documentation
 
 
 *bimets ver. 1.3.1 - Apr. 2018*
 
-* Added weekly support, i.e. frequency 53.
+* Added weekly support, i.e. frequency 53
 
 
 *bimets ver. 1.3.0 - Mar. 2018*
 
-* Multi-Platform Support Code Refactoring.
+* Multi-Platform Support Code Refactoring
 
 
 *bimets ver. 1.2.20 - Nov. 2017*
 
-* Added function `CUMPROD`.
+* Added function `CUMPROD`
 
 
 *bimets ver. 1.2.19 - Nov. 2017*
 
-* Added function `TSTRIM`.
+* Added function `TSTRIM`
 
 
 *bimets ver. 1.2.18 - Aug. 2017*
 
-* Added function `MOVTOT`.
+* Added function `MOVTOT`
 
 
 *bimets ver. 1.2.16 - Jun. 2017*
 
-* Fixed Bugs in `TSMERGE`.
-* Added option `EXTEND `in `TSPROJECT`.
+* Fixed Bugs in `TSMERGE`
+* Added option `EXTEND `in `TSPROJECT`
 
 
 *bimets ver. 1.2.15 - Mar. 2017*
 
-* Added option `FILLVALUE ` and `VERBOSE `in `as.bimets`.
+* Added option `FILLVALUE ` and `VERBOSE `in `as.bimets`
 
 
 *bimets ver. 1.2.13 - Aug. 2016*
 
-* Added option `NSTOCK `in `ANNUAL`, `SEMIANNUAL`, `QUARTERLY`, `MONTHLY`.
+* Added option `NSTOCK `in `ANNUAL`, `SEMIANNUAL`, `QUARTERLY`, `MONTHLY`
 
 
 *bimets ver. 1.2.11 - Feb. 2016*
@@ -108,52 +112,52 @@
 
 *bimets ver. 1.2.10 - Feb. 2015*
 
-* Added function `INDEXNUM`.
-* Fixed bug in `as.bimets()` with a single observation time series.
-* Extended time range in 1800-2199.
+* Added function `INDEXNUM`
+* Fixed bug in `as.bimets` with a single observation time series
+* Extended time range in 1800-2199
 
 
 *bimets ver. 1.2.7 - Apr. 2014*
 
-* Added option `BIMETS_CONF_NOC `in order to globally disable the compliance check.
+* Added option `BIMETS_CONF_NOC `in order to globally disable the compliance check
 
 
 *bimets ver. 1.2.6 - Mar. 2014*
 
-* Added support to frequencies 24 and 36.
+* Added support to frequencies 24 and 36
 
 
 *bimets ver. 1.2.5 - Mar. 2014*
 
-* Speedup in timeseries conversion from and to bimets.
-* Added `Date()`, `yearmon()` and `yearqtr()` as input class of argument `START` in the `TSERIES` function.
-* Added array as input class in functions `date2yp()`, `yq2yp()`, `ym2yp()`.
-* `xtsPeriodicity()` and `frequency(xts)` now give high priority to the attribute `.bimetsFreq`, if any.
+* Speedup in timeseries conversion from/to bimets
+* Added `Date`, `yearmon` and `yearqtr` as input class of argument `START` in the `TSERIES` function
+* Added array as input class in functions `date2yp`, `yq2yp`, `ym2yp`
+* `xtsPeriodicity` and `xts.frequency` now give high priority to attribute `.bimetsFreq`, if any
 
 
 *bimets ver. 1.2.4 - Mar. 2014*
 
-* New global option for selecting base class `BIMETS_CONF_CCT`.
-* Added function `is.bimets`, added class-type check in function `isCompliant`.
-* Added function `as.bimets`, `fromBIMETStoTS`, `fromBIMETStoXTS`.
-* Added `coredata` filter in override `[[.xts`.
-* Bug fix in function `date2yp()`.
+* New global option for selecting base class `BIMETS_CONF_CCT`
+* Added function `is.bimets`, added class-type check in function `isCompliant`
+* Added function `as.bimets`, `fromBIMETStoTS`, `fromBIMETStoXTS`
+* Added `coredata` filter in override `[[.xts`
+* Bug fix in function `date2yp`
 
 
 *bimets ver. 1.2.3 - Jan. 2014*
 
-* Bug fix in xts() daily in range 1970-1979 on daylight saving time change.
+* Bug fix in xts() daily in range 1970-1979 on daylight saving time change
 
 
 *bimets ver. 1.2.1 - Nov. 2013*
 
-* Added daily support in functions `ANNUAL`, `SEMIANNUAL`, `QUARTERLY`, `MONTHLY`.
-* Added function `DAILY`.
+* Added daily support in functions `ANNUAL`, `SEMIANNUAL`, `QUARTERLY`, `MONTHLY`
+* Added function `DAILY`
 
 
 *bimets ver. 1.2.0 - Nov. 2013*
 
-* Added single observation timeseries support.
+* Added single observation timeseries support
 
 
 *bimets ver. < 1.2.0*

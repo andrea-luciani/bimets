@@ -32,7 +32,7 @@
   #clear console
   packageStartupMessage("\014 ");
   
-  packageStartupMessage(gsub("\\$","",'bimets is active - version 1.5.3\nFor help type \'?bimets\'\n'))
+  packageStartupMessage(gsub("\\$","",'bimets is active - version 2.0.1\nFor help type \'?bimets\'\n'))
   
   #packageStartupMessage('Loading required libraries...OK'); 
   #packageStartupMessage('\nBIMETS is active.\n');
@@ -459,8 +459,7 @@ as.bimets <- function(x=NULL,FILLVALUE=NA,VERBOSE=FALSE,...)
     
     if (VERBOSE)
     {
-      #browser();
-      
+           
       #get indexdes filled with new data
       newYPs=base::setdiff(staticYPn,localYPn);
       newIndexes=match(newYPs , staticYPn);
@@ -2230,7 +2229,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 qtr. Nothing defined.');
-				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 				
@@ -2259,7 +2258,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.');
-				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 				
@@ -2282,7 +2281,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 qtrs. Nothing defined.');
-				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 				
@@ -2311,7 +2310,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 qtrs. Nothing defined.');
-				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 				
@@ -2334,7 +2333,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 qtrs. Nothing defined.');
-				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 				
@@ -2363,7 +2362,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 qtrs. Nothing defined.');
-				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 				
@@ -2398,7 +2397,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.');
-				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 				
@@ -2426,7 +2425,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.');
-				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 				
@@ -2449,7 +2448,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.');
-				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 				
@@ -2478,7 +2477,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.');
-				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 				
@@ -2501,7 +2500,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.');
-				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 				
@@ -2530,7 +2529,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 month. Nothing defined.');
-				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 				
@@ -2577,7 +2576,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		  	}
 		  	
 		  	if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.');
-		  	if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+		  	if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 		  	
 		  	outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 		  	
@@ -2623,7 +2622,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.');
-		    if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 		    
@@ -2680,7 +2679,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.');
-		    if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 		    
@@ -2740,7 +2739,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.');
-		    if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 		    
@@ -2800,7 +2799,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.');
-		    if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 		    
@@ -2873,7 +2872,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.');
-		    if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2);
 		    
@@ -3039,7 +3038,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.');
-				if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4);
 				
@@ -3069,7 +3068,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.');
-				if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4);
 				
@@ -3094,7 +3093,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.');
-				if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4);
 				
@@ -3125,7 +3124,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.');
-				if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4);
 				
@@ -3150,7 +3149,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.');
-				if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4);
 				
@@ -3181,7 +3180,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.');
-				if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4);
 				
@@ -3236,7 +3235,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.');
-		    if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4);
 		    
@@ -3307,7 +3306,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		  	}
 		  	
 		  	if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.');
-		  	if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one sample.')
+		  	if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
 		  	
 		  	outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4);
 		  	
@@ -3376,7 +3375,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.');
-		    if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4);
 		    
@@ -3448,7 +3447,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.');
-		    if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4);
 		    
@@ -3520,7 +3519,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.');
-		    if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4);
 		    
@@ -3605,7 +3604,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.');
-		    if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4);
 		    
@@ -3678,7 +3677,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -3704,7 +3703,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -3726,7 +3725,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -3754,7 +3753,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -3776,7 +3775,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -3804,7 +3803,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -3838,7 +3837,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -3865,7 +3864,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -3887,7 +3886,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -3915,7 +3914,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -3937,7 +3936,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -3965,7 +3964,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -3999,7 +3998,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -4026,7 +4025,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -4048,7 +4047,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -4077,7 +4076,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -4099,7 +4098,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -4127,7 +4126,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 				}
 				
 				if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+				if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 				
 				outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 				
@@ -4163,7 +4162,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-		    if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 		    
@@ -4192,7 +4191,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		  	}
 		  	
 		  	if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-		  	if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+		  	if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 		  	
 		  	outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 		  	
@@ -4235,7 +4234,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-		    if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 		    
@@ -4281,7 +4280,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-		    if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 		    
@@ -4327,7 +4326,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-		    if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 		    
@@ -4386,7 +4385,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.');
-		    if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1);
 		    
@@ -4625,7 +4624,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.');
-		    if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12);
 		    
@@ -4742,7 +4741,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		  	}
 		  	
 		  	if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.');
-		  	if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one sample.')
+		  	if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one observation.')
 		  	
 		  	outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12);
 		  	
@@ -4794,7 +4793,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.');
-		    if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12);
 		    
@@ -4848,7 +4847,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.');
-		    if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12);
 		    
@@ -4902,7 +4901,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.');
-		    if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12);
 		    
@@ -4969,7 +4968,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 		    }
 		    
 		    if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.');
-		    if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one sample.')
+		    if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one observation.')
 		    
 		    outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12);
 		    
@@ -6839,7 +6838,7 @@ TSERIES <- function(..., START = c(2000,1), FREQ = 1, SOURCE=NULL, TITLE=NULL, U
   #an input is null
   tryCatch({inputsL=list(...);},error=function(e){stop('TIMESERIES(): an input argument is null.')});  
   
-  if (! all(as.logical(lapply(inputsL,.A1DCompliantInput)))) stop('TIMESERIES(): an input data is not numeric.')  
+  if (! all(as.logical(lapply(inputsL,.A1DCompliantInput)))) stop('TIMESERIES(): all input data must be numeric.')  
   
   #no args
   if (is.null(START) ) stop('TIMESERIES(): start date is required. Please use START=c(y,p).');
@@ -7989,8 +7988,7 @@ TABIT <- function(..., TSRANGE=NULL, digits=getOption('digits'),avoidCompliance=
     for (idx2 in (1:length(seriesListADSL))) 
     {
       
-      #browser()
-      
+          
       #a time series can have null value in selected date
       value[idx2]= sprintf(stdFormatS,'');          
       

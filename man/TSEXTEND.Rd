@@ -6,7 +6,7 @@
 Extend Time Series
 }
 \description{
-This function extends the time series definition range by using a specified criteria. Values of time series extension are calculated by using the directives specified in the arguments \code{EXTMODE} and \code{FACTOR}. 
+This function extends the time series definition range by using the directives specified in the \code{EXTMODE} and \code{FACTOR} arguments. 
 }
 \usage{
 TSEXTEND(x = NULL, BACKTO = NULL, UPTO = NULL, EXTMODE = "GROWTH",  
@@ -18,10 +18,10 @@ TSEXTEND(x = NULL, BACKTO = NULL, UPTO = NULL, EXTMODE = "GROWTH",
 Input time series that must satisfy the compliance control check defined in \code{\link[=is.bimets]{is.bimets}}.
 }
   \item{BACKTO}{
-Define the new start of the time series, that must be provided as \code{c(YEAR,PERIOD)}. It is possible to convert a \code{Date()}, or a \code{yearmon()}, or a \code{yearqtr()} to the related \code{c(YEAR,PERIOD)} by using the functions \code{\link[=date2yp]{date2yp}}, \code{\link[=ym2yp]{ym2yp}}, and  \code{\link[=yq2yp]{yq2yp}}.
+Define the new start of the time series, which must be provided as \code{c(YEAR,PERIOD)}. It is possible to convert a \code{Date()}, or a \code{yearmon()}, or a \code{yearqtr()} to the related \code{c(YEAR,PERIOD)} by using the functions \code{\link[=date2yp]{date2yp}}, \code{\link[=ym2yp]{ym2yp}}, and  \code{\link[=yq2yp]{yq2yp}}.
 }
   \item{UPTO}{
-Define the new end of the time series, that must be provided as \code{c(YEAR,PERIOD)}. It is possible to convert a \code{Date()}, or a \code{yearmon()}, or a \code{yearqtr()} to the related \code{c(YEAR,PERIOD)} by using the functions \code{\link[=date2yp]{date2yp}}, \code{\link[=ym2yp]{ym2yp}}, and  \code{\link[=yq2yp]{yq2yp}}.
+Define the new end of the time series, which must be provided as \code{c(YEAR,PERIOD)}. It is possible to convert a \code{Date()}, or a \code{yearmon()}, or a \code{yearqtr()} to the related \code{c(YEAR,PERIOD)} by using the functions \code{\link[=date2yp]{date2yp}}, \code{\link[=ym2yp]{ym2yp}}, and  \code{\link[=yq2yp]{yq2yp}}.
 }
   \item{EXTMODE}{ It must be one of the following:\cr
 \bold{MISSING}: extend the time series using missings values \code{NA}. \cr
@@ -66,20 +66,20 @@ This function returns a BIMETS time series built by extending the input time ser
 \examples{
 	
 	
-	n=10;
-	ts1=TIMESERIES(1:n,START=c(2000,1),FREQ='A')
-	ts2=TSEXTEND(ts1,BACKTO=c(1990,1),UPTO=c(2020,1),EXTMODE='GROWTH4')
+	n<-10;
+	ts1<-TIMESERIES(1:n,START=c(2000,1),FREQ='A')
+	ts2<-TSEXTEND(ts1,BACKTO=c(1990,1),UPTO=c(2020,1),EXTMODE='GROWTH4')
 	TABIT(ts1,ts2)
 		
-	xArr=c(0.5,5.6,4.8,3.8,7.3,9.9,7.8,3.7,8.2,10)
-	ts1=TIMESERIES(xArr,START=c(2000,1),FREQ='A')
-	ts2=TSEXTEND(ts1,BACKTO=c(1990,1),UPTO=c(2020,1),EXTMODE='QUADRATIC')
+	xArr<-c(0.5,5.6,4.8,3.8,7.3,9.9,7.8,3.7,8.2,10)
+	ts1<-TIMESERIES(xArr,START=c(2000,1),FREQ='A')
+	ts2<-TSEXTEND(ts1,BACKTO=c(1990,1),UPTO=c(2020,1),EXTMODE='QUADRATIC')
 	TABIT(ts1,ts2)
 	
-	xArr=(1:n)
-	dateArr=seq(as.Date('2000/12/31'),by='year',length=n)
-	dataF=data.frame(dateArr,xArr)
-	ts1=TIMESERIES(xArr,START=c(2000,1),FREQ='A')
-	ts2=TSEXTEND(ts1,BACKTO=c(1990,1),UPTO=c(2020,1),EXTMODE='MYRATE',FACTOR=2.5)
+	xArr<-(1:n)
+	dateArr<-seq(as.Date('2000/12/31'),by='year',length=n)
+	dataF<-data.frame(dateArr,xArr)
+	ts1<-TIMESERIES(xArr,START=c(2000,1),FREQ='A')
+	ts2<-TSEXTEND(ts1,BACKTO=c(1990,1),UPTO=c(2020,1),EXTMODE='MYRATE',FACTOR=2.5)
 	TABIT(ts1,ts2)
 }

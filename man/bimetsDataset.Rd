@@ -45,10 +45,10 @@
 
 
 \title{
-BIMETS User and Internal datasets
+BIMETS Internal Datasets
 }
 \description{
-BIMETS package contains examples and hidden datasets that provide faster performance in time series analysis.
+BIMETS package contains hidden datasets that allow a faster performance in time series analysis.
 }
 
 

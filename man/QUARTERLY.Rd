@@ -51,14 +51,14 @@ This function returns a quarterly BIMETS time series.
 \examples{
 
 	#TS YEARLY TO QUARTERLY
-	n=10
-	ts1=TSERIES(1:n,START=c(2000,1),FREQ=1)
-	ts1[5]=NA
+	n<-10
+	ts1<-TSERIES(1:n,START=c(2000,1),FREQ=1)
+	ts1[5]<-NA
 	TABIT(QUARTERLY(ts1,fun='INTERP_CENTER'));
 	
 	#TS DAILY TO QUARTERLY
-	n=600
-	ts1=TSERIES(1:n,START=c(2000,1),FREQ='D')
-	ts1[25]=NA
+	n<-600
+	ts1<-TSERIES(1:n,START=c(2000,1),FREQ='D')
+	ts1[25]<-NA
 	TABIT(QUARTERLY(ts1,fun='SUM'))
 }

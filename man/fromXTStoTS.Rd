@@ -5,7 +5,7 @@
 Convert XTS to TS
 }
 \description{
-This function transforms a BIMETS compliant \code{xts()} time series (as defined in \code{\link[=is.bimets]{is.bimets}}) into a time series of class \code{ts()}. The core R function \code{as.ts()} does not satisfy all the requirements of the compliance control check, so it has been extended. Attributes and description of the input time series will be copied to the output time series (see \code{\link[=TSERIES]{TIMESERIES}}).
+This function transforms a BIMETS compliant \code{xts()} time series (as defined in \code{\link[=is.bimets]{is.bimets}}) into a time series of class \code{ts()}. The core R function as.ts() does not satisfy all the compliance control check requirements, so it has been extended. Attributes and description of the input time series will be copied to the output time series (see \code{\link[=TSERIES]{TIMESERIES}}).
 }
 \usage{
 fromXTStoTS(x = NULL, avoidCompliance = FALSE, ...)
@@ -49,46 +49,46 @@ This function returns a time series of class \code{ts()} that has the same obser
 	setBIMETSconf('BIMETS_CONF_CCT','XTS')
 	
 	#semiannual with Date()
-	n=10
-	xArr=rnorm(n)
-	dateArr=seq(as.Date('2000/07/01'),by='6 months',length=n) 
-	dataF=data.frame(dateArr,xArr)
-	xt=xts(dataF[,2],order.by=dataF[,1])
+	n<-10
+	xArr<-rnorm(n)
+	dateArr<-seq(as.Date('2000/07/01'),by='6 months',length=n) 
+	dataF<-data.frame(dateArr,xArr)
+	xt<-xts(dataF[,2],order.by=dataF[,1])
 	print(fromXTStoTS(xt))
 	
 	#set configuration BIMETS_CONF_DIP on LAST
 	setBIMETSconf('BIMETS_CONF_DIP','LAST')
 	
 	#yearly with Date()
-	n=10
-	xArr=rnorm(n)
-	dateArr=seq(as.Date('2000/12/31'),by='year',length=n)
-	dataF=data.frame(dateArr,xArr)
-	xt=xts(dataF[,2],order.by=dataF[,1])
+	n<-10
+	xArr<-rnorm(n)
+	dateArr<-seq(as.Date('2000/12/31'),by='year',length=n)
+	dataF<-data.frame(dateArr,xArr)
+	xt<-xts(dataF[,2],order.by=dataF[,1])
 	print(fromXTStoTS(xt))
 	
 	#quarterly with yearqtr()
-	n=10
-	xArr=rnorm(n+1)
-	dateArr=as.yearqtr('2000 Q2') + 0:n/4
-	dataF=data.frame(dateArr,xArr)
-	xt=xts(dataF[,2],order.by=dataF[,1])
+	n<-10
+	xArr<-rnorm(n+1)
+	dateArr<-as.yearqtr('2000 Q2') + 0:n/4
+	dataF<-data.frame(dateArr,xArr)
+	xt<-xts(dataF[,2],order.by=dataF[,1])
 	print(fromXTStoTS(xt))
 	
 	#monthly with yearmon()
-	n=10
-	xArr=rnorm(n+1)
-	dateArr=as.yearmon('Jul 2000') + 0:n/12
-	dataF=data.frame(dateArr,xArr)
-	xt=xts(dataF[,2],order.by=dataF[,1])
+	n<-10
+	xArr<-rnorm(n+1)
+	dateArr<-as.yearmon('Jul 2000') + 0:n/12
+	dataF<-data.frame(dateArr,xArr)
+	xt<-xts(dataF[,2],order.by=dataF[,1])
 	print(fromXTStoTS(xt))
 	
 	#daily with Date()
-	n=10
-	xArr=rnorm(n)
-	dateArr=seq(as.Date('2000/07/14'),by='day',length=n) 
-	dataF=data.frame(dateArr,xArr)
-	xt=xts(dataF[,2],order.by=dataF[,1])
+	n<-10
+	xArr<-rnorm(n)
+	dateArr<-seq(as.Date('2000/07/14'),by='day',length=n) 
+	dataF<-data.frame(dateArr,xArr)
+	xt<-xts(dataF[,2],order.by=dataF[,1])
 	print(fromXTStoTS(xt))
 	
 	#restore defaults

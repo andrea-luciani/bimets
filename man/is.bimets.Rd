@@ -8,7 +8,7 @@ Check the Compliance of a Time Series
 This function checks the compliance of the input time series that must verify the following BIMETS requirements:\cr\cr
 - the input time series must be of the class defined in \code{BIMETS_CONF_CCT} (see \code{\link[=bimetsConf]{BIMETS configuration}}) \cr\cr
 - If \code{BIMETS_CONF_CCT='TS'} the input time series must be of class \code{ts}, univariate, with at least one observation and with a frequency \code{f=1, 2, 3, 4, 12, 24, 36, 53 or 366} per year.\cr\cr
-- if \code{BIMETS_CONF_CCT='XTS'} the input time series must be of class \code{xts}, univariate, with at least one observation and with a frequency \code{f=1, 2, 3, 4, 12, 24, 36, 53 or 366} per year; the input time series must also be stricty regular, i.e. without any temporal discontinuity, and must have an \code{.indexClass} of type \code{yearmon()} for monthly time series, of type \code{yearqtr()} for quarterly time series and of type \code{Date()} for any other frequency. If configuration option \code{BIMETS_CONF_DIP='LAST'}, i.e. the default value, the provided observation dates of the input \code{xts()} time series must be the last dates in the period, e.g. Dec. 31 for yearly time series, Jun. 30 for the first period in a semiannual time series, etc.; If configuration option \code{BIMETS_CONF_DIP='FIRST'} the provided observation dates of the input \code{xts()} time series must be the first dates in the period, e.g. Jan. 1 for an yearly time series, Jul. 1 for the second period in a semiannual time series, etc.; \cr \cr BIMETS package functions return time series that are compliant to the above requirements.\cr\cr The compliance check can be locally disabled by using the function argument \code{avoidCompliance=TRUE}, that is available in almost all package functions. The compliance check of a BIMETS generated time series can be avoided and disabling the control check can speed up the execution time. This is suggested when users concatenate several call to the package functions, e.g. the compliance check of the \code{ts2} time series in the following example can be avoided: \cr \code{ts2=TSLAG(ts1);ts3=TSDELTA(ts2,avoidCompliance=TRUE);}.\cr\cr Time series must lie in the year range 1800-2199: in this range the conversion between a date and the related year-period (and vice versa) has been hardcoded in order to speedup the execution time.\cr\cr
+- if \code{BIMETS_CONF_CCT='XTS'} the input time series must be of class \code{xts}, univariate, with at least one observation and with a frequency \code{f=1, 2, 3, 4, 12, 24, 36, 53 or 366} per year; the input time series must also be stricty regular, i.e. without any temporal discontinuity, and must have an \code{.indexClass} of type \code{yearmon()} for monthly time series, of type \code{yearqtr()} for quarterly time series and of type \code{Date()} for any other frequency. If configuration option \code{BIMETS_CONF_DIP='LAST'}, i.e. the default value, the provided observation dates of the input \code{xts()} time series must be the last dates in the period, e.g. Dec. 31 for yearly time series, Jun. 30 for the first period in a semiannual time series, etc.; If configuration option \code{BIMETS_CONF_DIP='FIRST'} the provided observation dates of the input \code{xts()} time series must be the first dates in the period, e.g. Jan. 1 for an yearly time series, Jul. 1 for the second period in a semiannual time series, etc.; \cr \cr BIMETS package functions return time series that are compliant to the above requirements.\cr\cr The compliance check can be locally disabled by using the function argument \code{avoidCompliance=TRUE}, that is available in almost all package functions. The compliance check of a BIMETS generated time series can be avoided; moreover, disabling the control check can speed up the execution time, and is suggested when users concatenate several call to the package functions, e.g. the compliance check of the \code{ts2} time series in the following example can be avoided: \cr \code{ts2=TSLAG(ts1);ts3=TSDELTA(ts2,avoidCompliance=TRUE);}.\cr\cr Time series must lie in the year range 1800-2199: in this range the conversion between a date and the related year-period (and vice versa) has been hardcoded in order to speed up the code execution.\cr\cr
 If the compliance check is disabled, i.e. \code{avoidCompliance=TRUE} and the input time series does not verify all the above requirements, the package functions can have an erroneous behavior. Should any doubt arise, we suggest to call the package functions using the default arguments; we also suggest to create time series object by using the command \code{\link[=TSERIES]{TIMESERIES}}.\cr
 
 }
@@ -56,7 +56,7 @@ This function returns a logical value \code{TRUE/FALSE} whenever the input time 
   setBIMETSconf('BIMETS_CONF_CCT','XTS')
   
   #create an xts
-  xt=TIMESERIES(1:10,START=c(2000,1),FREQ='A')
+  xt<-TIMESERIES(1:10,START=c(2000,1),FREQ='A')
   
   print(xt); #...dates are at Dec 31
   
@@ -71,7 +71,7 @@ This function returns a logical value \code{TRUE/FALSE} whenever the input time 
   setBIMETSconf('BIMETS_CONF_CCT','TS')
   
   #bivariate ts
-  tsBiv=ts(matrix(c(1,2,3,4,5,6),nrow=3,ncol=2),start=c(2000,1),frequency=1)
+  tsBiv<-ts(matrix(c(1,2,3,4,5,6),nrow=3,ncol=2),start=c(2000,1),frequency=1)
   
   print(is.bimets(tsBiv)) #...FALSE
   
@@ -80,15 +80,15 @@ This function returns a logical value \code{TRUE/FALSE} whenever the input time 
   	error=function(e){cat(e$message)});try({is.bimets(tsBiv,suppressError=FALSE)}) 
   
   #ts year 
-  n=10
-  xArr=rnorm(n)
-  t=ts(data=xArr,start=c(2000,1),frequency=1)
+  n<-10
+  xArr<-rnorm(n)
+  t<-ts(data=xArr,start=c(2000,1),frequency=1)
   cat('is compliant?',is.bimets(t),'\n')
   
   #ts semestral 
-  n=10
-  xArr=rnorm(n)
-  t=ts(data=xArr,start=c(2000,1),frequency=2)
+  n<-10
+  xArr<-rnorm(n)
+  t<-ts(data=xArr,start=c(2000,1),frequency=2)
   cat('is compliant?',is.bimets(t),'\n')
   
   #set configuration BIMETS_CONF_DIP on FIRST
@@ -98,37 +98,37 @@ This function returns a logical value \code{TRUE/FALSE} whenever the input time 
   setBIMETSconf('BIMETS_CONF_CCT','XTS')
   
   #xts yearly with dates
-  n=10
-  xArr=rnorm(n)
-  dateArr=seq(as.Date('2000/01/01'),by='year',length=n)
-  dataF=data.frame(dateArr,xArr)
-  xt=xts(dataF[,2],order.by=dataF[,1])
+  n<-10
+  xArr<-rnorm(n)
+  dateArr<-seq(as.Date('2000/01/01'),by='year',length=n)
+  dataF<-data.frame(dateArr,xArr)
+  xt<-xts(dataF[,2],order.by=dataF[,1])
   cat('is compliant?',is.bimets(xt),'\n')
   
   
   #xts daily
-  n=10
-  xArr=rnorm(n)
-  dateArr=seq(as.Date('2000/01/01'),by='day',length=n)
-  dataF=data.frame(dateArr,xArr)
-  xt=xts(dataF[,2],order.by=dataF[,1])
+  n<-10
+  xArr<-rnorm(n)
+  dateArr<-seq(as.Date('2000/01/01'),by='day',length=n)
+  dataF<-data.frame(dateArr,xArr)
+  xt<-xts(dataF[,2],order.by=dataF[,1])
   cat('is compliant?',is.bimets(xt),'\n')
   
   #xts monthly with dates
-  n=10
-  xArr=rnorm(n)
-  dateArr=seq(as.Date('2000/01/01'),by='month',length=n)
-  dataF=data.frame(dateArr,xArr)
-  xt=xts(dataF[,2],order.by=dataF[,1])
+  n<-10
+  xArr<-rnorm(n)
+  dateArr<-seq(as.Date('2000/01/01'),by='month',length=n)
+  dataF<-data.frame(dateArr,xArr)
+  xt<-xts(dataF[,2],order.by=dataF[,1])
   cat('monthly with dates is compliant? ',is.bimets(xt),'\n') #...false
   
   
   #xts monthly with yearmon
-  n=10
-  xArr=rnorm(n+1)
-  dateArr=as.yearmon('Jan 2001')+0:n/12
-  dataF=data.frame(dateArr,xArr)
-  xt=xts(dataF[,2],order.by=dataF[,1])
+  n<-10
+  xArr<-rnorm(n+1)
+  dateArr<-as.yearmon('Jan 2001')+0:n/12
+  dataF<-data.frame(dateArr,xArr)
+  xt<-xts(dataF[,2],order.by=dataF[,1])
   cat('monthly with yearmon is compliant? ',is.bimets(xt),'\n') #...true
   
   

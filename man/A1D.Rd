@@ -6,7 +6,7 @@
 A1D
 }
 \description{
-This function returns the array built with input argment values. Input can be time series, numerical arrays or strings.
+This function returns the array built with input argument values. Input can be time series, numerical arrays, or strings.
 }
 \usage{
 A1D(..., length = NULL, avoidCompliance = FALSE)
@@ -48,20 +48,20 @@ This function returns an array of the same class of the input.
 
 \examples{
 	
-	n=10;
+	n<-10;
 	#create ts
-	ts1=TSERIES(rnorm(n),START=c(2000,1),FREQ=1)
+	ts1<-TSERIES(rnorm(n),START=c(2000,1),FREQ=1)
 
 	#create A1D() array with scalars, ts, and NA
-	out_a1d=A1D(length=25, ts1, 1, -8.9, NA)
+	out_a1d<-A1D(length=25, ts1, 1, -8.9, NA)
 	print(out_a1d)
 	
 	#same example no length specified
-	out_a1d=A1D(ts1, 1, -8.9, NA)
+	out_a1d<-A1D(ts1, 1, -8.9, NA)
 	print(out_a1d)
 	
 	#strings example
-	out_a1d=A1D(length=5,'aa','bb','ccc')
+	out_a1d<-A1D(length=5,'aa','bb','ccc')
 	print(out_a1d)
 }
 

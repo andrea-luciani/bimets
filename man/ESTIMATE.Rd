@@ -3,11 +3,11 @@
 
 
 \title{
-Estimate a BIMETS model object
+Estimate a BIMETS model
 }
 \description{
-\if{html}{(Note: this is the html version of the reference manual. Please consider reading the pdf version of this reference manual, wherein there are figures and the mathematical expressions are better formatted than in html.)\cr\cr}
-This function estimates equations that are linear in the coefficients, as specified in the behavioral equations of the input model object. Coefficients can be estimated for single equations or blocks of simultaneous equations. Coefficients restriction procedure derives from the theory of Lagrange Multipliers, while the Cochrane-Orcutt method allows to account for residuals autocorrelation.\cr\cr The estimation function supports:\cr\cr
+\if{html}{(Note: this is the html version of the reference manual. Please consider reading the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{pdf version} of this reference manual, or the package \href{https://cran.r-project.org/package=bimets/vignettes/bimets.pdf}{vignette}, wherein there are figures and the mathematical expressions are better formatted than in html.)\cr\cr}
+This function estimates equations that are linear in the coefficients, as specified in the behavioral equations of the input model object. Coefficients can be estimated for single equations or blocks of simultaneous equations. Coefficients restriction procedure derives from Lagrange Multipliers' theory, while the Cochrane-Orcutt method allows accounting for residuals autocorrelation.\cr\cr The estimation function supports:\cr\cr
 - \emph{Ordinary Least Squares};\cr
 - \emph{Instrumental Variables};\cr
 - \emph{Deterministic linear restrictions on the coefficients};\cr
@@ -26,7 +26,6 @@ ESTIMATE(model=NULL,
          IV=NULL,
          forceIV=FALSE,
          quietly=FALSE,
-         showWarnings=FALSE,
          tol=.Machine$double.eps,
          digits=getOption('digits'),
          centerCOV=TRUE,
@@ -54,7 +53,7 @@ ESTIMATE(model=NULL,
    The estimation technique used in the regression. Ordinary Least Squares \code{OLS} and Instrumental Variables estimation \code{IV} are supported.
    }
     \item{IV}{
-   The \code{character} array built with the Instrumental Variable expressions, in the case of Instrumental Variables estimation (see examples).
+   The \code{character} array built with the Instrumental Variable expressions, in the case of Instrumental Variables estimation (see example).
    }
     \item{forceIV}{
   If \code{TRUE}, the \code{IV} defined in the previous argument takes precedence over the \code{IV} provided in the behavioral \code{\link[=MDL]{MDL}} definition.
@@ -62,11 +61,8 @@ ESTIMATE(model=NULL,
    \item{quietly}{
    If \code{TRUE}, information messages will be suppressed, e.g. results and regression statistics.
    }
-  \item{showWarnings}{
-  If \code{TRUE} and if a model time series has a missing value then warning message will be shown.
-  }
   \item{tol}{
-  The tolerance for detecting linear dependencies in the columns of a matrix while an inversion is requested. The default is \code{.Machine$double.eps}.
+  The tolerance for detecting linear dependencies in a matrix's columns when its inverse is requested. The default is \code{.Machine$double.eps}.
   }
   \item{digits}{
   Controls the number of digits to print when printing coefficients and statistics of the estimation. Valid values are 1 to 22 with a default of 7.
@@ -111,13 +107,13 @@ If \code{outputText=TRUE}, for each behavioral in the \code{eqList} this functio
 - the \emph{Number of Degrees of Freedom};\cr
 - the \emph{Current Sample}, i.e. the \code{TSRANGE} of estimation;\cr
 
-All probabilities lie between [0, 1].\cr
+All probabilities lie between \code{[0, 1]}.\cr
 
 For each behavioral in the \code{eqList} this function will add 4 new named elements into the related behavioral of the output model object:\cr\cr
 1) \code{coefficients}: a numerical array built with the estimated coefficients;\cr
 2) \code{errorCoefficients}: a numerical array built with the estimated coefficient for the error autoregression, if the \code{ERROR>} structure has been provided in the model \code{\link[=MDL]{MDL}} definition;\cr
 3) \code{residuals}: the time series of the regression residuals. If an \code{ERROR>} structure has been provided in the behavioral definition, the related residuals will be calculated as described in the Cochrane-Orcutt procedure (see \code{\link[=MDL]{MDL}}).\cr
-3) \code{residuals_no_error_correction}:  if an \code{ERROR>} structure has been provided in the behavioral definition, the residuals caclucated by using the original dependent and independent varibles are stored into this list element.\cr
+3) \code{residuals_no_error_correction}:  if an \code{ERROR>} structure has been provided in the behavioral definition, the residuals calcucated by using the original dependent and independent variables are stored into this list element.\cr
 4) \code{statistics}: a list built with the parameters and the statistics of the estimation, e.g.:\cr
 - \code{TSRANGE}: TSRANGE requested in the latest estimation of the behavioral;\cr
 - \code{estimationTechinque}: estimation technique requested in the latest estimation of the behavioral;\cr
@@ -142,7 +138,7 @@ For each behavioral in the \code{eqList} this function will add 4 new named elem
 \cr\cr
 
 \emph{Structural Stability - Chow test}\cr\cr
-One of the main purposes of the econometric modeling is its use for forecast and policy evaluation and, to this end, the stability of a behavioral equation parameters over time should be verified. In order to check for structural stability two different procedures, which can be derived from the so called Chow-tests, are applied.\cr
+One of the main purposes of econometric modeling is its use for forecast and policy evaluation and, to this end, the stability of any behavioral equation parameters over time should be verified. In order to check for structural stability two different procedures, which can be derived from the so-called Chow-tests, are applied.\cr
 \if{html}{
 Given a sample of \eqn{T_0 = t_k,...,t_n} observations (i.e. the base \code{TSRANGE}) and selecting an arbitrary forward extension in \eqn{T_1 = t_k,...,t_n,...,t_m} observations (i.e. the extended \code{TSRANGE}) in the general case we have the following two regressions: \cr\cr
 1) \eqn{Y_0 = b_0*X_0+eps_0,  eps_0  in N(0,sigma_0^2) }, having time series projected on the base \code{TSRANGE}\cr
@@ -153,15 +149,15 @@ Given a sample of \eqn{T_{0} = t_{k},...,t_{n}} observations (i.e. the base \cod
 1) \eqn{Y_{0} = \beta_{0}*X_{0}+\epsilon_{0},  \quad    \epsilon_{0} \sim \mathcal{N}(0,\,\sigma_{0}^{2}) }, having time series projected on the base \code{TSRANGE}\cr
 2) \eqn{Y_{1} = \beta_{1}*X_{1}+\epsilon_{1},  \quad    \epsilon_{1} \sim \mathcal{N}(0,\,\sigma_{1}^{2}) }, having time series projected on the extended \code{TSRANGE}\cr
 }
-In general a stability analysis is carried on in the following ways:\cr
+In general, a stability analysis is carried on in the following ways:\cr
 - comparing the parameter estimates arising from the two regressions: this is known as the covariance analysis;\cr
 - checking the accuracy of the forecast for the dependent variable in the extended \code{TSRANGE}, using the estimates produced in the base \code{TSRANGE}: this is known as the predictive power test.\cr\cr
 The first Chow test is calculated as:
 \if{html}{
-\eqn{tau = ( SSR_1-SSR_0 ) / SSR_0 * DoF_1 / ( DoF_1-DoF_0 ) }, \cr \cr with \eqn{SSR_i} as the sum of squared residuals and \eqn{DoF_i} as the number of degrees of fredoom in the regression \eqn{i=0,1}. \cr
+\eqn{tau = ( SSR_1-SSR_0 ) / SSR_0 * DoF_1 / ( DoF_1-DoF_0 ) }, \cr \cr with \eqn{SSR_i} as the sum of squared residuals and \eqn{DoF_i} as the number of degrees of freedom in the regression \eqn{i=0,1}. \cr
 }
 \if{latex}{
-\eqn{\tau = \frac{SSR_{1}-SSR_{0}}{SSR_{0}} \frac{DoF_{1}}{DoF_{1}-DoF_{0}} }, \cr \cr with \eqn{SSR_{i}} as the sum of squared residuals and \eqn{DoF_{i}} as the number of degrees of fredoom in the regression \eqn{i=0,1}. \cr
+\eqn{\tau = \frac{SSR_{1}-SSR_{0}}{SSR_{0}} \frac{DoF_{1}}{DoF_{1}-DoF_{0}} }, \cr \cr with \eqn{SSR_{i}} as the sum of squared residuals and \eqn{DoF_{i}} as the number of degrees of freedom in the regression \eqn{i=0,1}. \cr
 }
 
 The test is completed by calculating the following time series on the extended \code{TSRANGE}:\cr
@@ -196,6 +192,7 @@ If \code{CHOWTEST} is \code{TRUE}, for each behavioral in the \code{eqList} the 
 \code{\link[=MDL]{MDL}}\cr
 \code{\link[=LOAD_MODEL]{LOAD_MODEL}}\cr
 \code{\link[=SIMULATE]{SIMULATE}}\cr
+\code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}\cr
 \code{\link[=MULTMATRIX]{MULTMATRIX}}\cr
 \code{\link[=RENORM]{RENORM}}\cr
 \code{\link[=TSERIES]{TIMESERIES}}\cr
@@ -207,11 +204,12 @@ If \code{CHOWTEST} is \code{TRUE}, for each behavioral in the \code{eqList} the 
 \examples{
 
 #define model
-myModelDefinition=
+myModelDefinition<-
 "MODEL
 
 COMMENT> Modified Klein Model 1 of the U.S. Economy with PDL,
-COMMENT> autocorrelation on errors, restrictions and conditional evaluations
+COMMENT> autocorrelation on errors, restrictions 
+COMMENT> and conditional evaluations
 
 COMMENT> Consumption
 BEHAVIORAL> cn
@@ -252,7 +250,7 @@ IF> i <= 0
 END"
 
 #define model data
-myModelData=list(
+myModelData<-list(
   cn
   =TIMESERIES(39.8,41.9,45,49.2,50.6,52.6,55.1,56.2,57.3,57.8,55,50.9,
               45.6,46.5,48.7,51.3,57.7,58.7,57.5,61.6,65,69.7,
@@ -297,16 +295,16 @@ myModelData=list(
 
 
 #load model 
-myModel=LOAD_MODEL(modelText=myModelDefinition)
+myModel<-LOAD_MODEL(modelText=myModelDefinition)
 
 #load data into the model
-myModel=LOAD_MODEL_DATA(myModel,myModelData,showWarnings = TRUE)
+myModel<-LOAD_MODEL_DATA(myModel,myModelData,showWarnings = TRUE)
 
 #################################################
 #OLS case
 
 #estimate the model
-myModel=ESTIMATE(myModel)
+myModel<-ESTIMATE(myModel)
 
 #HERE BELOW THE OUTPUT OF THE ESTIMATION (COMMENTED OUT):
 #.CHECK_MODEL_DATA(): warning, there are undefined values in time series "time".
@@ -340,7 +338,7 @@ myModel=ESTIMATE(myModel)
 #
 #AUTOREGRESSIVE PARAMETERS:
 #Rho             Std. Error      T-stat.         
- #0.05743131      0.3324101       0.1727725       
+# 0.05743131      0.3324101       0.1727725       
 # 0.007785936     0.2647013       0.02941404      
 #
 #
@@ -511,7 +509,7 @@ myModel$behaviorals$w1$coefficients
 
 #estimation of Consumption "cn" with arbitrary IVs
 #and error autocorrelation
-myModel=ESTIMATE(myModel,
+myModel<-ESTIMATE(myModel,
                  eqList = 'cn',
                  estTech = 'IV', 
                  IV=c('1',
@@ -574,7 +572,7 @@ myModel=ESTIMATE(myModel,
 #...ESTIMATE OK
 
 #define model
-myShortModelDefinition=
+myShortModelDefinition<-
   "MODEL
   COMMENT> Consumption with IV
   BEHAVIORAL> cn
@@ -590,21 +588,21 @@ myShortModelDefinition=
 
 
 #load model 
-myShortModel=LOAD_MODEL(modelText=myShortModelDefinition)
+myShortModel<-LOAD_MODEL(modelText=myShortModelDefinition)
 
 #load data into the model
-myShortModel=LOAD_MODEL_DATA(myShortModel,myModelData,showWarnings = TRUE)
+myShortModel<-LOAD_MODEL_DATA(myShortModel,myModelData,showWarnings = TRUE)
 
 #estimation of Consumption "cn" with arbitrary IVs
 #and error autocorrelation
-myShortModel=ESTIMATE(myShortModel,
+myShortModel<-ESTIMATE(myShortModel,
                  eqList = 'cn',
                  estTech = 'IV')
 
 
 #estimation of Investment "i" with arbitrary IVs
 #and coefficient restrictions
-myModel=ESTIMATE(myModel,
+myModel<-ESTIMATE(myModel,
                  eqList = 'i',
                  estTech = 'IV', 
                  IV=c('1',
@@ -669,7 +667,7 @@ myModel=ESTIMATE(myModel,
 #CHOW TEST on w1
 
 #base TSRANGE set to 1925 / 1935
-myModel=ESTIMATE(myModel,
+myModel<-ESTIMATE(myModel,
                   eqList='w1',
                   TSRANGE=c(1925,1,1935,1),
                   forceTSRANGE=TRUE,

@@ -3,18 +3,19 @@
 
 
 \title{
-Simulate a BIMETS model object
+Simulation of a BIMETS model
 }
 \description{
-\if{html}{(Note: this is the html version of the reference manual. Please consider reading the pdf version of this reference manual, wherein there are figures and the mathematical expressions are better formatted than in html.)\cr\cr}
-The simulation of an econometric model basically consists in solving the system of the equations describing the model for each time period in the specified time interval. Since the equations may not be linear in the variables, and since the graph derived from the incidence matrix may be cyclic, the usual methods based on linear algebra are not applicable, and the simulation must be solved by using an iterative algorithm.\cr\cr
+\if{html}{(Note: this is the html version of the reference manual. Please consider reading the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{pdf version} of this reference manual, or the package \href{https://cran.r-project.org/package=bimets/vignettes/bimets.pdf}{vignette}, wherein there are figures and the mathematical expressions are better formatted than in html.)\cr\cr}
+The simulation of an econometric model basically consists in solving the system of the equations describing the model for each time period in the specified time interval. Since the equations may not be linear in the variables, and since the graph derived from the incidence matrix may be cyclic, the usual methods based on linear algebra are not applicable. The simulation must be solved by using an iterative algorithm.\cr\cr
 BIMETS simulation capabilities support:\cr\cr
 - \emph{Static simulations}: a static multiple equation simulation, in which the historical values for the lagged endogenous variables are used in the solutions of subsequent periods; \cr\cr
 - \emph{Dynamic simulations}: a dynamic simulation, in which the simulated values for the lagged endogenous variables are used in the solutions of subsequent periods;\cr\cr
 - \emph{Residuals check}: a single period, single equation simulation; simulated time series in output are just the computation of the RHS (right-hand-side) of their equation, by using the historical values of the involved time series and by accounting for error autocorrelation and PDLs, if any;\cr\cr
 - \emph{Forecast simulations}: similar to dynamic simulation, but during the initialization of the iterative algorithm the starting values of endogenous variables in a period are set equal to the simulated values of the previous period. This allows the simulation of future endogenous observations, i.e. the forecast;  \cr\cr
+- \emph{Stochastic Simulation}: see \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}};\cr\cr
 - \emph{Partial or total exogenization of endogenous variables}: in the provided time interval (i.e. partial exog.) or in the whole simulation time range (i.e. total exog.), the values of the selected endogenous variables can be definitely set equal to their historical values, by excluding their equations from the iterative algorithm of simulation;\cr\cr
-- \emph{Constant adjustment of endogenous variables (add-factors)}: adds another exogenous time series - the "constant adjustment" - in the equation of the selected endogenous variables;\cr\cr
+- \emph{Constant adjustment of endogenous variables (add-factors)}: adds up a new exogenous time series - the "constant adjustment" - in the equation of the selected endogenous variables.\cr\cr
 In details, the generic model suitable for simulation in BIMETS can be written as: \cr
 \if{latex}{
 \eqn{y_1=f_1(\bar{x},\bar{y}) + z_1} \cr
@@ -32,33 +33,33 @@ being: \cr\cr
 \eqn{\bar{x}=[x_1, ... , x_m]}{x=[x_1, ... , x_m]} the \code{m}-dimensional vector of the exogenous variables;\cr
 \eqn{f_i(...), i=1..n} any kind of functional expression able to be written by using the \code{MDL} syntax;\cr\cr
 As described later on, a modified Gauss-Seidel iterative algorithm can solve the system of equations. The convergence properties may vary depending on the model specifications. In some conditions, the algorithm may not converge for a specific model or a specific set of data.\cr\cr
-A convergence criterion and a maximum number of iterations to be performed are provided by default. Users can change these criteria by using the \code{simConvergence} and \code{simIterLimit} arguments of the \code{SIMULATE()} function.\cr\cr
+A convergence criterion and a maximum number of iterations to be performed are provided by default. Users can change these criteria by using the \code{simConvergence} and \code{simIterLimit} arguments of the \code{SIMULATE} function.\cr\cr
 The general conceptual scheme of the simulation process (for each time period) is the following:\cr\cr
 1. initialize the solution for the current simulation period;\cr
 2. iteratively solve the system of equations;\cr
 3. save the solution, if any;\cr\cr
-Step 2 means that for each iteration you will need to: \cr\cr
+Step 2 means that for each iteration, the operations are: \cr\cr
 2.1 update the values of the current endogenous variables;\cr
 2.2 verify that the convergence criterion is satisfied or that the maximum number of allowed iterations has been reached;\cr\cr
 The initial solution for the iterative process (step 1) can be given alternatively by:\cr\cr
 - the historical value of the endogenous variables for the current simulation period (the default);\cr
-- the simulated value of the endogenous variables from the previous simulation period (this alternative is driven by the \code{simType='FORECAST'} argument of the \code{SIMULATE()} function);\cr\cr
-In the "dynamic" simulations (i.e. simulations performed by using either the default \code{simType='DYNAMIC'} or the \code{simType='FORECAST'}), whenever lagged endogenous variables are needed in the computation, the simulated values of the endogenous variables \eqn{\bar{y}}{y} assessed in the previous time periods are used. In this case, the results of the simulation in a given time period depends on the results of the simulation in the previous time periods. This kind of simulation is defined as "multiple equation, multiple period".\cr\cr
-As an alternative, the actual historical values can be used in the "static" simulations (i.e. simulations performed by using \code{simType='STATIC'}) rather than simulated values whenever lagged endogenous variables are needed in the computations. In this case, the results of the simulation in a given time period does not depend on the results of the simulation in the previous time periods. This kind of simulation is defined as "multiple equation, single period".\cr\cr
-The last simulation type available is the residual check (\code{simType='RESCHECK'}). With this option a "single equation, single period" simulation is performed. In this case no iteration must be carried out. The endogenous variables are assessed for each single time period through the use of historical values for each variable on the right-hand side of the equation, for both lagged and current periods. This kind of simulation is very helpful for debugging and checking the logical coherence of the equations and the data, and can be used as a simple tool to compute the add-factors.\cr\cr The debugging of the logical coherence of the model-equation and the data is carried out by means of a procedure called "Residual Check".\cr\cr
-It consists in the following steps:\cr\cr
-1. add another exogenous variable - the constant adjustment - to every equation of the model, both behavioral and technical identity (i.e. by using the \code{ConstantAdjustment} argument of the \code{SIMULATE()} function);\cr
+- the simulated value of the endogenous variables from the previous simulation period (this alternative is driven by the \code{simType='FORECAST'} argument of the \code{SIMULATE} function);\cr\cr
+In the "dynamic" simulations (i.e. simulations performed by using either the default \code{simType='DYNAMIC'} or the \code{simType='FORECAST'}), whenever lagged endogenous variables are needed in the computation, the simulated values of the endogenous variables \eqn{\bar{y}}{y} assessed in the previous time periods are used. In this case, the simulation results in a given time period depend on the simulation results in the previous time periods. This kind of simulation is defined as "multiple equation, multiple period".\cr\cr
+As an alternative, the actual historical values can be used in the "static" simulations (i.e. simulations performed by using \code{simType='STATIC'}) rather than simulated values whenever lagged endogenous variables are needed in the computations. In this case, the simulation results in a given time period do not depend on the simulation results in the previous time periods. This kind of simulation is defined as "multiple equation, single period".\cr\cr
+The last simulation type available is the residual check (\code{simType='RESCHECK'}). With this option, a "single equation, single period" simulation is performed. In this case, no iteration must be carried out. The endogenous variables are assessed for each time period by using historical values for each variable on the right-hand side of the equation, for both lagged and current periods. This kind of simulation helps debug and check of the logical coherence of the equations and the data, and can be used as a simple tool to compute the add-factors.\cr\cr The debugging of the logical coherence of equations and data is carried out through a \emph{Residual Check} procedure.\cr\cr
+It consists of the following steps:\cr\cr
+1. add another exogenous variable - the constant adjustment - to every equation of the model, both behavioral and technical identity (i.e. by using the \code{ConstantAdjustment} argument of the \code{SIMULATE} function);\cr
 2. fill in with the estimated residuals all the constant adjustments for the behavioral equations; \cr
 3. fill in with zeroes the constant adjustments for the technical identities;\cr
 4. perform a simulation of the model with the \code{simType='RESCHECK'} option;\cr
 5. compute the difference between the historical and the simulated values for all the endogenous variables;\cr
 6. check whether all the differences assessed in step 5 are zero in the whole time range;\cr\cr
-If a perfect tracking of the history is obtained then the equations have been written coherently with the data, otherwise a simulated equation not tracking the historical values is an unambiguous symptom of data inconsistent with the model definition.\cr\cr
+If a perfect tracking of the history is obtained, then the equations have been written coherently with the data, otherwise a simulated equation not tracking the historical values is an unambiguous symptom of data inconsistent with the model definition.\cr\cr
 Aside from the residual check, the add-factors constitute an important tool to significantly improve the accuracy of forecasts made through an econometric model. Considering the following model: \cr\cr
 \eqn{y_1=f_1(\bar{x},\bar{y}) + z_1}{y_1=f_1(x,y) + z_1} \cr
 \eqn{...} \cr
 \eqn{y_n=f_n(\bar{x},\bar{y}) + z_n}{y_n=f_n(x,y) + z_n} \cr\cr
-the add-factors \eqn{\bar{z}=[z_1, ... ,z_n]}{z=[z_1, ... ,z_n]} can be interpreted as estimates of the future values of the disturbance terms or, alternatively, as adjustments of the intercepts in each equation. These add-factors round out the forecasts, by summarizing the effects of all the systematic factors not included in the model. One choice for the computation of the add-factors is given by past estimation residuals and past forecast errors or by an average of these errors. This consideration suggests an easy way of computing the add-factors:\cr\cr
+the add-factors \eqn{\bar{z}=[z_1, ... ,z_n]}{z=[z_1, ... ,z_n]} can be interpreted as estimates of the disturbance terms' future values or as adjustments of the intercepts in each equation. These add-factors round out the forecasts, by summarizing the effects of all the systematic factors not included in the model. One choice for the computation of the add-factors is given by past estimation residuals and past forecast errors or by an average of these errors. This consideration suggests an easy way of computing the add-factors:\cr\cr
 1. add the constant adjustments to every equation of the model, both behavioral and technical identity;\cr
 2. fill in with zeroes all the constant adjustments;\cr
 3. solve the model, with the \code{simType='RESCHECK'} option, in a time interval including some periods beyond the estimation sample;\cr
@@ -83,20 +84,20 @@ During the simulation, the add-factors will be applied as in the following:\cr\c
 given \eqn{v_i, z_i} as add-factors and the linear dependence from \eqn{z_i} and \eqn{y_i}.\cr\cr
 \tabular{c}{THE OPTIMAL REORDERING}
 In fact, the simulation process takes advantage of an appropriate ordering of the equations to increase the performances by iteratively solving only one subset of equations, while the others are solved straightforwardly. \emph{"...a different ordering of the equations can substantially affect the speed of convergence of the algorithm; indeed some orderings may produce divergence. The less feedback there is, the better the chances for fast convergence..."} - Don, Gallo - Solving large sparse systems of equations in econometric models - Journal of Forecasting 1987.\cr\cr
-The \code{\link[=LOAD_MODEL]{LOAD_MODEL}} function builds the incidence matrix of the model, then defines the proper equation reordering. The incidence matrix is built from the equations of the model; it is a square matrix in which each row and each column represents an endogenous variable. If the \code{(i,j)} element is equal to 1 then in the model definition the current value of the endogenous variable referred by the \code{i}-row depends directly from the current value of the endogenous variable referred by the \code{j}-column. You can see an incidence matrix example in the section \code{\link[=bimets]{"BIMETS package"}} of this manual wherein the content of the \code{kleinModel$incidence_matrix} variable is printed out.\cr\cr
-In econometric models, the incidence matrix is usually very sparse. Only a few of the total set of endogenous variables are used in each equation. In this situation, ordering the equation in a certain sequence will lead to a sensible reduction of the number of iterations needed to achieve convergence. Reordering the equations is equivalent to rearranging rows and columns of the incidence matrix. In this way the incidence matrix might be made lower triangular for a subset of the equations.
-For this subset, an endogenous variable determined in a specific equation has no \emph{incidence} in any equation above it, although the same variable might have incidence in equations below it. Such a subset of equations is called recursive. Recursive systems are easy to solve. It is only necessary to solve each equation once if this is done in the right order. On the other hand, it is unlikely for the whole model to be recursive. Indeed the incidence graph is often cyclic, as in the Klein's model that presents the following circular dependecies in the incidence matrix: \code{p <- w1 <- y <- p} as shown in the \code{\link[=bimets]{"BIMETS package"}} section figure.\cr\cr
-For a subset of the equations, some 1's will occur in the upper triangle of the incidence matrix for all possible orderings. Such subset of equations is called \emph{simultaneous}. In order to be able to solve the endogenous variables in the simultaneous block of equations, an iterative algorithm has to be used. Nevertheless, the equations in the simultaneous block may be ordered so that the pattern of the 1's in the upper triangle of the incidence matrix forms a spike. The variables corresponding to the 1's in the upper triangle are called \emph{feedback} variables.\cr\cr
-\if{html}{\cr\cr(check the pdf version of this reference manual in order to see a graphical example)\cr\cr}
+The \code{\link[=LOAD_MODEL]{LOAD_MODEL}} function builds the model's incidence matrix, then defines the proper equation reordering. The incidence matrix is built from the equations of the model; it is a square matrix in which each row and each column represent an endogenous variable. If the \code{(i,j)} element is equal to 1 then in the model definition the current value of the endogenous variable referred by the \code{i}-row depends directly from the current value of the endogenous variable referred by the \code{j}-column. The reader can see an incidence matrix example in the section \code{\link[=bimets]{"BIMETS package"}} of this manual wherein the content of the \code{kleinModel$incidence_matrix} variable is printed out.\cr\cr
+In econometric models, the incidence matrix is usually very sparse. Only a few of the total set of endogenous variables are used in each equation. In this situation, ordering the equation in a particular sequence will lead to a sensible reduction of the number of iterations needed to achieve convergence. Reordering the equations is equivalent to rearranging rows and columns of the incidence matrix. In this way, the incidence matrix might be made lower triangular for a subset of the equations.
+For this subset, an endogenous variable determined in a specific equation has no \emph{incidence} in any equation above it, although the same variable might have incidence in equations below it. Such a subset of equations is called recursive. Recursive systems are easy to solve. It is only necessary to solve each equation once if this is done in the proper order. On the other hand, it is unlikely for the whole model to be recursive. Indeed the incidence graph is often cyclic, as in the Klein's model that presents the following circular dependecies in the incidence matrix: \code{p <- w1 <- y <- p} as shown in the \code{\link[=bimets]{"BIMETS package"}} section figure.\cr\cr
+For a subset of the equations, some 1's will occur in the upper triangle of the incidence matrix for all possible orderings. Such subset of equations is called \emph{simultaneous}. To solve the endogenous variables in the simultaneous block of equations, an iterative algorithm has to be used. Nevertheless, the equations in the simultaneous block may be ordered so that the pattern of the 1's in the upper triangle of the incidence matrix forms a spike. The variables corresponding to the 1's in the upper triangle are called \emph{feedback} variables.\cr\cr
+\if{html}{(check the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{pdf version} of this reference manual in order to see a graphical example)\cr\cr}
 \if{latex}{
-A qualitative graphical example of an ordered incidence matrix is given in the following figure. The white areas are all 0's, the gray areas contains 0's and 1's. The 1's in the light gray areas refer to variables already evaluated in previous blocks, therefore they are known terms within the block. The 1's in the dark gray areas refer to variables evaluated within the block.\cr\cr
+A qualitative graphical example of an ordered incidence matrix is given in the following figure. The white areas are all 0's, the gray areas contain 0's and 1's. The 1's in the light gray areas refer to variables already evaluated in previous blocks, therefore they are known terms within the block. The 1's in the dark gray areas refer to variables evaluated within the block.\cr\cr
 \figure{Reordering.png}{options: width=14cm}
 }
 The final pattern of an incidence matrix after the equation reordering generally features three blocks: \cr\cr
 1. a recursive block (the pre-recursive block);\cr
 2. a simultaneous block;\cr
 3. another recursive block (the post-recursive block);\cr\cr
-As said, the pre-recursive and the post-recursive blocks are lower triangular. Therefore the corresponding equations are solvable with a cascade substitution with no iteration. Just the simultaneous equations set needs an iterative algorithm to be solved. It is important to say that the convergence criterion may also be applied to these variables only: when the feedback variables converge, the rest of the simultaneous variables also do.\cr\cr BIMETS builds and analyzes the incidence matrix of the model, and then it orders the equations in pre-recursive, post-recursive and simultaneous blocks. The simultaneous block is then analyzed in order to find a minimal set of feedback variables. This last problem is known to be NP-complete (Ref: Garey, Johnson - \emph{Computers and Intractability: a Guide to the Theory of NP-completeness} - San Francisco, Freeman 1979).\cr\cr
+As said, the pre-recursive and the post-recursive blocks are lower triangular. Therefore the corresponding equations are solvable with a cascade substitution with no iteration. Just the simultaneous equations set needs an iterative algorithm to be solved. It is important to say that the convergence criterion may also be applied to these variables only: when the feedback variables converge, the rest of the simultaneous variables also do.\cr\cr BIMETS builds and analyzes the model's incidence matrix, and then it orders the equations in pre-recursive, post-recursive and simultaneous blocks. The simultaneous block is then analyzed in order to find a minimal set of feedback variables. This last problem is known to be NP-complete (Ref: Garey, Johnson - \emph{Computers and Intractability: a Guide to the Theory of NP-completeness} - San Francisco, Freeman 1979).\cr\cr
 The optimal reordering of the model equations is programmatically achieved through the use of an iterative algorithm applied to the incidence matrix that can produce 4 ordered lists of endogenous variables:\cr\cr
 1. \code{vpre} is the ordered list containing the names of the endogenous pre-recursive variables to be sequentially computed (by using their \code{EQ>} definition in the \code{MDL}) before the simulation iterative algorithm takes place;\cr
 2. \code{vsim} is the ordered list containing the names of the endogenous variables to be sequentially computed during each iteration of the simulation iterative algorithm; \cr
@@ -108,10 +109,10 @@ If equations are reordered, the previous conceptual scheme is modified as follow
 - iteratively compute the system of simultaneous equations (i.e. the equation of the endogenous variables in the \code{vsim} ordered list); for each iteration update the values of the current endogenous variables and verify that the convergence criterion is satisfied on the feedback variables or that the maximum number of iterations has been reached;\cr
 - compute the post-recursive equations (i.e. the equation of the endogenous variables in the \code{vpost} ordered list);\cr
 - save the solutions;\cr\cr
-Given \eqn{y_{i,k}}{y_(i,k)} the value of the \eqn{i}-endogenous variable in the simultaneous block at the iteration \eqn{k}, with \eqn{i} the position of the equation in a reordered model, the modified Gauss-Seidel method simply takes for the approximation of the endogenous variable \eqn{y_{i,k}}{y_(i,k)} the solution of the following:\cr\cr
+Given \eqn{y_{i,k}}{y_(i,k)} the value of the \eqn{i}-endogenous variable in the simultaneous block at the iteration \eqn{k}, with \eqn{i} the position of the equation in a reordered model, the modified Gauss-Seidel method takes for the approximation of the endogenous variable \eqn{y_{i,k}}{y_(i,k)} the solution of the following:\cr\cr
 \eqn{y_{i,k}=f_i(x_1, ..., x_m, y_{1,k}, ..., y_{i-1,k}, y_{i,k-1},..., y_{n,k-1})}{y_(i,k)=f_i(x_1, ..., x_m, y_(1,k), ..., y_(i-1,k), y_(i,k-1),..., y_(n,k-1)}\cr\cr
 As said, the convergence is then tested at the end of each iteration on the feedback variables.\cr\cr
-Newton's methods on a reordered model require the calculation of the Jacobian matrix on the feedback endogenous variables, i.e. at least \eqn{f+2} iterations per simulation period, with \eqn{f} as the number of feedback variables. For large models (i.e. more than 30 feedback variables) if the overall required convergence is greater than \eqn{10^{-6} \%}{10^(-6) \%} the speedup over the Gauss-Siebel method is small or negative. Moreover the Gauss-Siebel method does not require a matrix inversion, therefore it is more robust against algebraical and numerical issues. For small models both methods are fast on modern computers.\cr\cr The simulation of a non-trivial model, if computed by using the same data but on different hardware, software or numerical libraries, produces numerical differences. Therefore a convergence criterion smaller than \eqn{10^{-7} \%}{10^(-7)} frequently leads to a local solution.\cr\cr See \emph{Numerical methods for simulation and optimal control of large-scale macroeconomic models - Gabay, Nepomiastchy, Rachidi, Ravelli - 1980} for further information.
+Newton's methods on a reordered model require the calculation of the Jacobian matrix on the feedback endogenous variables, i.e. at least \eqn{f+2} iterations per simulation period, with \eqn{f} as the number of feedback variables. For large models (i.e. more than 30 feedback variables) if the overall required convergence is greater than \eqn{10^{-6} \%}{10^(-6) \%} the speedup over the Gauss-Siebel method is small or negative. Moreover, the Gauss-Siebel method does not require a matrix inversion, therefore it is more robust against algebraical and numerical issues. For small models both methods are fast on modern computers.\cr\cr The simulation of a non-trivial model, if computed by using the same data but on different hardware, software or numerical libraries, produces numerical differences. Therefore a convergence criterion smaller than \eqn{10^{-7} \%}{10^(-7)} frequently leads to a local solution.\cr\cr See \emph{Numerical methods for simulation and optimal control of large-scale macroeconomic models - Gabay, Nepomiastchy, Rachidi, Ravelli - 1980} for further information.
 
 
 
@@ -122,36 +123,45 @@ Newton's methods on a reordered model require the calculation of the Jacobian ma
 
 
 \usage{
-SIMULATE(model=NULL,
-		 TSRANGE=NULL,
-		 simType='DYNAMIC',
-		 simConvergence=0.01,
-		 simIterLimit=100,
-		 ZeroErrorAC=FALSE,
-		 BackFill=0,
-		 Exogenize=NULL,
-		 ConstantAdjustment=NULL,
-		 verbose=FALSE,
-		 verboseSincePeriod=0,
-		 verboseVars=NULL,
-		 MULTMATRIX=FALSE,
-		 TARGET=NULL,
-		 INSTRUMENT=NULL,
-		 MM_SHOCK=0.00001,
-		 quietly=FALSE,
-		 RESCHECKeqList=NULL,
-		 avoidCompliance=FALSE,
-		 ...)
+SIMULATE( model=NULL,
+          TSRANGE=NULL,
+          simType='DYNAMIC',
+          simConvergence=0.01,
+          simIterLimit=100,
+          ZeroErrorAC=FALSE,
+          BackFill=0,
+          Exogenize=NULL,
+          ConstantAdjustment=NULL,
+          verbose=FALSE,
+          verboseSincePeriod=0,
+          verboseVars=NULL,
+          MULTMATRIX=FALSE,
+          RENORM=FALSE,
+          TARGET=NULL,
+          INSTRUMENT=NULL,
+          MM_SHOCK=0.00001,
+          STOCHSIMULATE=FALSE,
+          StochStructure=NULL,
+          StochReplica=100,
+          StochSeed=NULL,
+          OPTIMIZE=FALSE,
+          OptimizeBounds=NULL,
+          OptimizeRestrictions=NULL,
+          OptimizeFunctions=NULL,
+          quietly=FALSE,
+          RESCHECKeqList=NULL,
+          avoidCompliance=FALSE,
+          ...)
 
 }
 
 \arguments{
   \item{model}{
-  The BIMETS model object to be simulated. The simulation requires that all the behaviorals in the model have been previously estimated: all the behavioral coefficients (i.e. the estimation coefficients and the autoregression coefficients for the errors, if any) must be numerically defined in the model object. (see also \code{\link[=ESTIMATE]{ESTIMATE}})
+  The BIMETS model object to be simulated. The simulation requires that all the model behaviorals, if any, have been previously estimated: all the behavioral coefficients (i.e. the regression coefficients and the autoregression coefficients for the errors, if any) must be numerically defined in the model object. (see also \code{\link[=ESTIMATE]{ESTIMATE}})
   }
  
   \item{TSRANGE}{
-  The time range of the simulation, as a four dimensional numerical array, \cr i.e. \code{TSRANGE=c(start_year, start_period, end_year, end_period)}. 
+  The time range of the simulation, as a four dimensional numerical array, \cr i.e. \code{TSRANGE=c(start_year, start_period, end_year, end_period)} 
   }
    \item{simType}{
    The simulation type requested:\cr
@@ -161,54 +171,60 @@ SIMULATE(model=NULL,
    \bold{RESCHECK}: in this case there is no iteration to carry out. The endogenous variables are evaluated for each single time period by using the historical values for all the variables on the right-hand side of the equation, both lagged and current period;
    }
 \item{simConvergence}{
-   The percentage convergence value requested for the iterative process, that stops when the percentage difference of all the feedback variables between iterations is less than \code{simConvergence} in absolute value;
+   The percentage convergence value requested for the iterative process, which stops when the percentage difference of all the feedback variables between iterations is less than \code{simConvergence} in absolute value
    }
   \item{simIterLimit}{
-  The value representing the maximum number of iterations to be performed. The iterative procedure will stop when \code{simIterLimit} is reached or the feedback variables satisfy the \code{simConvergence} criterion;
+  The value representing the maximum number of iterations to be performed. The iterative procedure will stop when \code{simIterLimit} is reached or the feedback variables satisfy the \code{simConvergence} criterion
   }
   \item{ZeroErrorAC}{
-  If \code{TRUE} it zeroes out all the autoregressive terms, if any, in the behavioral equations; 
+  If \code{TRUE} it zeroes out all the autoregressive terms, if any, in the behavioral equations
   }
   \item{BackFill}{
-  Defined as an \code{integer}, it is the length of historical data prior to the simulation \code{TSRANGE} to be saved along with the solutions.
+  Defined as an \code{integer}, it is the length of historical data prior to the simulation \code{TSRANGE} to be saved along with the solutions
   }
   \item{Exogenize}{
-  A named list that specifies the endogenous variables to be exogenized. During the simulation and inside the provided time range, the exogenized endogenous variables will be assigned to their historical values. List names must be the names of the endogenous variables to be exogenized; each element of this list contains the time range of the exogenization for the related endogenous variable, in the form of a 4-dimensional integer array, i.e. start_year, start_period, end_year, end_period. A list element can also be assigned \code{TRUE}: in this case the related endogenous variable will be exogenized in the whole simulation \code{TSRANGE} (see examples);
+  A named list that specifies the endogenous variables to be exogenized. During the simulation and inside the provided time range, the exogenized endogenous variables will be assigned to their historical values. List names must be the names of the endogenous variables to be exogenized; each element of this list contains the time range of the exogenization for the related endogenous variable, in the form of a 4-dimensional integer array, i.e. start_year, start_period, end_year, end_period. A list element can also be assigned \code{TRUE}: in this case the related endogenous variable will be exogenized in the whole simulation \code{TSRANGE} (see example)
   }
   \item{ConstantAdjustment}{
-  A named list that specifies the constant adjustments (i.e. add factors) to be added to the selected equations of the model. Each constant adjustment can be see as a new exogenous variable added to the equation of the specified endogenous variable. The list names are the names of the involved endogenous variables; each element of this is list contains the time series to be added to the equation of the related endogenous variable. Each provided time series must verify the compliance control check defined in \code{\link[=is.bimets]{is.bimets}} (see examples);
+  A named list that specifies the constant adjustments (i.e. add factors) to be added to the selected equations of the model. Each constant adjustment can be see as a new exogenous variable added to the equation of the specified endogenous variable. The list names are the names of the involved endogenous variables; each element of this is list contains the time series to be added to the equation of the related endogenous variable. Each provided time series must verify the compliance control check defined in \code{\link[=is.bimets]{is.bimets}} (see example)
   }
   \item{verbose}{
-  If \code{TRUE} some verbose output will be activated. Moreover the values of all endogenous variables will be printed out during each iteration of the convergence algorithm for all time periods in the simulation \code{TSRANGE};
+  If \code{TRUE} some verbose output will be activated. Moreover the values of all endogenous variables will be printed out during each iteration of the convergence algorithm for all time periods in the simulation \code{TSRANGE}
   }
   \item{verboseSincePeriod}{
-  An integer that activate the verbose output, during the iterative process, only after the provided number of simulation periods;
+  An integer that activates the verbose output, during the iterative process, only after the provided number of simulation periods
   }
   \item{verboseVars}{
-  A \code{charcater} array with the names of the endogenous variables for which the verbose output will be activated in the iterative process; 
+  A \code{character} array with the names of the endogenous variables for which the verbose output will be activated in the iterative process
   }
-  \item{MULTMATRIX}{It is \code{TRUE} when the simulation is a vectorial simulation requested by a \code{\link[=MULTMATRIX]{MULTMATRIX}} operation;}
-  \item{TARGET}{  A \code{charcater} array built with the names of the endogenous variables for which the multipliers are requested (see \code{\link[=MULTMATRIX]{MULTMATRIX}});  }
-   \item{INSTRUMENT}{
-  A \code{charcater} array built with the names of the exogenous variables with respect to which the multipliers are evaluated. Users can also declare an endogenous variable as \code{INSTRUMENT} variable: in this case the constant adjustment (see \code{\link[=SIMULATE]{SIMULATE}}) related to the provided endogenous variable will be used as the instrument exogenous variable (see \code{\link[=MULTMATRIX]{MULTMATRIX}});
-  }
-    \item{MM_SHOCK}{The value of the shocks added to variables in the derivative calculation of the multipliers. The default value is \code{0.00001} times the value of the exogenous variable (see \code{\link[=MULTMATRIX]{MULTMATRIX}});
-  }  
- \item{quietly}{ If \code{TRUE}, information messages will be suppressed, e.g. an information message will be printed out if any time series has a missing value in the extended \code{TSRANGE}, that is the simulation \code{TSRANGE} backward extended by \code{model$max_lag} periods (See \code{\link[=LOAD_MODEL]{LOAD_MODEL}} for info on model max lag).
+  \item{MULTMATRIX}{It is \code{TRUE} when the parent call is a multiplier matrix operation requested by a \code{\link[=MULTMATRIX]{MULTMATRIX}} procedure}
+   \item{RENORM}{It is \code{TRUE} when the parent call is an endogenous targeting operation requested by a \code{\link[=RENORM]{RENORM}} procedure}
+  \item{TARGET}{see \code{\link[=MULTMATRIX]{MULTMATRIX}}}
+   \item{INSTRUMENT}{see \code{\link[=MULTMATRIX]{MULTMATRIX}}}
+   \item{MM_SHOCK}{see \code{\link[=MULTMATRIX]{MULTMATRIX}}}
+  \item{STOCHSIMULATE}{It is \code{TRUE} when the parent call is a stochastic simulation requested by a \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} operation}
+  \item{StochStructure}{The \code{list()} that defines the disturbance structure applied to the model. See \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}}
+  \item{StochReplica}{An integer value that sets the number of stochastic simulation replications to be performed. See \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}}
+  \item{StochSeed}{A number used to initialize the pseudo-random number generator. It can be useful in order to replicate stochastic results. See \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}}
+  \item{OPTIMIZE}{It is \code{TRUE} when the parent call is an optimize operation requested by a \code{\link[=OPTIMIZE]{OPTIMIZE}} procedure}
+  \item{OptimizeBounds}{see \code{\link[=OPTIMIZE]{OPTIMIZE}}}
+  \item{OptimizeRestrictions}{see \code{\link[=OPTIMIZE]{OPTIMIZE}}}
+  \item{OptimizeFunctions}{see \code{\link[=OPTIMIZE]{OPTIMIZE}}}
+ \item{quietly}{ If \code{TRUE}, information messages will be suppressed, e.g. an information message will be printed out if any time series has a missing value in the extended \code{TSRANGE}, that is the simulation \code{TSRANGE} backward extended by \code{model$max_lag} periods (See \code{\link[=LOAD_MODEL]{LOAD_MODEL}} for info on model max lag)
   } 
-\item{RESCHECKeqList}{ If \code{simType=RESCHECK}, by using this arguments users can select a subset of target endogenous variables: the simulation will be perfmormed only for the selected variables. It must be provided as an array of endogenous names, e.g. \code{c('endo1','endo2',...)}.
+\item{RESCHECKeqList}{ If \code{simType=RESCHECK}, by using this argument users can select a subset of target endogenous variables: the simulation will be performed only for the selected variables. It must be provided as an array of endogenous names, e.g. \code{c('endo1','endo2',...)}
   } 
     \item{avoidCompliance}{
   If \code{TRUE}, compliance control check of model time series will be skipped. See \code{\link[=is.bimets]{is.bimets}}
   }
  \item{...}{
-Backward compatibility.
+Backward compatibility
 }
   }
 
 \value{
 This function will add a new element named \code{simulation} into the output BIMETS model object.\cr\cr
-The new \code{simulation} element is a named R list; the names of the \code{simulation} list are the names of the endogenous variables of the model; each element of the \code{simulation} list contains the simulated time series of the related endogenous variable (see examples). \cr\cr The \code{simulation} list also contains the \code{'__SIM_PARAMETERS__'} element that contains the arguments passed to the function call during the latest \code{SIMULATE()} run, e.g. \code{TSRANGE}, \code{symType}, \code{simConvergence}, \code{symIterLimit}, \code{Exogenize}, etc.: that can be useful in order to replicate the simulation results. 
+The new \code{simulation} element is a named list; the names of the \code{simulation} list are the names of the endogenous variables of the model; each element of the \code{simulation} list contains the simulated time series of the related endogenous variable (see example). \cr\cr The \code{simulation} list also contains the \code{'__SIM_PARAMETERS__'} element that contains the arguments passed to the function call during the latest \code{SIMULATE} run, e.g. \code{TSRANGE}, \code{symType}, \code{simConvergence}, \code{symIterLimit}, \code{Exogenize}, etc.: this data can be helpful in order to replicate the simulation results. 
 
 
 }
@@ -217,6 +233,7 @@ The new \code{simulation} element is a named R list; the names of the \code{simu
 \code{\link[=MDL]{MDL}}\cr
 \code{\link[=LOAD_MODEL]{LOAD_MODEL}}\cr
 \code{\link[=ESTIMATE]{ESTIMATE}}\cr
+\code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}\cr
 \code{\link[=MULTMATRIX]{MULTMATRIX}}\cr
 \code{\link[=RENORM]{RENORM}}\cr
 \code{\link[=TSERIES]{TIMESERIES}}\cr
@@ -228,7 +245,7 @@ The new \code{simulation} element is a named R list; the names of the \code{simu
 
 
 #define model
-myModelDefinition=
+myModelDefinition<-
 "MODEL 
 COMMENT> Klein Model 1 of the U.S. Economy 
 
@@ -265,7 +282,7 @@ EQ> k = TSLAG(k,1) + i
 END"
 
 #define model data
-myModelData=list(
+myModelData<-list(
    cn
    =TIMESERIES(39.8,41.9,45,49.2,50.6,52.6,55.1,56.2,57.3,57.8,55,50.9,
                45.6,46.5,48.7,51.3,57.7,58.7,57.5,61.6,65,69.7,
@@ -309,16 +326,16 @@ myModelData=list(
  )
  
 #load model and model data
-myModel=LOAD_MODEL(modelText=myModelDefinition)
-myModel=LOAD_MODEL_DATA(myModel,myModelData)
+myModel<-LOAD_MODEL(modelText=myModelDefinition)
+myModel<-LOAD_MODEL_DATA(myModel,myModelData)
 
 #estimate model
-myModel=ESTIMATE(myModel)
+myModel<-ESTIMATE(myModel)
  
 #DYNAMIC SIMULATION
  
 #simulate model 
-myModel=SIMULATE(myModel
+myModel<-SIMULATE(myModel
                  ,TSRANGE=c(1923,1,1941,1)
                  ,simConvergence=0.00001
                  ,simIterLimit=100
@@ -374,7 +391,7 @@ print(myModel$simulation$'__SIM_PARAMETERS__')
 #RESCHECK SIMULATION
  
 #simulate model
-myModel=SIMULATE(myModel
+myModel<-SIMULATE(myModel
                   ,simType='RESCHECK'
                   ,TSRANGE=c(1923,1,1941,1)
                   ,simConvergence=0.00001
@@ -408,7 +425,7 @@ myModel$modelData$time = TSEXTEND(myModel$modelData$time,UPTO=c(1943,1)
                                      ,EXTMODE='LINEAR')
  
 #simulate model
-myModel=SIMULATE(myModel
+myModel<-SIMULATE(myModel
                   ,simType='FORECAST'
                   ,TSRANGE=c(1940,1,1943,1)
                   ,simConvergence=0.00001
@@ -434,19 +451,19 @@ TABIT(myModel$simulation$y)
 #define exogenization list
 #'cn' exogenized in 1923-1925
 #'i' exogenized in the whole TSRANGE
-exogenizeList=list(
+exogenizeList<-list(
                 cn = c(1923,1,1925,1),
                 i  = TRUE
 )
  
 #define add factor list
-constantAdjList=list(
+constantAdjList<-list(
                cn = TIMESERIES(1,-1,START=c(1923,1),FREQ='A'),
                y  = TIMESERIES(0.1,-0.1,-0.5,START=c(1926,1),FREQ='A')
 )
  
 #simulate model
-myModel=SIMULATE(myModel
+myModel<-SIMULATE(myModel
                   ,simType='STATIC'
                   ,TSRANGE=c(1923,1,1941,1)
                   ,simConvergence=0.00001
@@ -454,17 +471,17 @@ myModel=SIMULATE(myModel
                   ,Exogenize=exogenizeList
                   ,ConstantAdjustment=constantAdjList 
  )
-#SIMULATE(): endogenous variable cn has been exogenized from year-period 1923-1 to 1925-1
-#SIMULATE(): endogenous variable i has been exogenized from year-period 1923-1 to 1941-1
-#SIMULATE(): endogenous variable cn has a constant adjustment from year-period 1923-1 to 1924-1
-#SIMULATE(): endogenous variable y has a constant adjustment from year-period 1926-1 to 1928-1
+#SIMULATE(): endogenous variable "cn" has been exogenized from year-period 1923-1 to 1925-1
+#SIMULATE(): endogenous variable "i" has been exogenized from year-period 1923-1 to 1941-1
+#SIMULATE(): endogenous variable "cn" has a constant adjustment from year-period 1923-1 to 1924-1
+#SIMULATE(): endogenous variable "y" has a constant adjustment from year-period 1926-1 to 1928-1
 #
 #Simulation:    100.00%
 #...SIMULATE OK
  
 #VERBOSE SIMULATION
  
-myModel=SIMULATE(myModel
+myModel<-SIMULATE(myModel
                   ,TSRANGE=c(1923,1,1941,1)
                   ,simConvergence=0.00001
                   ,simIterLimit=100

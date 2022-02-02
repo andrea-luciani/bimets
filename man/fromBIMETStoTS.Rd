@@ -5,7 +5,7 @@
 Convert BIMETS to TS
 }
 \description{
-This function transforms a BIMETS compliant time series (as defined in \code{\link[=is.bimets]{is.bimets}}) into a time series of class \code{ts()}. The core R function \code{as.ts()} does not satisfy all the requirements of the compliance control check, so it has been extended. Attributes and description of the input time series will be copied to the output time series (see \code{\link[=TSERIES]{TIMESERIES}}).
+This function transforms a BIMETS compliant time series (as defined in \code{\link[=is.bimets]{is.bimets}}) into a time series of class \code{ts()}. The core R function as.ts() does not satisfy all the compliance control check requirements, so it has been extended. Attributes and description of the input time series will be copied to the output time series (see \code{\link[=TSERIES]{TIMESERIES}}).
 }
 \usage{
 fromBIMETStoTS(x = NULL, ...)
@@ -38,26 +38,26 @@ This function returns a time series of class \code{ts()} that has the same obser
 	setBIMETSconf('BIMETS_CONF_CCT','XTS')
 	
 	#create yearly time series
-	xts=TSERIES(1:10,START=c(2000,1),FREQ='A')
+	xts<-TSERIES(1:10,START=c(2000,1),FREQ='A')
 	print(is.ts(xts))#FALSE
 	#convert to ts
-	ts=fromBIMETStoTS(xts)
+	ts<-fromBIMETStoTS(xts)
 	print(is.ts(ts))#TRUE
 	print(ts)
 	
 	#create monthly time series
-	xts=TSERIES(1:10,START=c(2000,1),FREQ='M')
+	xts<-TSERIES(1:10,START=c(2000,1),FREQ='M')
 	print(is.ts(xts))#FALSE
 	#convert to ts
-	ts=fromBIMETStoTS(xts)
+	ts<-fromBIMETStoTS(xts)
 	print(is.ts(ts))#TRUE
 	print(ts)
 	
 	#create daily time series
-	xts=TSERIES(1:10,START=c(2000,1),FREQ='D')
+	xts<-TSERIES(1:10,START=c(2000,1),FREQ='D')
 	print(is.ts(xts))#FALSE
 	#convert to ts
-	ts=fromBIMETStoTS(xts)
+	ts<-fromBIMETStoTS(xts)
 	print(is.ts(ts))#TRUE
 	print(ts)
 	

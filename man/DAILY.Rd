@@ -46,11 +46,11 @@ This function returns a daily BIMETS time series.
 \examples{
 
 	#TS quarterly
-	ts1=TSERIES((1:2),START=c(2000,1),FREQ='Q')
+	ts1<-TSERIES((1:2),START=c(2000,1),FREQ='Q')
 	TABIT(DAILY(ts1,fun='INTERP_CENTER'))	
 	
 	#TS monthly
-	ts1=TSERIES((1:4),START=c(2000,1),FREQ=12)
+	ts1<-TSERIES((1:4),START=c(2000,1),FREQ=12)
 	TABIT(DAILY(ts1))	
 	
 }

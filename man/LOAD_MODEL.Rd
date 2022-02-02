@@ -6,14 +6,13 @@
 Load a BIMETS model description file
 }
 \description{
-\if{html}{(Note: this is the html version of the reference manual. Please consider reading the pdf version of this reference manual, wherein there are figures and the mathematical expressions are better formatted than in html.)\cr\cr}
+\if{html}{(Note: this is the html version of the reference manual. Please consider reading the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{pdf version} of this reference manual, or the package \href{https://cran.r-project.org/package=bimets/vignettes/bimets.pdf}{vignette}, wherein there are figures and the mathematical expressions are better formatted than in html.)\cr\cr}
 
 This function parses a \code{\link[=MDL]{MDL}} model definition and creates an equivalent R data structure that can be estimated and simulated. The input model definition can be either an external plain text file or a \code{character} variable.
 }
 \usage{
 LOAD_MODEL( modelFile=NULL, 
-            modelText=NULL, 
-            showWarnings=TRUE, 
+            modelText=NULL,  
             quietly=FALSE,
             oldStyleModel=FALSE, 
             ...)
@@ -26,10 +25,6 @@ LOAD_MODEL( modelFile=NULL,
   \item{modelText}{
   The \code{character} variable containing the \code{\link[=MDL]{MDL}} model definition. \code{modelText} takes precedence over \code{modelFile} if both are defined.
   }
-  \item{showWarnings}{
-  If \code{TRUE} a warning message will be shown if the model has a null set of endogenous variables or a null set of exogenous variables.
-  }
-  
   \item{quietly}{
   If \code{TRUE}, information messages will be suppressed.
   }
@@ -44,8 +39,8 @@ LOAD_MODEL( modelFile=NULL,
   }
 
 \value{
-This function returns a BIMETS model object containing all the information gathered from the parsing of the input model definition. \cr\cr
-A BIMETS model created with the \code{LOAD_MODEL} function can be viewed as a complex R \code{list()} containing the following elements (see examples):\cr\cr
+This function returns a BIMETS model object containing all the information gathered the input model definition's parsing. \cr\cr
+A BIMETS model created with the \code{LOAD_MODEL} function can be viewed as a complex R \code{list()} containing the following elements (see example):\cr\cr
 - \bold{rawData} and \bold{cleanModel}: string arrays containing the original model definition. \code{cleanModel} is a clean version of the model definition, i.e. without comments, blank lines, etc.; \cr\cr
 - \bold{behaviorals} and \bold{identities}: sub-lists containing all the information gathered from the behavioral and the identity definitions. This sub lists are described later in this page; \cr\cr
 - \bold{vendog} and \bold{vexog}: string array containing the names of the endogenous and exogenous variables of the model; the former is also subsetted into \bold{vendogBehaviorals} and \bold{vendogIdentities}\cr\cr
@@ -74,14 +69,14 @@ Behavioral elements have the following components:\cr\cr
 - \bold{matrixR}: the \code{R} Lagrange matrix that is used in restriction analysis (see \code{\link[=MDL]{MDL}});\cr\cr
 - \bold{vectorR}: the \code{r} Lagrange vector that is used in restriction analysis (see \code{\link[=MDL]{MDL}});\cr\cr
 - \bold{restrictRaw}: the original definition of the coefficient restrictions, if any.\cr\cr
-- \bold{pdlRaw}: the original definition of the PDL restrictions, if any (see examples and \code{\link[=MDL]{MDL}}).\cr\cr
-- \bold{pdlRestrictionMatrix}: the \code{R} Lagrange matrix that is used in PDL restriction analysis (see examples and \code{\link[=MDL]{MDL}});\cr\cr
+- \bold{pdlRaw}: the original definition of the PDL restrictions, if any (see example and \code{\link[=MDL]{MDL}}).\cr\cr
+- \bold{pdlRestrictionMatrix}: the \code{R} Lagrange matrix that is used in PDL restriction analysis (see example and \code{\link[=MDL]{MDL}});\cr\cr
 - \bold{IVComponentsNames}: the names of endogenous and exogenous variables that appear in the instrumental variables equations, if any;\cr\cr
 - \bold{iv}: the original definitions of instrumental variables, if any.\cr\cr
-For example, given a BIMETS model named \code{myModel}, the information on a techincal identity named \code{y} (i.e there exists an "IDENTITY> y" in the \code{MDL} definition of the model) is stored in \code{myModel$identities$y}.\cr\cr Identity elements have the following components:\cr\cr
-- \bold{eqRaw}: the original equations  of the identity (more than one if the identity has multiple equations and has \code{IF>} conditions), as a \code{character} variable (see examples and \code{\link[=MDL]{MDL}});\cr\cr
+For example, given a BIMETS model named \code{myModel}, the information on a technical identity named \code{y} (i.e there exists an "IDENTITY> y" in the \code{MDL} definition of the model) is stored in \code{myModel$identities$y}.\cr\cr Identity elements have the following components:\cr\cr
+- \bold{eqRaw}: the original equations  of the identity (more than one if the identity has multiple equations and has \code{IF>} conditions), as a \code{character} variable (see example and \code{\link[=MDL]{MDL}});\cr\cr
 - \bold{ifRaw}: the original \code{IF>} conditions, if any, of the identity, as a \code{character} variable;\cr\cr
-- \bold{eqFull}: the full expression of the identity, composed with \code{IF>} conditions and related equations (see examples), as a \code{character} variable;\cr\cr
+- \bold{eqFull}: the full expression of the identity, composed with \code{IF>} conditions and related equations (see example), as a \code{character} variable;\cr\cr
 - \bold{eqComponentsNames}: the names of endogenous and exogenous variables that appear in the identity equation;\cr\cr
 - \bold{eqComponentsNamesBehaviorals}: the names of behavioral endogenous variables that appear in the identity equation;\cr\cr
 - \bold{eqComponentsNamesIdentities}: the names of identity endogenous variables that appear in the identity equation;\cr\cr
@@ -98,6 +93,7 @@ For example, given a BIMETS model named \code{myModel}, the information on a tec
 \code{\link[=LOAD_MODEL_DATA]{LOAD_MODEL_DATA}}\cr
 \code{\link[=ESTIMATE]{ESTIMATE}}\cr
 \code{\link[=SIMULATE]{SIMULATE}}\cr
+\code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}\cr
 \code{\link[=MULTMATRIX]{MULTMATRIX}}\cr
 \code{\link[=RENORM]{RENORM}}\cr
 \code{\link[=TSERIES]{TIMESERIES}}\cr
@@ -107,7 +103,7 @@ For example, given a BIMETS model named \code{myModel}, the information on a tec
 
 \examples{
 #define model
-myModelDefinition=
+myModelDefinition<-
 "MODEL
 
 COMMENT> Modified Klein Model 1 of the U.S. Economy with PDL,
@@ -152,7 +148,7 @@ IF> i <= 0
 END"
 
 #load model 
-myModel=LOAD_MODEL(modelText=myModelDefinition)
+myModel<-LOAD_MODEL(modelText=myModelDefinition)
 
 #retrieve model structure...
 #get definition

@@ -37,7 +37,7 @@ Backward compatibility.
 }
 
 \value{
-This function returns a semiannual BIMETS time series.
+This function returns a semi-annual BIMETS time series.
 }
 
 \seealso{
@@ -49,12 +49,12 @@ This function returns a semiannual BIMETS time series.
 \examples{
 
 	#TS QUARTERLY TO SEMIANNUAL
-	n=14
-	xArr=(n:0)
-	ts1=TSERIES(xArr,START=c(2000,1),FREQ='Q')
+	n<-14
+	xArr<-(n:0)
+	ts1<-TSERIES(xArr,START=c(2000,1),FREQ='Q')
 	print(SEMIANNUAL(ts1,fun='NAVE'))
 	
 	#TS ANNUAL TO SEMIANNUAL
-	ts1=TSERIES((1:10),START=c(2000,1),FREQ=1)
+	ts1<-TSERIES((1:10),START=c(2000,1),FREQ=1)
 	print(SEMIANNUAL(ts1,fun='INTERP_END'))
 }

@@ -1,7 +1,7 @@
 # bimets - Time Series And Econometric Modeling In R
 
 
-**bimets** is an R package developed with the aim of easing time series analysis and building up a framework that facilitates the definition, estimation and simulation of simultaneous equation models.
+**bimets** is an R package developed with the aim to ease time series analysis and to build up a framework that facilitates the definition, estimation, and simulation of simultaneous equation models.
 
 **bimets** does not depend on compilers or third-party software so it can be freely downloaded and installed on Linux, MS Windows(R) and Mac OSX(R), without any further requirements. 
 
@@ -9,20 +9,21 @@
 
 For bug reports, please use the [issue tracker](https://github.com/bimets/issues
 -->
+Please consider reading the [package vignette](https://cran.r-project.org/package=bimets/vignettes/bimets.pdf), wherein there are figures and the mathematical expressions are better formatted than in html.
 
-If you have general questions about using **bimets**, or for bug reports, please write to the mantainer: [Andrea.Luciani@bancaditalia.it](mailto:andrea.luciani@bancaditalia.it)
+If you have general questions about using **bimets**, or for bug reports, please write to the maintainer: [Andrea.Luciani@bancaditalia.it](mailto:andrea.luciani@bancaditalia.it)
 
 ## Features
 
 
 
-**TIME SERIES:**
+**TIME SERIES**
 
 - supports daily, weekly, monthly, quarterly, semiannual, yearly time series, and frequency of 24 and 36 periods per year.
 - indexing *by date* - users can select and modify a single observation by using the syntax `ts['Date']`, or multiple observations by using `ts['StartDate/EndDate']`.
 - indexing *by year-period* - users can select and modify observations by providing a two-dimensional numerical array composed by the year and the period, e.g. `ts[[Year,Period]]`.
-- indexing *by observation index* - users can select and modify observations by providing the array of requested indexes (core R), e.g. `ts[indexes]`.
-- *Aggregation/Disaggregation* - the package provides advanced (dis)aggregation capabilities, with several linear interpolation capabilities in disaggregation, and many aggregation functions (e.g. `STOCK`, `SUM`, `AVE`, etc.) while reducing the time series frequency.
+- indexing *by observation index* - users can select and modify observations by providing the array of requested indices (core R), e.g. `ts[indices]`.
+- *Aggregation/Disaggregation* - the package provides advanced (dis)aggregation capabilities, having linear interpolation capabilities in disaggregation, and aggregation functions (e.g. `STOCK`, `SUM`, `AVE`, etc.) while reducing the time series frequency.
 - *Manipulation* - the package provides, among others, the following time series manipulation capabilities: 
 time series extension `TSEXTEND()`, 
 time series merging `TSMERGE()`, 
@@ -33,7 +34,7 @@ cumulative product `CUMPROD()`,
 cumulative sum `CUMSUM()`, 
 moving average `MOVAVG()`, 
 moving sum `MOVSUM()`, 
-time series data presentation `TABIT()` 
+time series data presentation `TABIT()`. 
 
 
 Example:
@@ -108,27 +109,33 @@ TABIT(myMovAveTS,myTS1)
 
 ```
 
+More details are available in the [reference manual](https://CRAN.R-project.org/package=bimets/bimets.pdf).
+
 
 
 **MODELING:**
 
 **bimets** econometric modeling capabilities comprehend: 
 
-- *Model Definition Language* - the specification of an econometric model is translated and identified by keywords statements which are grouped in a model file, i.e. a plain text file or a `character` R variable with a specific syntax. Collectively, these keyword statements constitute a kind of a **bimets** Model Description Language (i.e. `MDL`). The MDL syntax allows to define behaviorals equations, technical equations, conditional evaluations during the simulation, and other model properties. 
+- *Model Definition Language* - the specification of an econometric model is translated and identified by keyword statements which are grouped in a model file, i.e. a plain text file or a `character` R variable with a specific syntax. Collectively, these keyword statements constitute a kind of a **bimets** Model Description Language (i.e. `MDL`). The MDL syntax allows the definition of behavioral equations, technical equations, conditional evaluations during the simulation, and other model properties. 
 - *Estimation* - the estimation function `ESTIMATE()` supports Ordinary Least Squares, Instrumental Variables, deterministic linear restrictions on the coefficients, Almon Polynomial Distributed Lags (i.e. `PDL`), autocorrelation of the errors, structural stability analysis (Chow tests).
 - *Simulation* - the simulation function `SIMULATE()` supports static, dynamic and forecast simulations, residuals check, partial or total exogenization of endogenous variables, constant adjustment of endogenous variables (i.e. add-factors).
+- *Stochastic Simulation* - in the stochastic simulation function `STOCHSIMULATE()` the structural disturbances are given values that have specified stochastic properties. The error terms of the estimated behavioral equation of the model are appropriately perturbed. Identity equations and exogenous variables can be as well perturbed by disturbances that have specified stochastic properties. The model is then solved for each data set with different values of the disturbances. Finally, mean and standard deviation are computed for each simulated endogenous variable.
 - *Multipliers Evaluation* - the multipliers evaluation function `MULTMATRIX()` computes the matrix of both impact and interim multipliers for a selected set of endogenous variables, i.e. the `TARGET`, with respect to a selected set of exogenous variables, i.e. the `INSTRUMENT`.
-- *Endogenous Targeting* - the "renormalization" function `RENORM()` performs the endogenous targeting of econometric models, which consists of solving the model while interchanging the role of one or more endogenous variables with an equal number of exogenous variables. The procedure determines the values for the `INSTRUMENT` exogenous variables which allow to achieve the desired values for the `TARGET` endogenous variables, subject to the constraints given by the equations of the model. This is an approach to economic and monetary policy analysis,
+- *Endogenous Targeting* - the "renormalization" function `RENORM()` performs the endogenous targeting of econometric models, which consists of solving the model while interchanging the role of one or more endogenous variables with an equal number of exogenous variables. The procedure determines the values for the `INSTRUMENT` exogenous variables that allow achieving the desired values for the `TARGET` endogenous variables, subject to the constraints given by the equations of the model. This is an approach to economic and monetary policy analysis.
+- *Optimal Control* - The optimization consists of maximizing a social welfare function, i.e. the objective-function, depending on exogenous and (simulated) endogenous variables, subject to user constraints plus the constraints imposed by the econometric model equations. Users are allowed to define constraints and objective-functions of any degree, and are allowed to provide different constraints and objective-functions in different optimization time periods.
 
-A Klein's model example, having restrictions, error autocorrelation and conditional evaluations, follows:
+A Klein's model example, having restrictions, error autocorrelation, and conditional evaluations, follows:
 
 ```r
+
+# MODEL DEFINITION AND LOADING #################################################
 
 #define the Klein model
 klein1.txt <- "MODEL
 
 COMMENT> Modified Klein Model 1 of the U.S. Economy with PDL, 
-COMMENT> autocorrelation on errors, restrictions and conditional equation evaluations
+COMMENT> autocorrelation on errors, restrictions, and conditional equation evaluations
 
 COMMENT> Consumption with autocorrelation on errors
 BEHAVIORAL> cn
@@ -251,8 +258,10 @@ kleinModelData <- list(
 kleinModel <- LOAD_MODEL_DATA(kleinModel,kleinModelData)
 # Load model data "kleinModelData" into model "klein1.txt"...
 # ...LOAD MODEL DATA OK
+
  
- 
+# MODEL ESTIMATION #############################################################
+
 kleinModel <- ESTIMATE(kleinModel)
 #.CHECK_MODEL_DATA(): warning, there are undefined values in time series "time".
 #
@@ -263,7 +272,6 @@ kleinModel <- ESTIMATE(kleinModel)
 #_________________________________________
 #
 #BEHAVIORAL EQUATION: cn
-#Estimation Technique: OLS
 #Estimation Technique: OLS
 #Autoregression of Order  2  (Cochrane-Orcutt procedure)
 #
@@ -310,9 +318,12 @@ kleinModel <- ESTIMATE(kleinModel)
 #Signif. codes:   *** 0.001  ** 0.01  * 0.05  
 #
 # 
-# ...similar output for the all the regressions.
+# ...similar output for all the regressions.
 
-#simulate GDP in 1925-1930
+
+# MODEL SIMULATION #############################################################
+
+#simulate GNP in 1925-1930
 kleinModel <- SIMULATE(kleinModel, 
                       TSRANGE=c(1925,1,1930,1), 
                       simIterLimit = 100)
@@ -320,7 +331,7 @@ kleinModel <- SIMULATE(kleinModel,
 # Simulation:    100.00%
 # ...SIMULATE OK
 
-#print simulated gdp
+#print simulated GNP
 TABIT(kleinModel$simulation$y)
 #
 #      Date, Prd., kleinModel$simulation$y
@@ -330,7 +341,58 @@ TABIT(kleinModel$simulation$y)
 #      1927, 1   ,  48.3741       
 #      1928, 1   ,  55.58927      
 #      1929, 1   ,  73.35799      
-#      1930, 1   ,  74.93561  
+#      1930, 1   ,  74.93561 
+
+
+# MODEL STOCHASTIC FORECAST ####################################################
+
+#we want to perform a stochastic forecast of the GNP up to 1944
+#we will add normal disturbances to endogenous Consumption 'cn' 
+#in 1942 by using its regression standard error
+#we will add uniform disturbances to exogenous Government Expenditure 'g'
+#in the whole TSRANGE
+myStochStructure <- list(
+  cn=list(
+        TSRANGE=c(1942,1,1942,1),
+        TYPE='NORM',
+        PARS=c(0,kleinModel$behaviorals$cn$statistics$StandardErrorRegression)
+        ),
+  g=list(
+        TSRANGE=TRUE,
+        TYPE='UNIF',
+        PARS=c(-1,1)
+        )
+  )
+
+#we need to extend exogenous variables up to 1944
+kleinModel$modelData <- within(kleinModel$modelData,{
+    w2    = TSEXTEND(w2,  UPTO=c(1944,1),EXTMODE='CONSTANT')
+    t     = TSEXTEND(t,   UPTO=c(1944,1),EXTMODE='LINEAR')
+    g     = TSEXTEND(g,   UPTO=c(1944,1),EXTMODE='CONSTANT')
+    k     = TSEXTEND(k,   UPTO=c(1944,1),EXTMODE='LINEAR')
+    time  = TSEXTEND(time,UPTO=c(1944,1),EXTMODE='LINEAR')
+  })
+
+#stochastic model forecast
+kleinModel <- STOCHSIMULATE(kleinModel
+                      ,simType='FORECAST'
+                      ,TSRANGE=c(1941,1,1944,1)
+                      ,StochStructure=myStochStructure
+                      ,StochSeed=123
+                      )
+                      
+#print mean and standard deviation for the forecasted GNP
+with(kleinModel$stochastic_simulation,TABIT(y$mean, y$sd))
+
+#      Date, Prd., y$mean         , y$sd           
+#
+#      1941, 1   ,  104.3109      ,  3.267681      
+#      1942, 1   ,  115.4303      ,  7.014553      
+#      1943, 1   ,  91.64526      ,  7.685761      
+#      1944, 1   ,  33.41637      ,  6.199828  
+ 
+ 
+# MODEL MULTIPLIERS  ###########################################################
 
 #get multiplier matrix in 1941
 kleinModel <- MULTMATRIX(kleinModel,
@@ -347,14 +409,19 @@ kleinModel$MultiplierMatrix
 #cn_1 -0.1596758 2.853391
 #y_1  -0.7216553 5.720007
 
+
+# MODEL ENDOGENOUS TARGETING ###################################################
+
 #we want an arbitrary value on Consumption of 66 in 1940 and 78 in 1941
 #we want an arbitrary value on GNP of 77 in 1940 and 98 in 1941
 kleinTargets  <-  list(
                     cn = TIMESERIES(66,78,START=c(1940,1),FREQ=1),
                     y  = TIMESERIES(77,98,START=c(1940,1),FREQ=1)
                     )
-
-#renormalize the model              
+#Then, we can perform the model endogenous targeting 
+#by using Government Wage Bill 'w2' 
+#and Government Expenditure 'g' as 
+#INSTRUMENT in the years 1940 and 1941:
 kleinModel <- RENORM(kleinModel
                    ,INSTRUMENT = c('w2','g')
                    ,TARGET = kleinTargets
@@ -366,7 +433,7 @@ kleinModel <- RENORM(kleinModel
 # ...RENORM OK
 
 #The calculated values of exogenous INSTRUMENT 
-#that allow to achieve the desired endogenous TARGET values
+#that allow achieving the desired endogenous TARGET values
 #are stored into the model:
 
 with(kleinModel,TABIT(modelData$w2,
@@ -387,7 +454,7 @@ with(kleinModel,TABIT(modelData$w2,
 #and 78 in 1941, and if we want to achieve on "y" (GNP) an arbitrary simulated value of 77
 #in 1940 and 98 in 1941, we need to change exogenous "w2" (Wage Bill of the Government
 #Sector) from 8 to 8.86 in 1940 and from 8.5 to 12.19 in 1941, and we need to change exogenous
-#"g"(Government non-Wage Spending) from 15.4 to 15.81 in 1940 and from 22.3 to 21.84 in 1941.
+#"g"(Government Expenditure) from 15.4 to 15.81 in 1940 and from 22.3 to 21.84 in 1941.
 
 #Let's verify:
 
@@ -416,10 +483,104 @@ with(kleinRenorm$simulation,
 #    1940, 1   ,  66.02157      ,  77.03568      
 #    1941, 1   ,  78.05216      ,  98.09119 
 
+
+# MODEL OPTIMAL CONTROL ########################################################
+
+#reset time series data in model
+kleinModel <- LOAD_MODEL_DATA(kleinModel
+                              ,kleinModelData
+                              ,quietly = TRUE)
+                              
+#we want to maximize the non-linear objective function:
+#f()=(y-110)+(cn-90)*ABS(cn-90)-(g-20)^0.5
+#in 1942 by using INSTRUMENT cn in range (-5,5) 
+#(cn is endogenous so we use the add-factor)
+#and g in range (15,25)
+#we will also impose the following non-linear restriction:
+#g+(cn^2)/2<27 & g+cn>17
+
+#we need to extend exogenous variables up to 1942
+kleinModel$modelData <- within(kleinModel$modelData,{
+    w2    = TSEXTEND(w2,   UPTO = c(1942,1), EXTMODE = 'CONSTANT')
+    t     = TSEXTEND(t,    UPTO = c(1942,1), EXTMODE = 'LINEAR')
+    g     = TSEXTEND(g,    UPTO = c(1942,1), EXTMODE = 'CONSTANT')
+    k     = TSEXTEND(k,    UPTO = c(1942,1), EXTMODE = 'LINEAR')
+    time  = TSEXTEND(time, UPTO = c(1942,1), EXTMODE = 'LINEAR')
+})
+
+#define INSTRUMENT and boundaries
+myOptimizeBounds <- list(
+    cn = list( TSRANGE = TRUE
+            ,BOUNDS = c(-5,5)),
+     g = list( TSRANGE = TRUE
+            ,BOUNDS = c(15,25))
+)
+
+#define restrictions
+myOptimizeRestrictions <- list(
+    myRes1=list(
+         TSRANGE = TRUE
+        ,INEQUALITY = 'g+(cn^2)/2<27 & g+cn>17')
+)
+
+#define objective function
+myOptimizeFunctions <- list(
+    myFun1 = list(
+         TSRANGE = TRUE
+        ,FUNCTION = '(y-110)+(cn-90)*ABS(cn-90)-(g-20)^0.5')
+)
+
+#Monte-Carlo optimization by using 50.000 stochastic realizations
+#and 1E-7 convergence criterion 
+kleinModel <- OPTIMIZE(kleinModel
+                        ,simType = 'FORECAST'
+                        ,TSRANGE=c(1942,1,1942,1)
+                        ,simConvergence= 1E-7
+                        ,simIterLimit  = 1000
+                        ,StochReplica  = 50000
+                        ,StochSeed = 123
+                        ,OptimizeBounds = myOptimizeBounds
+                        ,OptimizeRestrictions = myOptimizeRestrictions
+                        ,OptimizeFunctions = myOptimizeFunctions
+                        ,quietly = TRUE)
+
+#print local maximum
+kleinModel$optimize$optFunMax
+#[1] 6.92624
+
+#print INSTRUMENT that allow local maximum to be achieved
+kleinModel$optimize$INSTRUMENT                              
+#$cn
+#Time Series:
+#Start = 1942 
+#End = 1942 
+#Frequency = 1 
+#[1] 1.996275
+#
+#$g
+#Time Series:
+#Start = 1942 
+#End = 1942 
+#Frequency = 1 
+#[1] 24.9766                                      
 ```
 Transformations of the dependent variable are allowed in `EQ>` definition, e.g. `TSDELTA(cn)=...`, `EXP(i)=...`, `TSDELTALOG(y)=...`, etc.
 
-**bimets** estimation and simulation results have been compared to the output results of leading commercial econometric software, by using several large and complex models.
+More details are available in the [reference manual](https://CRAN.R-project.org/package=bimets/bimets.pdf).
+
+
+
+**COMPUTATIONAL DETAILS**
+
+The iterative simulation procedure is the most time-consuming operation of the **bimets** package. For small models, this operation is quite immediate; on the other hand, the simulation of models that count hundreds of equations could last for minutes, especially if the requested operation involves a parallel simulation having hundreds of realizations per equation. This could be the case for the endogenous targeting, the stochastic simulation and the optimal control.
+
+The `SIMULATE` code has been optimized in order to minimize the execution time in these cases.  In terms of computational efficiency, the procedure takes advantage of the fact that multiple datasets are bind together in matrices, therefore in order to achieve a global convergence, the iterative simulation algorithm is executed once for all perturbed datasets. This solution can be viewed as a sort of a SIMD (i.e. Single Instruction Multiple Data) parallel simulation: the `SIMULATE` algorithm transforms time series into matrices and consequently can easily bind multiple datasets by column. At the same time, the single run ensures a fast code execution, while each column in the output matrices represents a stochastic or perturbed realization.
+
+The above approach is even faster if R has been compiled and linked to optimized multi-threaded numerical libraries, e.g. Intel(R) MKL, OpenBlas, Microsoft(R) R Open, etc.
+
+Finally, model equations are pre-fetched into sorted R expressions, and an optimized R environment is defined and reserved to the `SIMULATE` algorithm; this approach removes the overhead usually caused by expression parsing and by the `R` looking for variables inside nested environments. 
+
+**bimets** estimation and simulation results have been compared to the output results of leading commercial econometric software by using several large and complex models.
 
 The models used in the comparison have more than:
 
@@ -428,7 +589,7 @@ The models used in the comparison have more than:
 - +500  coefficients;
 - +1000 time series of endogenous and exogenous variables;
 
-In these models we can find equations with restricted coefficients, polynomial distributed lags, error autocorrelation and conditional evaluation of technical identities; all models have been simulated in static, dynamic, and forecast mode, with exogenization and constant adjustments of endogenous variables, through the use of **bimets** capabilities.
+In these models, we can find equations with restricted coefficients, polynomial distributed lags, error autocorrelation, and conditional evaluation of technical identities; all models have been simulated in static, dynamic, and forecast mode, with exogenization and constant adjustments of endogenous variables, through the use of **bimets** capabilities.
 
 In the +800 endogenous simulated time series over the +20 simulated periods (i.e. more than 16.000 simulated observations), the average percentage difference between **bimets** and leading commercial software results has a magnitude of `10E-7 %`. The difference between results calculated by using different commercial software has the same average magnitude.
 
@@ -452,10 +613,10 @@ devtools::install_github("bimets")
 
 ## Guidelines for contributing
 
-We welcome contributions to the **bimets** package. In the case please write to the mantainer: [Andrea.Luciani@bancaditalia.it](mailto:andrea.luciani@bancaditalia.it). 
+We welcome contributions to the **bimets** package. In the case, please write to the maintainer: [Andrea.Luciani@bancaditalia.it](mailto:andrea.luciani@bancaditalia.it). 
 
 ## License
 
-The **bimets** package is licensed under the GPL-3
+The **bimets** package is licensed under the GPL-3.
 
 Disclaimer: *The views and opinions expressed in these pages are those of the authors and do not necessarily reflect the official policy or position of the Bank of Italy. Examples of analysis performed within these pages are only examples. They should not be utilized in real-world analytic products as they are based only on very limited and dated open source information. Assumptions made within the analysis are not reflective of the position of the Bank of Italy.*

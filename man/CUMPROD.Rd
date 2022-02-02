@@ -49,16 +49,16 @@ This function returns an object of the same class of the input, i.e. an array or
 \examples{
 	
 	#create ts
-	ts1=TSERIES(INTS(1,10),START=c(2000,1),FREQ='M')
-	out_CUMPROD=CUMPROD(ts1)
+	ts1<-TSERIES(INTS(1,10),START=c(2000,1),FREQ='M')
+	out_CUMPROD<-CUMPROD(ts1)
 	TABIT(out_CUMPROD)
 	    
-	out_CUMPROD=CUMPROD(ts1,TSRANGE=c(2000,4,2001,1))	
+	out_CUMPROD<-CUMPROD(ts1,TSRANGE=c(2000,4,2001,1))	
 	TABIT(ts1,out_CUMPROD)
   
 	#define an array
-	arr1=c(INTS(1,5),INTS(-1,-5))
-	out_CUMPROD=CUMPROD(arr1)
+	arr1<-c(INTS(1,5),INTS(-1,-5))
+	out_CUMPROD<-CUMPROD(arr1)
 	print(out_CUMPROD)
 	
 	

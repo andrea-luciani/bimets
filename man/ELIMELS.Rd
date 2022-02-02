@@ -17,7 +17,7 @@ ELIMELS(x=NULL, idx=NULL, avoidCompliance=FALSE, ...)
 Input numerical array or time series that must satisfy the compliance control check defined in \code{\link[=is.bimets]{is.bimets}}. 
 }
   \item{idx}{
-Numerical array built with the indexes of selected elements to be removed from the input. If the input is a time series the index must be provided as a sequence of numbers \code{IDX=YEAR+PERIOD/FREQ} with \code{YEAR} and \code{PERIOD} the year and the period to be removed (see example).
+Numerical array built with the indices of selected elements to be removed from the input. If the input is a time series the index must be provided as a sequence of numbers \code{IDX=YEAR+PERIOD/FREQ} with \code{YEAR} and \code{PERIOD} the year and the period to be removed (see example).
 
 }
 \item{avoidCompliance}{

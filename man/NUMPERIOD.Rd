@@ -19,7 +19,7 @@ Starting period specified as a numerical array \code{c(YEAR,PRD)}
 Ending period specified as a numerical array \code{c(YEAR,PRD)}
 }
   \item{f}{
-Frequency over the year. Must be a positive integer.
+Frequency over the year. It must be a positive integer.
 }
 }
 

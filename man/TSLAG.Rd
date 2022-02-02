@@ -45,16 +45,16 @@ This function returns a BIMETS time series built by lagging the input time serie
 \examples{
 	
 	#DEFINE TS
-	n=10
-	ts1=TSERIES(n:1,START=c(2000,1),FREQ=1)
-	ts1[5]=NA
+	n<-10
+	ts1<-TSERIES(n:1,START=c(2000,1),FREQ=1)
+	ts1[5]<-NA
 	
 	#print TSLAG
 	TABIT(ts1,TSLAG(ts1,5))
 	
-	n=10
-	ts1=TSERIES(n:1,START=c(2000,1),FREQ='D')
-	ts1[5]=NA
+	n<-10
+	ts1<-TSERIES(n:1,START=c(2000,1),FREQ='D')
+	ts1[5]<-NA
 	
 	#print TSLAG
 	TABIT(ts1,TSLAG(ts1,5))

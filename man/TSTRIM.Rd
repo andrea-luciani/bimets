@@ -6,7 +6,7 @@
 Trim a Time Series
 }
 \description{
-This function removes trailing or leading missing values \code{NA} from the input array or the input time series. Users can provide the value to be removed other than \code{NA} missing vallue by using the argument \code{VALUE}. 
+This function removes trailing or leading missing values \code{NA} from the input array or the input time series. Users can provide the value to be removed other than \code{NA} missing value by using the argument \code{VALUE}. 
 }
 \usage{
 TSTRIM(x=NULL, VALUE=NA, TRAIL=TRUE, LEAD=TRUE, avoidCompliance=FALSE, ...)
@@ -52,17 +52,17 @@ This function returns an object of the same class of the input, i.e. an array or
 \examples{
 	
 	#TS A
-	n=10
-	ts1=TSERIES(c(NA,1:n,NA),START=c(2000,1),FREQ='A')
+	n<-10
+	ts1<-TSERIES(c(NA,1:n,NA),START=c(2000,1),FREQ='A')
 	TABIT(ts1,TSTRIM(ts1))
 		
-	ts1=TSERIES(c(NA,1:n,NA),START=c(2000,1),FREQ='A')
+	ts1<-TSERIES(c(NA,1:n,NA),START=c(2000,1),FREQ='A')
 	TABIT(ts1,TSTRIM(ts1,TRAIL=FALSE))
 	
-	ts1=TSERIES(c(NA,1:n,NA),START=c(2000,1),FREQ='A')
+	ts1<-TSERIES(c(NA,1:n,NA),START=c(2000,1),FREQ='A')
 	TABIT(ts1,TSTRIM(ts1,LEAD=FALSE))
 	
-	ts1=TSERIES(c(0,0,NA,1:n,NA,0),START=c(2000,1),FREQ='A')
+	ts1<-TSERIES(c(0,0,NA,1:n,NA,0),START=c(2000,1),FREQ='A')
 	TABIT(ts1,TSTRIM(ts1,0))
 	
 }

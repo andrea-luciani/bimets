@@ -3,10 +3,10 @@
 
 
 \title{
-Create Range of Indexes
+Create Range of Indices
 }
 \description{
-A command such \code{INTS(i,j)} returns a one-dimensional array built with the integers \code{i, i+1, i+2, ..., j} when \code{i, j} are both scalars, and \code{j} is greater than \code{i}. When \code{j} is less than \code{i}, the command shown above defines a one-dimensional array built with the integers \code{i, i-1, i-2, ..., j}.\cr\cr Users can specify the \code{k} increment with a syntax like \code{INTS(i, j, k)} which defines a one-dimensional array built with the values \code{i, i+k, i+2*k, ..., i+N*k}.\cr\cr
+A command such \code{INTS(i,j)} returns a one-dimensional array built of the integers \code{i, i+1, i+2, ..., j} when \code{i, j} are both scalars, and \code{j} is greater than \code{i}. When \code{j} is less than \code{i}, the command shown above defines a one-dimensional array built of the integers \code{i, i-1, i-2, ..., j}.\cr\cr Users can specify the \code{k} increment using a syntax like \code{INTS(i, j, k)} which defines a one-dimensional array built of the values \code{i, i+k, i+2*k, ..., i+N*k}.\cr\cr
 The value of the last element of the array is the maximum value of \code{i+N*k} that is less than or equal to \code{j}, for positive \code{k}. For negative \code{k}, the value of the last element of the array is the minimum value of \code{i+N*k} that is greater than or equal to \code{j}.\cr\cr
 The command can be used with one parameter by using a syntax like \code{INTS(i)} where \code{i} is a positive scalar. The result is a one-dimensional array built with the integers \code{1, 2, 3, ..., i}. When \code{i} is less than \code{1}, the array is built with the integers \code{-1, -2, ..., -i}. 
 }
@@ -16,13 +16,13 @@ INTS(FROM=NULL, TO=NULL, BY=NULL, ...)
 
 \arguments{
   \item{FROM}{
-The first integer of the sequence. If arguments  \code{TO} and \code{BY} are \code{NULL} and \code{FROM>0} the sequence will start from \code{1} and will end in \code{FROM}; If arguments  \code{TO} and \code{BY} are \code{NULL} and \code{FROM<0} the sequence will start from \code{-1}  and will end in \code{FROM} (see examples).
+The first integer of the sequence. If arguments  \code{TO} and \code{BY} are \code{NULL} and \code{FROM>0} the sequence will start from \code{1} and will end in \code{FROM}; If arguments  \code{TO} and \code{BY} are \code{NULL} and \code{FROM<0} the sequence will start from \code{-1}  and will end in \code{FROM} (see example).
 }
   \item{TO}{
 The last integer of the sequence.
 }
   \item{BY}{
-Increment between two elements of the sequence.
+The increment between two elements of the sequence.
 }
 
   \item{...}{

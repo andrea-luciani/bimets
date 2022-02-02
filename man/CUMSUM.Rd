@@ -56,20 +56,20 @@ This function returns an object of the same class of the input, i.e. an array or
 \examples{
 	
 	#create ts
-	ts1=TSERIES(INTS(1,30),START=c(2000,1),FREQ='M')
-	out_CUMSUM=CUMSUM(ts1)
+	ts1<-TSERIES(INTS(1,30),START=c(2000,1),FREQ='M')
+	out_CUMSUM<-CUMSUM(ts1)
 	TABIT(out_CUMSUM)
 	
 	    
-	out_CUMSUM=CUMSUM(ts1,TSRANGE=c(2000,4,2001,7))	
-	out_CUMSUM_Y=CUMSUM(ts1,TSRANGE=c(2000,4,2001,7),MODE='YEARLY')
+	out_CUMSUM<-CUMSUM(ts1,TSRANGE=c(2000,4,2001,7))	
+	out_CUMSUM_Y<-CUMSUM(ts1,TSRANGE=c(2000,4,2001,7),MODE='YEARLY')
 	TABIT(ts1,out_CUMSUM,out_CUMSUM_Y)
 	
 	
   
 	#define an array
-	arr1=c(INTS(1,10),INTS(-1,-10))
-	out_CUMSUM=CUMSUM(arr1)
+	arr1<-c(INTS(1,10),INTS(-1,-10))
+	out_CUMSUM<-CUMSUM(arr1)
 	print(out_CUMSUM)
 	
 	#print...1  3  6 10 15 21 ... 27 19 10  0

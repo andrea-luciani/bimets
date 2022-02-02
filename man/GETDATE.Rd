@@ -6,7 +6,7 @@
 Retrieve Dates of Time Series
 }
 \description{
-This function returns the dates array of selected observations, in the requested print format. Dates will be provided accordingly to the BIMETS configuration option \code{BIMETS_CONF_DIP} \cr (see \code{\link[=bimetsConf]{BIMETS configuration}} )
+This function returns the date array of selected observations, in the requested print format. Dates will be provided accordingly to the BIMETS configuration option \code{BIMETS_CONF_DIP} \cr (see \code{\link[=bimetsConf]{BIMETS configuration}} )
 }
 \usage{
 GETDATE(x=NULL, index=NULL, format='\%Y-\%m-\%d', avoidCompliance=FALSE, ...)
@@ -45,7 +45,7 @@ Backward compatibility.
 
 
 \value{
-This function returns the dates array of selected observations, in the requested print format. 
+This function returns the date array of selected observations, in the requested print format. 
 }
 
 \seealso{
@@ -72,32 +72,32 @@ Sys.setlocale('LC_TIME','C')
 setBIMETSconf('BIMETS_CONF_CCT','XTS')
 
 #XTS yearly
-n=10
-xArr=(n:1)
-dateArr=seq(as.Date('2000-12-31'),by='year',length=n)
-dataF=data.frame(dateArr,xArr)
-ts1=xts(dataF[,2],order.by=dataF[,1])
-ts1[5]=NA
+n<-10
+xArr<-(n:1)
+dateArr<-seq(as.Date('2000-12-31'),by='year',length=n)
+dataF<-data.frame(dateArr,xArr)
+ts1<-xts(dataF[,2],order.by=dataF[,1])
+ts1[5]<-NA
 print(GETDATE(ts1,5)) #...print 2004-12-31
 print(GETDATE(ts1,5,'\%A \%d \%b \%Y')) #print... Friday 31 Dec 2004
 print(GETDATE(ts1)) #print... "2000-12-31" "2001-12-31" ... "2009-12-31"
 
 #XTS quarterly
-n=15
-xArr=(n:0)
-dateArr=as.yearqtr('2000 Q1')+0:n/4
-dataF=data.frame(dateArr,xArr)
-ts1=xts(dataF[,2],order.by=dataF[,1])	
+n<-15
+xArr<-(n:0)
+dateArr<-as.yearqtr('2000 Q1')+0:n/4
+dataF<-data.frame(dateArr,xArr)
+ts1<-xts(dataF[,2],order.by=dataF[,1])	
 print(GETDATE(ts1,9,'\%b \%Y')) #print...Mar 2002	
 
 #XTS monthly
 #set configuration BIMETS_CONF_DIP to FIRST
 setBIMETSconf('BIMETS_CONF_DIP','FIRST')
-n=15
-xArr=(n:0)
-dateArr=as.yearmon('Jan 2000')+0:n/12
-dataF=data.frame(dateArr,xArr)
-ts1=xts(dataF[,2],order.by=dataF[,1])	
+n<-15
+xArr<-(n:0)
+dateArr<-as.yearmon('Jan 2000')+0:n/12
+dataF<-data.frame(dateArr,xArr)
+ts1<-xts(dataF[,2],order.by=dataF[,1])	
 print(GETDATE(ts1,9,'\%b \%Y')) #print...Sep 2000	
 
 #set configuration BIMETS_CONF_DIP to LAST

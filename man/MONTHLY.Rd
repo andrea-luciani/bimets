@@ -48,11 +48,11 @@ This function returns a monthly BIMETS time series.
 \examples{
 
 	#TS FREQ 2 SEMIANNUAL TO MONTHLY
-	ts1=TSERIES((1:10),START=c(2000,1),FREQ=2)
+	ts1<-TSERIES((1:10),START=c(2000,1),FREQ=2)
 	TABIT(MONTHLY(ts1,fun='INTERP_CENTER'))
 	
 	#TS DAILY TO MONTHLY
-	ts1=TSERIES((1:366),START=c(2000,1),FREQ='D')
+	ts1<-TSERIES((1:366),START=c(2000,1),FREQ='D')
 	TABIT(MONTHLY(ts1,fun='STOCK'))
 	
 	

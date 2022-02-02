@@ -18,15 +18,15 @@ getBIMETSconf(opt=NULL)
 \arguments{
   \item{opt}{
 Name of the BIMETS option. Available option names are:\cr \cr 
-\bold{BIMETS_CONF_DIP}: Date In Period. Users can associate to each observation in a time series the first or the last date in the period, i.e.  1 January or 31 December in the case of an yearly time series, 1 January/1 July or 30 June/31 December in the case of a semiannual time series, 1 January/31 January in the case of an monthly time series in January, etc. The assignments by date to time series (e.g. \code{ts['2000-01-01']=value}) need to be coherent to the value of this global option. Accepted values are:\cr
+\bold{BIMETS_CONF_DIP}: Date In Period. Users can associate to each observation in a time series the first or the last date in the period, i.e.  1 January or 31 December in the case of a yearly time series, 1 January/1 July or 30 June/31 December in the case of a semiannual time series, 1 January/31 January in the case of a monthly time series in January, etc. The assignments by date to time series (e.g. \code{ts['2000-01-01']=value}) need to be coherent to the value of this global option. Accepted values are:\cr
 LAST: (default) each observation has associated the last date of the period, e.g. 31 Mar for a quarterly time series, 31 January for a monthly time series in the first period, etc.\cr
 FIRST: each observation has associated the first date of the period, e.g. 1 Jan for a quarterly time series, 1 Feb for a monthly time series in the second period, etc.
 \cr \cr
-\bold{BIMETS_CONF_CCT}: Constructor Class Type. The package supports \code{ts()} and \code{xts()} time series as input arguments; furthermore the user can select the base class of a BIMETS time series, i.e. the class used when a time series is created with \code{TIMESERIES()} or converted to BIMETS with \code{as.bimets()}. This is a global option; Users can locally override the selection of the output class by using the \code{class='TS'} or \code{class='XTS'} argument in the \code{TIMESERIES()} function. The option \code{BIMETS_CONF_CCT} can be assigned to the following values:\cr
+\bold{BIMETS_CONF_CCT}: Constructor Class Type. The package supports \code{ts()} and \code{xts()} time series as input arguments. Users can select the base class of a BIMETS time series, i.e. the class used when a time series is created with \code{TIMESERIES()} or converted to a BIMETS time series using \code{as.bimets()}. This is a global option; users can locally override the selection of the output class using the \code{class='TS'} or \code{class='XTS'} argument in the \code{TIMESERIES()} function. The option \code{BIMETS_CONF_CCT} can be assigned to the following values:\cr
 TS: (default) the time series constructor \code{TIMESERIES()} and the conversion function \code{as.bimets()} return an object of class \code{ts()}\cr
 XTS: the time series constructor \code{TIMESERIES()} and the conversion function \code{as.bimets()} return an object of class \code{xts()}.
 \cr \cr
-Please note that BIMETS package performs better with BIMETS_CONF_CCT='TS'\cr\cr
+Please note that BIMETS package is faster using BIMETS_CONF_CCT='TS'\cr\cr
 \bold{BIMETS_CONF_NOC}: NO Compliance test. If this option is set \code{TRUE} then the compliance control check on input time series, i.e. \code{\link[=is.bimets]{is.bimets()}}, will be globally disabled. The default is set to \code{FALSE}. The compliance check on input time series should generally be active, otherwise a malformed input time series can produce unwanted results in operations. 
  \cr
 }
@@ -55,26 +55,26 @@ This function set or read global BIMETS options, and return a NULL value.
 	
 	#default BIMETS_CONF_DIP is LAST
 	#create ts
-	ts1=TSERIES((1:10),START=c(2000,1),FREQ=1)
+	ts1<-TSERIES((1:10),START=c(2000,1),FREQ=1)
 	
 	#transform to xts and print
-	xt1=fromBIMETStoXTS(ts1)
+	xt1<-fromBIMETStoXTS(ts1)
 	print(xt1)  #....dates as of 31 Dec
 	
 	#set configuration BIMETS_CONF_DIP to FIRST
 	setBIMETSconf('BIMETS_CONF_DIP','FIRST')
 	
 	#create ts
-	ts1=TSERIES((1:10),START=c(2000,1),FREQ=1)
+	ts1<-TSERIES((1:10),START=c(2000,1),FREQ=1)
 	
 	#transform to xts and print
-	xt1=fromBIMETStoXTS(ts1)
+	xt1<-fromBIMETStoXTS(ts1)
 	print(xt1)  #....dates as of 1 Jan
 	
 	#set configuration BIMETS_CONF_DIP to LAST
 	setBIMETSconf('BIMETS_CONF_DIP','LAST')
 	
-	#work on XTS
+	#default to XTS
 	setBIMETSconf('BIMETS_CONF_CCT','XTS')
 	
 	#check compliance of xt1 and fail...	
@@ -101,7 +101,7 @@ This function set or read global BIMETS options, and return a NULL value.
 	is.bimets(xts()) #TRUE
 	
 	
-	#...back to default
+	#...back to defaults
 	setBIMETSconf('BIMETS_CONF_DIP','LAST')
 	setBIMETSconf('BIMETS_CONF_CCT','TS')
 	setBIMETSconf('BIMETS_CONF_NOC',FALSE)

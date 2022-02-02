@@ -47,12 +47,12 @@ This function returns a BIMETS time series.
 \examples{
 		
 	#create yearly ts
-	n=20
-	ts1=TSERIES(1:n,START=c(2000,1),FREQ=1)
+	n<-20
+	ts1<-TSERIES(1:n,START=c(2000,1),FREQ=1)
 	TABIT(ts1, INDEXNUM(ts1,2005))
 	
 	#quarterly
-	ts1=TSERIES(1:n,START=c(2000,1),FREQ=4)
-	ts1[5]=NA
+	ts1<-TSERIES(1:n,START=c(2000,1),FREQ=4)
+	ts1[5]<-NA
 	TABIT(ts1, INDEXNUM(ts1,2000))
 }

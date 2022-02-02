@@ -48,8 +48,8 @@ This function returns a BIMETS time series.
 \examples{
 
 	#random TS
-	n=10
-	xArr=rnorm(n)
-	ts1=TSERIES(xArr,START=c(2000,1),FREQ='A')
+	n<-10
+	xArr<-rnorm(n)
+	ts1<-TSERIES(xArr,START=c(2000,1),FREQ='A')
 	TABIT(ts1,TSDELTA(ts1,1,1),TSDELTA(ts1,1,2),TSDELTA(ts1,1,3))
 }

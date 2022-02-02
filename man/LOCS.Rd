@@ -3,10 +3,10 @@
 
 
 \title{
-Select Time Series Indexes
+Select Time Series Indices
 }
 \description{
-This function returns the indexes of the input \code{TRUE} elements. The input can be either an array or a time series. The result is usually used as a structured index to produce a new array.
+This function returns the indices of the input \code{TRUE} elements. The input can be either an array or a time series. The result is usually used as a structured index to produce a new array.
 
 }
 \usage{
@@ -33,7 +33,7 @@ Backward compatibility.
 }
 
 \value{
-This function returns a numerical array built with the indexes of the values that are \code{TRUE} in the input boolean array or in the input boolean time series.
+This function returns a numerical array built with the indices of the values that are \code{TRUE} in the input boolean array or in the input boolean time series.
 }
 
 \seealso{
@@ -54,8 +54,8 @@ This function returns a numerical array built with the indexes of the values tha
 \examples{
 
 	#create ts
-	n=10
-	ts1=TSERIES((1:n),START=c(2000,1),FREQ=1)
+	n<-10
+	ts1<-TSERIES((1:n),START=c(2000,1),FREQ=1)
 	print(LOCS(ts1>7,options='FIRST')) #print 8
 	
 	#generate error: print LOCS(): input has more than one TRUE element.
