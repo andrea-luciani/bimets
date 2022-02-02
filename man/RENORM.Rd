@@ -3,16 +3,16 @@
 
 
 \title{
-Perform the renormalization of a BIMETS model object.
+Perform the endogenous targeting (a.k.a. "renormalization"") of a BIMETS model object.
 }
 \description{
 \if{html}{(Note: this is the html version of the reference manual. Please consider reading the pdf version of this reference manual, wherein there are figures and the mathematical expressions are better formatted than in html.)\cr\cr}
 
-The renormalization of econometric models consists of solving the model while interchanging the role of one or more endogenous variables with an equal number of exogenous variables.\cr\cr This function determines the values for the \code{INSTRUMENT} exogenous variables which allow the objective \code{TARGET} endogenous variables to be achieved, with respect to the constraints given by the model \code{MDL} definition.\cr\cr
+The endogenous targeting of econometric models (a.k.a. "renormalization") consists of solving the model while interchanging the role of one or more endogenous variables with an equal number of exogenous variables.\cr\cr This function determines the values for the \code{INSTRUMENT} exogenous variables which allow the objective \code{TARGET} endogenous variables to be achieved, with respect to the constraints given by the model \code{MDL} definition.\cr\cr
 This is an approach to economic and monetary policy analysis, and is based on two assumptions:\cr\cr
 1. there exists a desired level for a set of \code{n} endogenous variables defined as \code{TARGET};\cr
 2. there exists a set of \code{n} exogenous variables defined as \code{INSTRUMENT};\cr\cr
-Given these premises, the renormalization process consists in determining the values of the exogenous variables chosen as \code{INSTRUMENT} allowing us to achieve the desired values for the endogenous variables designated as \code{TARGET}. In other words the procedure allows users to exchange the role of exogenous and endogenous among a set of time series pairs. \cr\cr
+Given these premises, the endogenous targeting process consists in determining the values of the exogenous variables chosen as \code{INSTRUMENT} allowing us to achieve the desired values for the endogenous variables designated as \code{TARGET}. In other words the procedure allows users to exchange the role of exogenous and endogenous among a set of time series pairs. \cr\cr
 Given a list of exogenous \code{INSTRUMENT} variables and a list of \code{TARGET} endogenous time series, the iterative procedure can be split into the following steps:\cr\cr
 1. Computation of the multipliers matrix \code{MULTMAT} of the \code{TARGET} endogenous variables with respect to the \code{INSTRUMENT} exogenous variables (this is a square matrix by construction);\cr\cr
 2. Solution of the linear system: \cr\cr
@@ -202,7 +202,7 @@ kleinTargets = list(
   y  = TSERIES(77,98,START=c(1940,1),FREQ=1)
 )
 
-#Then, we can perform the model renormalization by using Government Wage Bill 'w2' 
+#Then, we can perform the model endogenous targeting by using Government Wage Bill 'w2' 
 #and Government non-Wage Spending 'g' as 
 #INSTRUMENT in the years 1940 and 1941:
 myModel=RENORM(myModel
@@ -218,12 +218,12 @@ with(myModel,TABIT(modelData$w2,
                    modelData$g,
                    renorm$INSTRUMENT$g))
 
-# DATE, PER, modelData$w2, renorm$INSTRUMENT$w2, modelData$g, renorm$INSTRUMENT$g
+#  Date, Prd., modelData$w2, renorm$INSTRUMENT$w2, modelData$g, renorm$INSTRUMENT$g
 # etc.
-#      1938, 1  ,        7.7,           ,         13,           
-#      1939, 1  ,        7.8,           ,       14.4,           
-#      1940, 1  ,          8,    7.41333,       15.4,    16.1069
-#      1941, 1  ,        8.5,     9.3436,       22.3,    22.6599
+#  1938, 1   ,          7.7,                     ,          13,           
+#  1939, 1   ,          7.8,                     ,        14.4,           
+#  1940, 1   ,            8,              7.41333,        15.4,             16.1069
+#  1941, 1   ,          8.5,               9.3436,        22.3,             22.6599
 #So, if we want to achieve on Consumption 'cn' 
 #an arbitrary simulated value of 66 
 #in 1940 and 78 in 1941, and if we want 
@@ -267,9 +267,9 @@ with(kleinRenorm$simulation,
      TABIT(cn,y)
      )
      
-#DATE, PER, cn        , y
-#1940,  1 , 66.01116  , 77.01772
-#1941,  1 , 78.02538  , 98.04121
+#Date, Prd., cn        , y
+#1940,  1  , 66.01116  , 77.01772
+#1941,  1  , 78.02538  , 98.04121
 
 
 

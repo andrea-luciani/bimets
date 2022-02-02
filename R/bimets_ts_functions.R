@@ -32,7 +32,7 @@
   #clear console
   packageStartupMessage("\014 ");
   
-  packageStartupMessage(gsub("\\$","",'bimets is active - version 1.5.1\nFor help type \'?bimets\'\n'))
+  packageStartupMessage(gsub("\\$","",'bimets is active - version 1.5.2\nFor help type \'?bimets\'\n'))
   
   #packageStartupMessage('Loading required libraries...OK'); 
   #packageStartupMessage('\nBIMETS is active.\n');
@@ -1419,7 +1419,7 @@ A1D <- function(..., length = NULL, avoidCompliance=FALSE)
   #an input is null
   tryCatch({inputsL=list(...);},error=function(e){stop('A1D(): an input argument is NULL.')});  
   
-  
+   
   #cat('length=',length,'\n');
   #cat('list len=',length(inputsL),'\n');
   
@@ -3627,6 +3627,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 }
 
 
+
 # ANNUAL code ----------------------------------------
 
 #ANNUAL creates a annual time series from an existing time series.
@@ -4406,6 +4407,11 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 	return(outF);
 }
 
+
+
+# YEARLY code ----------------------------------------
+
+YEARLY <- ANNUAL
 
 # MONTHLY code ----------------------------------------
 
@@ -6808,8 +6814,8 @@ TSMERGE <- function(...,fun=NULL,MV=FALSE,avoidCompliance=FALSE)
 TSERIES <- function(..., START = c(2000,1), FREQ = 1, SOURCE=NULL, TITLE=NULL, UNITS=NULL, SCALEFAC=0, class=NULL, avoidCompliance=FALSE)
 {
   
-  if (is.null(FREQ)) stop('TIMESERIES(): FREQ must be one of the following values: 1, 2, 3, 4, 12, 24, 36, 366, A, S, Q, M or D.');
-  if (FREQ=='A') FREQ=1;
+  if (is.null(FREQ)) stop('TIMESERIES(): FREQ must be one of the following values: 1, 2, 3, 4, 12, 24, 36, 366, A, Y, S, Q, M or D.');
+  if (FREQ=='A' || FREQ=='Y') FREQ=1;
   if (FREQ=='S') FREQ=2;
   if (FREQ=='Q') FREQ=4;
   if (FREQ=='M') FREQ=12;
@@ -6817,7 +6823,7 @@ TSERIES <- function(..., START = c(2000,1), FREQ = 1, SOURCE=NULL, TITLE=NULL, U
   if (FREQ=='D') FREQ=366;
   
   #check FREQ
-  tryCatch({.isCompliantF(FREQ);},error=function(e){stop('TIMESERIES(): FREQ must be one of the following values: 1, 2, 3, 4, 12, 24, 36, 53, 366, A, S, Q, M, W or D.')});  
+  tryCatch({.isCompliantF(FREQ);},error=function(e){stop('TIMESERIES(): FREQ must be one of the following values: 1, 2, 3, 4, 12, 24, 36, 53, 366, A, Y, S, Q, M, W or D.')});  
   if (! FREQ %in% c(1,2,3,4,12,24,36,53,366)) stop('TIMESERIES(): FREQ must be 1, 2, 3, 4, 12, 24, 36, 53 or 366.');  
   
   tryCatch({
@@ -6833,12 +6839,13 @@ TSERIES <- function(..., START = c(2000,1), FREQ = 1, SOURCE=NULL, TITLE=NULL, U
   #an input is null
   tryCatch({inputsL=list(...);},error=function(e){stop('TIMESERIES(): an input argument is null.')});  
   
+  if (! all(as.logical(lapply(inputsL,.A1DCompliantInput)))) stop('TIMESERIES(): an input data is not numeric.')  
   
   #no args
-  if (is.null(START) ) stop('TIMESERIES(): start date is required. Use START=c(y,p).');
+  if (is.null(START) ) stop('TIMESERIES(): start date is required. Please use START=c(y,p).');
   
   #no args
-  if (!(is.null(inputsL[['end']]))) stop('TIMESERIES(): end date is NOT allowed in TIMESERIES().');
+  if (!(is.null(inputsL[['end']]))) stop('TIMESERIES(): end date is not allowed in TIMESERIES().');
   
   #print(typeof(attributes(inputsL))); 
   
@@ -7960,7 +7967,7 @@ TABIT <- function(..., TSRANGE=NULL, digits=getOption('digits'),avoidCompliance=
   }
   
   #print header
-  cat('\n      DATE, PER, ',seriesListADSLstr,'\n\n',sep='');
+  cat('\n      Date, Prd., ',seriesListADSLstr,'\n\n',sep='');
   
   
   #main cycle
@@ -8013,11 +8020,11 @@ TABIT <- function(..., TSRANGE=NULL, digits=getOption('digits'),avoidCompliance=
     }  
     
     #print out row
-    if (outFreq==1) {cat(paste(sprintf("%10s",GETDATE(ts(1,start=c(localYint,localPint),frequency=outFreq),1,format='%Y',avoidCompliance=TRUE)),', ', sprintf("%-3d",localPint), tmpOutStr, '\n',sep=''),sep='');   }
-    else if (outFreq==2) {cat(paste(sprintf("%10s",GETDATE(ts(1,start=c(localYint,localPint),frequency=outFreq),1,format='%Y',avoidCompliance=TRUE)),', ', sprintf("%-3d",localPint), tmpOutStr, '\n',sep=''),sep='');}
-    else if (outFreq==4) {cat(paste(sprintf("%10s",GETDATE(ts(1,start=c(localYint,localPint),frequency=outFreq),1,format='%Y Q%q',avoidCompliance=TRUE)),', ', sprintf("%-3d",localPint), tmpOutStr, '\n',sep=''),sep='');}   
-    else if (outFreq==12) {cat(paste(sprintf("%10s",GETDATE(ts(1,start=c(localYint,localPint),frequency=outFreq),1,format='%b %Y',avoidCompliance=TRUE)),', ', sprintf("%-3d",localPint), tmpOutStr, '\n',sep=''),sep=''); }  
-    else {cat(paste(sprintf("%10s",GETDATE(ts(1,start=c(localYint,localPint),frequency=outFreq),1,avoidCompliance=TRUE)),', ', sprintf("%-3d",localPint), tmpOutStr, '\n',sep=''),sep='');   }
+    if (outFreq==1) {cat(paste(sprintf("%10s",GETDATE(ts(1,start=c(localYint,localPint),frequency=outFreq),1,format='%Y',avoidCompliance=TRUE)),', ', sprintf("%-4d",localPint), tmpOutStr, '\n',sep=''),sep='');   }
+    else if (outFreq==2) {cat(paste(sprintf("%10s",GETDATE(ts(1,start=c(localYint,localPint),frequency=outFreq),1,format='%Y',avoidCompliance=TRUE)),', ', sprintf("%-4d",localPint), tmpOutStr, '\n',sep=''),sep='');}
+    else if (outFreq==4) {cat(paste(sprintf("%10s",GETDATE(ts(1,start=c(localYint,localPint),frequency=outFreq),1,format='%Y Q%q',avoidCompliance=TRUE)),', ', sprintf("%-4d",localPint), tmpOutStr, '\n',sep=''),sep='');}   
+    else if (outFreq==12) {cat(paste(sprintf("%10s",GETDATE(ts(1,start=c(localYint,localPint),frequency=outFreq),1,format='%b %Y',avoidCompliance=TRUE)),', ', sprintf("%-4d",localPint), tmpOutStr, '\n',sep=''),sep=''); }  
+    else {cat(paste(sprintf("%10s",GETDATE(ts(1,start=c(localYint,localPint),frequency=outFreq),1,avoidCompliance=TRUE)),', ', sprintf("%-4d",localPint), tmpOutStr, '\n',sep=''),sep='');   }
     
     
     

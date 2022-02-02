@@ -59,7 +59,7 @@ This function returns a time series of class \code{ts()} that has the same obser
 	#set configuration BIMETS_CONF_DIP on LAST
 	setBIMETSconf('BIMETS_CONF_DIP','LAST')
 	
-	#annual with Date()
+	#yearly with Date()
 	n=10
 	xArr=rnorm(n)
 	dateArr=seq(as.Date('2000/12/31'),by='year',length=n)

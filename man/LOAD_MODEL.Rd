@@ -76,6 +76,8 @@ Behavioral elements have the following components:\cr\cr
 - \bold{restrictRaw}: the original definition of the coefficient restrictions, if any.\cr\cr
 - \bold{pdlRaw}: the original definition of the PDL restrictions, if any (see examples and \code{\link[=MDL]{MDL}}).\cr\cr
 - \bold{pdlRestrictionMatrix}: the \code{R} Lagrange matrix that is used in PDL restriction analysis (see examples and \code{\link[=MDL]{MDL}});\cr\cr
+- \bold{IVComponentsNames}: the names of endogenous and exogenous variables that appear in the instrumental variables equations, if any;\cr\cr
+- \bold{iv}: the original definitions of instrumental variables, if any.\cr\cr
 For example, given a BIMETS model named \code{myModel}, the information on a techincal identity named \code{y} (i.e there exists an "IDENTITY> y" in the \code{MDL} definition of the model) is stored in \code{myModel$identities$y}.\cr\cr Identity elements have the following components:\cr\cr
 - \bold{eqRaw}: the original equations  of the identity (more than one if the identity has multiple equations and has \code{IF>} conditions), as a \code{character} variable (see examples and \code{\link[=MDL]{MDL}});\cr\cr
 - \bold{ifRaw}: the original \code{IF>} conditions, if any, of the identity, as a \code{character} variable;\cr\cr

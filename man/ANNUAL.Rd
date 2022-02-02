@@ -1,16 +1,17 @@
 \name{ANNUAL}
 \alias{ANNUAL}
-
+\alias{YEARLY}
 
 \title{
 Annual Time Series (Dis)Aggregation
 }
 
 \description{
-This function returns an annual aggregated time series, by using as input a semiannual, quarterly, monthly or daily time series.
+This function returns a yearly aggregated time series, by using as input a semiannual, quarterly, monthly or daily time series.
 }
 \usage{
 ANNUAL(x = NULL, fun = NULL, avoidCompliance = FALSE, ...)
+YEARLY(x = NULL, fun = NULL, avoidCompliance = FALSE, ...)
 }
 \arguments{
   \item{x}{
@@ -32,7 +33,7 @@ Backward compatibility.
 }
 }
 \value{
-This function returns an annual BIMETS time series.
+This function returns a yearly BIMETS time series.
 }
 
 \seealso{
@@ -48,6 +49,12 @@ This function returns an annual BIMETS time series.
 	ts1=TIMESERIES(0:n,START=c(2000,1),FREQ='D')
 	ts1[10]=NA
 	TABIT(ANNUAL(ts1,fun='NAVE'))
+	
+	#TS DAILY TO ANNUAL
+	n=36
+	ts1=TIMESERIES(0:n,START=c(2000,1),FREQ='M')
+	ts1[10]=NA
+	TABIT(YEARLY(ts1,fun='SUM'))
 }	
 
 

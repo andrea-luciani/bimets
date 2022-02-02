@@ -24,6 +24,7 @@ ESTIMATE(model=NULL,
          forceTSRANGE=FALSE,
          estTech='OLS',
          IV=NULL,
+         forceIV=FALSE,
          quietly=FALSE,
          showWarnings=FALSE,
          tol=.Machine$double.eps,
@@ -55,6 +56,9 @@ ESTIMATE(model=NULL,
     \item{IV}{
    The \code{character} array built with the Instrumental Variable expressions, in the case of Instrumental Variables estimation (see examples).
    }
+    \item{forceIV}{
+  If \code{TRUE}, the \code{IV} defined in the previous argument takes precedence over the \code{IV} provided in the behavioral \code{\link[=MDL]{MDL}} definition.
+  }
    \item{quietly}{
    If \code{TRUE}, information messages will be suppressed, e.g. results and regression statistics.
    }
@@ -106,6 +110,8 @@ If \code{outputText=TRUE}, for each behavioral in the \code{eqList} this functio
 - the \emph{Number of Observations};\cr
 - the \emph{Number of Degrees of Freedom};\cr
 - the \emph{Current Sample}, i.e. the \code{TSRANGE} of estimation;\cr
+
+All probabilities lie between [0, 1].\cr
 
 For each behavioral in the \code{eqList} this function will add 4 new named elements into the related behavioral of the output model object:\cr\cr
 1) \code{coefficients}: a numerical array built with the estimated coefficients;\cr
@@ -330,7 +336,7 @@ myModel=ESTIMATE(myModel)
 #                    +   0.6993905   (w1+w2)
 #                        T-stat. 14.0808     ***
 #
-#ERROR:  AUTO(2) 
+#ERROR STRUCTURE:  AUTO(2) 
 #
 #AUTOREGRESSIVE PARAMETERS:
 #Rho             Std. Error      T-stat.         
@@ -537,7 +543,7 @@ myModel=ESTIMATE(myModel,
 #                    +   0.7363227   (w1+w2)
 #                        T-stat. 13.11572    ***
 #
-#ERROR:  AUTO(2) 
+#ERROR STRUCTURE:  AUTO(2) 
 #
 #AUTOREGRESSIVE PARAMETERS:
 #Rho             Std. Error      T-stat.         
@@ -567,7 +573,33 @@ myModel=ESTIMATE(myModel,
 #
 #...ESTIMATE OK
 
+#define model
+myShortModelDefinition=
+  "MODEL
+  COMMENT> Consumption with IV
+  BEHAVIORAL> cn
+  TSRANGE 1925 1 1941 1
+  EQ> cn = a1 + a2*p + a3*TSLAG(p,1) + a4*(w1+w2)
+  COEFF> a1 a2 a3 a4
+  IV> 1
+  IV> TSLAG(y)
+  IV> TSLAG(w1)*pi+0.5
+  IV> exp(w2)
+  END
+  " 
 
+
+#load model 
+myShortModel=LOAD_MODEL(modelText=myShortModelDefinition)
+
+#load data into the model
+myShortModel=LOAD_MODEL_DATA(myShortModel,myModelData,showWarnings = TRUE)
+
+#estimation of Consumption "cn" with arbitrary IVs
+#and error autocorrelation
+myShortModel=ESTIMATE(myShortModel,
+                 eqList = 'cn',
+                 estTech = 'IV')
 
 
 #estimation of Investment "i" with arbitrary IVs
@@ -706,18 +738,18 @@ myModel=ESTIMATE(myModel,
 #Chow test:
 #Sample (auto)      : 1936-1 / 1941-1 
 #F-value            : 15.3457       
-#F-prob(6,12)       : 0.00534447    
+#F-prob(6,12)       : 5.34447e-05    
 #
 #Predictive Power:
 #
-#DATE, PER, ACTUAL        , PREDICT       , ERROR         , STDERR        , TSTAT         
+#Date, Prd., Actual        , Predict       , Error         , Std. Error    , T-stat         
 #
-#1936, 1  ,  36.8         ,  38.439       , -1.63901      ,  0.547471     , -2.99378      
-#1937, 1  ,  41           ,  40.824       ,  0.176033     ,  0.630905     ,  0.279017     
-#1938, 1  ,  38.2         ,  39.6553      , -1.4553       ,  0.672192     , -2.165        
-#1939, 1  ,  41.6         ,  45.0547      , -3.45466      ,  0.834433     , -4.14012      
-#1940, 1  ,  45           ,  49.0118      , -4.01179      ,  0.966472     , -4.15096      
-#1941, 1  ,  53.3         ,  56.6727      , -3.37275      ,  1.23486      , -2.73127   
+#1936, 1   ,  36.8         ,  38.439       , -1.63901      ,  0.547471     , -2.99378      
+#1937, 1   ,  41           ,  40.824       ,  0.176033     ,  0.630905     ,  0.279017     
+#1938, 1   ,  38.2         ,  39.6553      , -1.4553       ,  0.672192     , -2.165        
+#1939, 1   ,  41.6         ,  45.0547      , -3.45466      ,  0.834433     , -4.14012      
+#1940, 1   ,  45           ,  49.0118      , -4.01179      ,  0.966472     , -4.15096      
+#1941, 1   ,  53.3         ,  56.6727      , -3.37275      ,  1.23486      , -2.73127   
 #     
 #
 #...ESTIMATE OK

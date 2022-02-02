@@ -40,7 +40,7 @@ This function returns a monthly BIMETS time series.
 }
 
 \seealso{
-\code{\link[=ANNUAL]{ANNUAL}}\cr
+\code{\link[=YEARLY]{YEARLY}}\cr
 \code{\link[=SEMIANNUAL]{SEMIANNUAL}}\cr
 \code{\link[=QUARTERLY]{QUARTERLY}}\cr
 \code{\link[=DAILY]{DAILY}}\cr

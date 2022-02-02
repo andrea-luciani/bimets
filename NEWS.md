@@ -1,9 +1,19 @@
 
 **bimets Change-Log**
 
+*bimets ver. 1.5.2 - Dec. 2020*
+
+* F-prob in Chow Test output moved from [0,100] to [0,1]
+* `IV>` definition allowed in `MDL`
+* added `forceIV` in `ESTIMATE`
+* fixed bugs in `SIMULATE()` error messages
+* added alias `YEARLY` for `ANNUAL`
+
 *bimets ver. 1.5.1 - Jun. 2020*
 
 * fixed typos on `MDL` LHS function examples
+* updated README.Md
+* fixed bug `TSERIES()` with `character` input data
 
 *bimets ver. 1.5.0 - May 2020*
 

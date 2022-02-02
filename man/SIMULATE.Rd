@@ -64,11 +64,28 @@ the add-factors \eqn{\bar{z}=[z_1, ... ,z_n]}{z=[z_1, ... ,z_n]} can be interpre
 3. solve the model, with the \code{simType='RESCHECK'} option, in a time interval including some periods beyond the estimation sample;\cr
 4. compute the difference between the historical and the simulated values for each the endogenous variables;\cr
 5. average, or process in a suitable way, the difference arising from point 4 in the time periods beyond the estimation sample to compute the constant value to be used as an add-factor in the following forecasting exercises;\cr\cr
+Please note that in case of equation that presents an LHS function the add-factor will be added before the application of the inverse function, i.e. during the simulation the following:\cr\cr
+\eqn{g_1(y_1)=f_1(\bar{x},\bar{y}) + z_1}{g_1(y_1)=f_1(x,y) + z_1} \cr
+\eqn{...} \cr
+\eqn{g_n(y_n)=f_n(\bar{x},\bar{y}) + z_n}{g_n(y_n)=f_n(x,y) + z_n} \cr\cr
+will be solved as:\cr\cr
+\eqn{y_1=g_{1}^{-1}(f_1(\bar{x},\bar{y}) + z_1)}{y_1=g_1^(-1)( f_1(x,y) + z_1 )} \cr
+\eqn{...} \cr
+\eqn{y_n=g_{n}^{-1}(f_n(\bar{x},\bar{y}) + z_n)}{y_n=g_n^(-1)( f_n(x,y) + z_n )} \cr\cr
+If a linear dependence from the simulated endogenous and the add-factor is preferred, users can manually insert an auxiliary equation \eqn{w_i} into the model definition, e.g. the following:\cr\cr
+\eqn{g_i(y_i)=f_i(\bar{x},\bar{y})}{g_i(y_i)=f_i(x,y)} \cr\cr
+can be replaced by:\cr\cr
+\eqn{w_i=f_i(\bar{x},\bar{y})}{w_i=f_i(x,y)} \cr
+\eqn{y_i=g_{i}^{-1}(w_i)}{y_i=g_i^(-1)(w_i)} \cr\cr
+During the simulation, the add-factors will be applied as in the following:\cr\cr
+\eqn{w_i=f_i(\bar{x},\bar{y}) + v_i}{w_i=f_i(x,y) + v_i} \cr
+\eqn{y_i=g_{i}^{-1}(w_i) + z_i}{y_i=g_i^(-1)(w_i) + z_i} \cr\cr
+given \eqn{v_i, z_i} as add-factors and the linear dependence from \eqn{z_i} and \eqn{y_i}.\cr\cr
 \tabular{c}{THE OPTIMAL REORDERING}
 In fact, the simulation process takes advantage of an appropriate ordering of the equations to increase the performances by iteratively solving only one subset of equations, while the others are solved straightforwardly. \emph{"...a different ordering of the equations can substantially affect the speed of convergence of the algorithm; indeed some orderings may produce divergence. The less feedback there is, the better the chances for fast convergence..."} - Don, Gallo - Solving large sparse systems of equations in econometric models - Journal of Forecasting 1987.\cr\cr
-The \code{\link[=LOAD_MODEL]{LOAD_MODEL}} function builds the incidence matrix of the model, then defines the proper equation reordering. The incidence matrix is built from the equations of the model; it is a square matrix in which each row and each column represents an endogenous variable. If the \code{(i,j)} element is equal to 1 then in the model definition the current value of the endogenous variable referred by the \code{i}-row depends directly from the current value of the endogenous variable referred by the \code{j}-column.\cr\cr
+The \code{\link[=LOAD_MODEL]{LOAD_MODEL}} function builds the incidence matrix of the model, then defines the proper equation reordering. The incidence matrix is built from the equations of the model; it is a square matrix in which each row and each column represents an endogenous variable. If the \code{(i,j)} element is equal to 1 then in the model definition the current value of the endogenous variable referred by the \code{i}-row depends directly from the current value of the endogenous variable referred by the \code{j}-column. You can see an incidence matrix example in the section \code{\link[=bimets]{"BIMETS package"}} of this manual wherein the content of the \code{kleinModel$incidence_matrix} variable is printed out.\cr\cr
 In econometric models, the incidence matrix is usually very sparse. Only a few of the total set of endogenous variables are used in each equation. In this situation, ordering the equation in a certain sequence will lead to a sensible reduction of the number of iterations needed to achieve convergence. Reordering the equations is equivalent to rearranging rows and columns of the incidence matrix. In this way the incidence matrix might be made lower triangular for a subset of the equations.
-For this subset, an endogenous variable determined in a specific equation has no \emph{incidence} in any equation above it, although the same variable might have incidence in equations below it. Such a subset of equations is called recursive. Recursive systems are easy to solve. It is only necessary to solve each equation once if this is done in the right order. On the other hand, it is unlikely for the whole model to be recursive. Indeed the incidence graph is often cyclic, as in the Klein's model that presents the following circular dependecies in the incidence matrix: \code{cn <- w1 <- y <- cn}\cr\cr
+For this subset, an endogenous variable determined in a specific equation has no \emph{incidence} in any equation above it, although the same variable might have incidence in equations below it. Such a subset of equations is called recursive. Recursive systems are easy to solve. It is only necessary to solve each equation once if this is done in the right order. On the other hand, it is unlikely for the whole model to be recursive. Indeed the incidence graph is often cyclic, as in the Klein's model that presents the following circular dependecies in the incidence matrix: \code{p <- w1 <- y <- p} as shown in the \code{\link[=bimets]{"BIMETS package"}} section figure.\cr\cr
 For a subset of the equations, some 1's will occur in the upper triangle of the incidence matrix for all possible orderings. Such subset of equations is called \emph{simultaneous}. In order to be able to solve the endogenous variables in the simultaneous block of equations, an iterative algorithm has to be used. Nevertheless, the equations in the simultaneous block may be ordered so that the pattern of the 1's in the upper triangle of the incidence matrix forms a spike. The variables corresponding to the 1's in the upper triangle are called \emph{feedback} variables.\cr\cr
 \if{html}{\cr\cr(check the pdf version of this reference manual in order to see a graphical example)\cr\cr}
 \if{latex}{
@@ -313,26 +330,26 @@ myModel=SIMULATE(myModel
 #get simulated time series "cn" and "y"
 TABIT(myModel$simulation$cn)
 #
-#      DATE, PER, myModel$simulation$cn
+#      Date, Prd., myModel$simulation$cn
 #
-#      1923, 1  ,     50.338
-#      1924, 1  ,    55.6994
-#      1925, 1  ,    56.7111
+#      1923, 1   ,     50.338
+#      1924, 1   ,    55.6994
+#      1925, 1   ,    56.7111
 #      ...
-#      1940, 1  ,    66.7799
-#      1941, 1  ,     75.451
+#      1940, 1   ,    66.7799
+#      1941, 1   ,     75.451
 #
 
 TABIT(myModel$simulation$y)
 #
-#      DATE, PER, myModel$simulation$y
+#      Date, Prd., myModel$simulation$y
 #
-#      1923, 1  ,    56.0305
-#      1924, 1  ,    65.8526
-#      1925, 1  ,     64.265
+#      1923, 1   ,    56.0305
+#      1924, 1   ,    65.8526
+#      1925, 1   ,     64.265
 #      ...
-#      1940, 1  ,    76.8049
-#      1941, 1  ,    93.4459
+#      1940, 1   ,    76.8049
+#      1941, 1   ,    93.4459
 #
  
 #get latest simulation parameters
@@ -370,15 +387,15 @@ myModel=SIMULATE(myModel
 #get consumption simulated vs historical differences
 TABIT(myModel$simulation$cn-myModel$modelData$cn)
 #
-#      DATE, PER, myModel$simulation$cn - myModel$modelData$cn
+#      Date, Prd., myModel$simulation$cn - myModel$modelData$cn
 #
-#      1923, 1  ,    1.56574
-#      1924, 1  ,   0.493503
-#      1925, 1  , -0.0076079
+#      1923, 1   ,    1.56574
+#      1924, 1   ,   0.493503
+#      1925, 1   , -0.0076079
 #      ... 
-#      1939, 1  ,  -0.989201
-#      1940, 1  ,  -0.785077
-#      1941, 1  ,    2.17345
+#      1939, 1   ,  -0.989201
+#      1940, 1   ,  -0.785077
+#      1941, 1   ,    2.17345
 #
  
 #FORECAST GNP in 1942 and 1943 
@@ -404,12 +421,12 @@ myModel=SIMULATE(myModel
 #get forecasted GNP
 TABIT(myModel$simulation$y)
 #
-#      DATE, PER, myModel$simulation$y
+#      Date, Prd., myModel$simulation$y
 #
-#      1940, 1  ,    74.5781
-#      1941, 1  ,    94.0153
-#      1942, 1  ,    133.969
-#      1943, 1  ,    199.913
+#      1940, 1   ,    74.5781
+#      1941, 1   ,    94.0153
+#      1942, 1   ,    133.969
+#      1943, 1   ,    199.913
 #
  
 #STATIC SIMULATION WITH EXOGENIZATION AND CONSTANT ADJUSTMENTS
@@ -458,32 +475,32 @@ myModel=SIMULATE(myModel
 #CHECK_MODEL_DATA(): warning, there are missing values in series "time".
 #
 #Simulation:      5.26%
-#Prd    1 convergence reached in iter 34
+#Prd.    1 convergence reached in iter 34
 #Simulation:     10.53%
-#Prd    2 convergence reached in iter 42
+#Prd.    2 convergence reached in iter 42
 #Simulation:     15.79%
-#Prd    3 convergence reached in iter 40
+#Prd.    3 convergence reached in iter 40
 #Simulation:     21.05%
 #
 #... 
 #
-#Prd   17 convergence reached in iter 40
+#Prd.   17 convergence reached in iter 40
 #Simulation:     94.74%
-#Prd   18 convergence reached in iter 37
+#Prd.   18 convergence reached in iter 37
 #Simulation:    100.00%
 #VPRE eval
-#Prd   19 Iter    0         cn            69.7
+#Prd.   19 Iter    0         cn            69.7
 #VSIM eval
-#Prd   19 Iter    1         cn     71.7197097805143
+#Prd.   19 Iter    1         cn     71.7197097805143
 #VSIM eval
-#Prd   19 Iter    2         cn     72.7386970702054
+#Prd.   19 Iter    2         cn     72.7386970702054
 #... etc etc
-#Prd   19 Iter   39         cn     75.4510243396176
+#Prd.   19 Iter   39         cn     75.4510243396176
 #VSIM eval
-#Prd   19 Iter   40         cn     75.4510298916399
+#Prd.   19 Iter   40         cn     75.4510298916399
 #VPOST eval
-#Prd   19 Iter   40         cn      75.4510299
-#Prd   19 convergence reached in iter 40
+#Prd.   19 Iter   40         cn      75.4510299
+#Prd.   19 convergence reached in iter 40
 #
 #...SIMULATE OK
  

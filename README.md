@@ -41,57 +41,70 @@ Example:
 #create ts
 myTS=TIMESERIES((1:100),START=c(2000,1),FREQ='D')
  
-myTS[1:3]                     #get first three obs.
-myTS['2000-01-12']            #get Jan 12, 2000 data
-myTS['2000-02-03/2000-03-04'] #get Feb 3 up to Mar 4
-myTS[[2000,14]]               #get year 2000 period 14
-myTS[[2032,1]]                #get year 2032 period 1 (out of range)
+myTS[1:3]                         #get first three obs.
+myTS['2000-01-12']                #get Jan 12, 2000
+myTS['2000-02-03/2000-03-04']     #get Feb 3 up to Mar 4
+myTS[[2000,14]]                   #get year 2000 period 14
+myTS[[2032,1]]                    #get year 2032 period 1 (out of range)
     
-myTS['2000-01-15']=N          #assign to Jan 15, 2000
-myTS[[2000,3]]=NA             #assign to Jan 3, 2000
-myTS[[2000,42]] = NA          #assign to Feb 11, 2000
-myTS[[2000,100]]= c(-1,-2,-3) #assign array starting from 2000 					
-                              #period 100 (i.e. extend series)
+myTS['2000-01-15'] <- 42          #assign to Jan 15, 2000
+myTS[[2000,3]]     <- pi          #assign to Jan 3, 2000
+myTS[[2000,42]]    <- NA          #assign to Feb 11, 2000
+myTS[[2000,100]]   <- c(-1,-2,-3) #assign array starting from period 100 (i.e. extend series)
                               
 #aggregation/disaggregation
-myMonthlyTS=TIMESERIES(1:100,START=c(2000,1),FREQ='M')
-myAnnualTS=ANNUAL(myMonthlyTS,'AVE')
-myDailyTS=DAILY(myMonthlyTS,'INTERP_CENTER')
+myMonthlyTS <- TIMESERIES(1:100,START=c(2000,1),FREQ='M')
+myYearlyTS  <- YEARLY(myMonthlyTS,'AVE')
+myDailyTS   <- DAILY(myMonthlyTS,'INTERP_CENTER')
 
-#manipulation
-myTS1=TIMESERIES(1:100,START=c(2000,1),FREQ='M')
-myTS2=TIMESERIES(-(1:100),START=c(2005,1),FREQ='M')
-myExtendedTS=TSEXTEND(myTS1,UPTO = c(2020,4),EXTMODE = 'QUADRATIC')
-myMergedTS=TSMERGE(myExtendedTS,myTS2,fun = 'SUM')
-myProjectedTS=TSPROJECT(myMergedTS,TSRANGE = c(2004,2,2006,4))
-myLagTS=TSLAG(myProjectedTS,2)
-myDeltaPTS=TSDELTAP(myLagTS,2)
-myMovAveTS=MOVAVG(myDeltaPTS,5)
+#create and manipulate time series
+myTS1 <- TIMESERIES(1:100,START=c(2000,1),FREQ='M')
+myTS2 <- TIMESERIES(-(1:100),START=c(2005,1),FREQ='M')
+
+#extend time series
+myExtendedTS <- TSEXTEND(myTS1,UPTO = c(2020,4),EXTMODE = 'QUADRATIC')
+
+#merge two time series
+myMergedTS <-TSMERGE(myExtendedTS,myTS2,fun = 'SUM')
+
+#project time series
+myProjectedTS <- TSPROJECT(myMergedTS,TSRANGE = c(2004,2,2006,4))
+
+#lag time series
+myLagTS <- TSLAG(myProjectedTS,2)
+
+#percentage delta of time series
+myDeltaPTS <- TSDELTAP(myLagTS,2)
+
+#moving average of time series
+myMovAveTS <- MOVAVG(myDeltaPTS,5)
+
+#print data
 TABIT(myMovAveTS,myTS1)
 
-#     DATE, PER, myMovAveTS     , myTS1          
+#     Date, Prd., myMovAveTS     , myTS1          
 # 
-# Jan 2000, 1  ,                ,  1             
-# Feb 2000, 2  ,                ,  2             
-# Mar 2000, 3  ,                ,  3             
+# Jan 2000, 1   ,                ,  1             
+# Feb 2000, 2   ,                ,  2             
+# Mar 2000, 3   ,                ,  3             
 # ...
-# Sep 2004, 9  ,                ,  57            
-# Oct 2004, 10 ,  3.849002      ,  58            
-# Nov 2004, 11 ,  3.776275      ,  59            
-# Dec 2004, 12 ,  3.706247      ,  60            
-# Jan 2005, 1  ,  3.638771      ,  61            
-# Feb 2005, 2  ,  3.573709      ,  62            
-# Mar 2005, 3  ,  3.171951      ,  63            
-# Apr 2005, 4  ,  2.444678      ,  64            
-# May 2005, 5  ,  1.730393      ,  65            
-# Jun 2005, 6  ,  1.028638      ,  66            
-# Jul 2005, 7  ,  0.3389831     ,  67            
-# Aug 2005, 8  ,  0             ,  68            
-# Sep 2005, 9  ,  0             ,  69            
-# Oct 2005, 10 ,  0             ,  70            
+# Sep 2004, 9   ,                ,  57            
+# Oct 2004, 10  ,  3.849002      ,  58            
+# Nov 2004, 11  ,  3.776275      ,  59            
+# Dec 2004, 12  ,  3.706247      ,  60            
+# Jan 2005, 1   ,  3.638771      ,  61            
+# Feb 2005, 2   ,  3.573709      ,  62            
+# Mar 2005, 3   ,  3.171951      ,  63            
+# Apr 2005, 4   ,  2.444678      ,  64            
+# May 2005, 5   ,  1.730393      ,  65            
+# Jun 2005, 6   ,  1.028638      ,  66            
+# Jul 2005, 7   ,  0.3389831     ,  67            
+# Aug 2005, 8   ,  0             ,  68            
+# Sep 2005, 9   ,  0             ,  69            
+# Oct 2005, 10  ,  0             ,  70            
 # ...
-# Mar 2008, 3  ,                ,  99            
-# Apr 2008, 4  ,                ,  100 
+# Mar 2008, 3   ,                ,  99            
+# Apr 2008, 4   ,                ,  100 
 
 ```
 
@@ -105,14 +118,14 @@ TABIT(myMovAveTS,myTS1)
 - *Estimation* - the estimation function `ESTIMATE()` supports Ordinary Least Squares, Instrumental Variables, deterministic linear restrictions on the coefficients, Almon Polynomial Distributed Lags (i.e. `PDL`), autocorrelation of the errors, structural stability analysis (Chow tests).
 - *Simulation* - the simulation function `SIMULATE()` supports static, dynamic and forecast simulations, residuals check, partial or total exogenization of endogenous variables, constant adjustment of endogenous variables (i.e. add-factors).
 - *Multipliers Evaluation* - the multipliers evaluation function `MULTMATRIX()` computes the matrix of both impact and interim multipliers for a selected set of endogenous variables, i.e. the `TARGET`, with respect to a selected set of exogenous variables, i.e. the `INSTRUMENT`.
-- *Renormalization* - the renormalization function `RENORM()` performs the renormalization of econometric models, which consists of solving the model while interchanging the role of one or more endogenous variables with an equal number of exogenous variables. The procedure determines the values for the `INSTRUMENT` exogenous variables which allow to achieve the desired values for the `TARGET` endogenous variables, subject to the constraints given by the equations of the model. This is an approach to economic and monetary policy analysis,
+- *Endogenous Targeting* - the "renormalization" function `RENORM()` performs the endogenous targeting of econometric models, which consists of solving the model while interchanging the role of one or more endogenous variables with an equal number of exogenous variables. The procedure determines the values for the `INSTRUMENT` exogenous variables which allow to achieve the desired values for the `TARGET` endogenous variables, subject to the constraints given by the equations of the model. This is an approach to economic and monetary policy analysis,
 
 A Klein's model example, having restrictions, error autocorrelation and conditional evaluations, follows:
 
 ```r
 
 #define the Klein model
-klein1.txt="MODEL
+klein1.txt <- "MODEL
 
 COMMENT> Modified Klein Model 1 of the U.S. Economy with PDL, 
 COMMENT> autocorrelation on errors, restrictions and conditional equation evaluations
@@ -157,7 +170,7 @@ IF> i <= 0
 END"
 
 #load the model
-kleinModel=LOAD_MODEL(modelText = klein1.txt)
+kleinModel <- LOAD_MODEL(modelText = klein1.txt)
 
 # Loading model: "klein1.txt"...
 # Analyzing behaviorals...
@@ -201,7 +214,7 @@ kleinModel$incidence_matrix
 # k   0 1  0 0 0 0
 
 #define data
-kleinModelData=list(  
+kleinModelData <- list(  
     cn  =TIMESERIES(39.8,41.9,45,49.2,50.6,52.6,55.1,56.2,57.3,57.8,
                  55,50.9,45.6,46.5,48.7,51.3,57.7,58.7,57.5,61.6,65,69.7, 	
                  START=c(1920,1),FREQ=1),
@@ -235,12 +248,12 @@ kleinModelData=list(
                  START=c(1920,1),FREQ=1)
 	);
 
-kleinModel=LOAD_MODEL_DATA(kleinModel,kleinModelData)
+kleinModel <- LOAD_MODEL_DATA(kleinModel,kleinModelData)
 # Load model data "kleinModelData" into model "klein1.txt"...
 # ...LOAD MODEL DATA OK
  
  
-kleinModel=ESTIMATE(kleinModel)
+kleinModel <- ESTIMATE(kleinModel)
 #.CHECK_MODEL_DATA(): warning, there are undefined values in time series "time".
 #
 #Estimate the Model klein1.txt:
@@ -269,7 +282,7 @@ kleinModel=ESTIMATE(kleinModel)
 #                    +   0.6993905   (w1+w2)
 ##                        T-stat. 14.0808     ***
 #
-#ERROR:  AUTO(2) 
+#ERROR STRUCTURE:  AUTO(2) 
 #
 #AUTOREGRESSIVE PARAMETERS:
 #Rho             Std. Error      T-stat.         
@@ -300,7 +313,7 @@ kleinModel=ESTIMATE(kleinModel)
 # ...similar output for the all the regressions.
 
 #simulate GDP in 1925-1930
-kleinModel=SIMULATE(kleinModel, 
+kleinModel <- SIMULATE(kleinModel, 
                       TSRANGE=c(1925,1,1930,1), 
                       simIterLimit = 100)
 
@@ -310,17 +323,17 @@ kleinModel=SIMULATE(kleinModel,
 #print simulated gdp
 TABIT(kleinModel$simulation$y)
 #
-#DATE, PER, kleinModel$simulation$y
+#      Date, Prd., kleinModel$simulation$y
 #
-#      1925, 1  ,  62.74953      
-#      1926, 1  ,  56.46665      
-#      1927, 1  ,  48.3741       
-#      1928, 1  ,  55.58927      
-#      1929, 1  ,  73.35799      
-#      1930, 1  ,  74.93561  
+#      1925, 1   ,  62.74953      
+#      1926, 1   ,  56.46665      
+#      1927, 1   ,  48.3741       
+#      1928, 1   ,  55.58927      
+#      1929, 1   ,  73.35799      
+#      1930, 1   ,  74.93561  
 
 #get multiplier matrix in 1941
-kleinModel=MULTMATRIX(kleinModel,
+kleinModel <- MULTMATRIX(kleinModel,
                         TSRANGE=c(1941,1,1941,1),
                         INSTRUMENT=c('w2','g'),
                         TARGET=c('cn','y'),
@@ -336,13 +349,13 @@ kleinModel$MultiplierMatrix
 
 #we want an arbitrary value on Consumption of 66 in 1940 and 78 in 1941
 #we want an arbitrary value on GNP of 77 in 1940 and 98 in 1941
-kleinTargets = list(
+kleinTargets  <-  list(
                     cn = TIMESERIES(66,78,START=c(1940,1),FREQ=1),
                     y  = TIMESERIES(77,98,START=c(1940,1),FREQ=1)
                     )
 
 #renormalize the model              
-kleinModel=RENORM(kleinModel
+kleinModel <- RENORM(kleinModel
                    ,INSTRUMENT = c('w2','g')
                    ,TARGET = kleinTargets
                    ,TSRANGE = c(1940,1,1941,1)
@@ -361,14 +374,14 @@ with(kleinModel,TABIT(modelData$w2,
                       modelData$g,
                       renorm$INSTRUMENT$g))
 
-# DATE, PER, modelData$w2, renorm$w2, modelData$g, renorm$g
+#       Date, Prd., modelData$w2,  renorm$w2, modelData$g, renorm$g
 # 
 #       ...
 # 
-#       1938, 1  ,        7.7,           ,         13,           
-#       1939, 1  ,        7.8,           ,       14.4,           
-#       1940, 1  ,          8,   8.857669,       15.4,    15.81276
-#       1941, 1  ,        8.5,   12.18823,       22.3,    21.83899
+#       1938, 1   ,          7.7,           ,          13,           
+#       1939, 1   ,          7.8,           ,        14.4,           
+#       1940, 1   ,            8,   8.857669,        15.4,    15.81276
+#       1941, 1   ,          8.5,   12.18823,        22.3,    21.83899
 
 #So, if we want to achieve on "cn" (Consumption) an arbitrary simulated value of 66 in 1940
 #and 78 in 1941, and if we want to achieve on "y" (GNP) an arbitrary simulated value of 77
@@ -379,13 +392,13 @@ with(kleinModel,TABIT(modelData$w2,
 #Let's verify:
 
 #create a new model
-kleinRenorm=kleinModel
+kleinRenorm <- kleinModel
 
 #update the required INSTRUMENT
-kleinRenorm$modelData=kleinRenorm$renorm$modelData
+kleinRenorm$modelData <- kleinRenorm$renorm$modelData
 
 #simulate the new model
-kleinRenorm=SIMULATE(kleinRenorm
+kleinRenorm <- SIMULATE(kleinRenorm
                   ,TSRANGE=c(1940,1,1941,1)
                   ,simConvergence=0.00001
                   ,simIterLimit=100
@@ -398,10 +411,10 @@ with(kleinRenorm$simulation,
     TABIT(cn,y)
     )
     
-#    DATE, PER, cn             , y              
+#    Date, Prd., cn             , y              
 #
-#    1940, 1  ,  66.02157      ,  77.03568      
-#    1941, 1  ,  78.05216      ,  98.09119 
+#    1940, 1   ,  66.02157      ,  77.03568      
+#    1941, 1   ,  78.05216      ,  98.09119 
 
 ```
 Transformations of the dependent variable are allowed in `EQ>` definition, e.g. `TSDELTA(cn)=...`, `EXP(i)=...`, `TSDELTALOG(y)=...`, etc.

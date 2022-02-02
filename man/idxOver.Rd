@@ -129,9 +129,9 @@ The package extends the way users can access and modify time series data in orde
   TABIT(ts1)
   
   
-  #annual 
+  #yearly 
   #-------------------------------
-  print('ANNUAL GET by DATE')
+  print('YEARLY GET by DATE')
   
   #create ts
   ts1=TSERIES((1:n),START=c(2000,1),FREQ=1)
@@ -141,21 +141,21 @@ The package extends the way users can access and modify time series data in orde
   print(ts1['2000/2004'])  #get data from 2000 to 2004
   print(ts1['2005/']) #get data starting from 2005
   
-  print('ANNUAL GET by YEAR-PERIOD')
+  print('YEARLY GET by YEAR-PERIOD')
   
   print(ts1[[2005,1]]) #get year 2005
   #get year 2032 (out of range)
   tryCatch({print(ts1[[2032,1]])},error=function(e){cat(e$message)})
   
   
-  print('ANNUAL SET by DATE')
+  print('YEARLY SET by DATE')
   
   ts1['2004']=NA #assign to 2004
   ts1['2007/']=0.0 #assign starting from 2007
   ts1['2000/2002']= -1 #assign in range 2000/2002
   TABIT(ts1)
  
-  print('ANNUAL SET by YEAR-PERIOD')
+  print('YEARLY SET by YEAR-PERIOD')
  
   ts1[[2005,1]]=NA #assign to 2005
   ts1[[2014,1]]= c(-1,-2,-3) #assign array starting from 2014 (extend series)

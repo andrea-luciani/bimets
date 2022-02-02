@@ -30,7 +30,7 @@ arguments of class \code{ts()} and \code{xts()}, that must be BIMETS compliant a
 This argument defines the start of the time series. Starting period can be specified as \code{c(YEAR,PERIOD)}, or as \code{Date()}, or as \code{yearmon()} if the frequency \code{FREQ=12}, or as \code{yearqtr()} if the frequency \code{FREQ=4}. Please note that the time series must lie in the years range 1800-2199.
 }
  \item{FREQ}{
-The frequency of the time series. Frequency can be \cr \code{FREQ=1, 2, 3, 4, 12, 24, 36, 53, or 366}. Frequency can also be defined by using the char \code{'A'} for annual, \code{'S'} for semiannual, \code{'Q'} for quarterly, \code{'M'} for monthly, \code{'W'} for weekly, and \code{'D'} for daily time series.
+The frequency of the time series. Frequency can be \cr \code{FREQ=1, 2, 3, 4, 12, 24, 36, 53, or 366}. Frequency can also be defined by using the char \code{'A'} or \code{'Y'} for annual/yearly, \code{'S'} for semiannual, \code{'Q'} for quarterly, \code{'M'} for monthly, \code{'W'} for weekly, and \code{'D'} for daily time series.
 }
 
 
@@ -99,6 +99,7 @@ This function returns a BIMETS time series that is compliant with the BIMETS com
   
   #use Date() as start date
   TABIT(TIMESERIES(1:10,START=as.Date('2000-01-01'),FREQ='A'))
+  TABIT(TIMESERIES(1:10,START=as.Date('2000-01-01'),FREQ='Y'))
   TABIT(TIMESERIES(1:10,START=as.Date('2000-07-08'),FREQ='D'))
   TABIT(TIMESERIES(1:10,START=as.Date('2018-01-01'),FREQ='W'))
   

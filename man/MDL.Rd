@@ -46,7 +46,7 @@ EQ> k = TSLAG(k,1) + i
 END
 "
 }
-Please note that there are circular dependencies between equations of the model, i.e. \code{cn <- w1 <- y <- cn}. Circular dependencies imply that the model simulation must be solved with an iterative algorithm.\cr\cr
+Please note that there are circular dependencies between equations of the model, e.g. \code{p <- w1 <- y <- p} as shown in the \code{\link[=bimets]{"BIMETS package"}} section figure. Circular dependencies imply that the model simulation must be solved with an iterative algorithm.\cr\cr
 As shown, the model definition is quite intuitive. The first keyword is \code{MODEL}, while at the end of the model definition we can find the \code{END} keyword. Available tags in the definition of a generic BIMETS model are: 
 \cr\cr
 - \bold{EQUATION>} or \bold{BEHAVIORAL>} indicate the beginning of a series of keyword statements describing a behavioral equation. The behavioral statement general form is: \cr
@@ -68,7 +68,7 @@ The following \code{MDL} functions can be used in the \code{LHS} left-hand side 
 - \code{TSDELTALOG(name,i)} - \code{i}-periods logarithmic difference of the \code{name} time series;\cr \cr
 - \code{LOG(name)} - log of the \code{name} time series;\cr \cr
 - \code{EXP(name)} - exponential of the \code{name} time series. \cr \cr
-On the other side the mathematical expression available for using in the \code{RHS} right-hand side of the \code{EQ>} equation (i.e. \code{f1, f2, f3, ...}) can include the standard arithmetic operators, parentheses and the following \code{MDL} functions:\cr \cr
+On the other side the mathematical expression available for using in the \code{RHS} right-hand side of the \code{EQ>} equation and in the \code{IV>} expression described later in this page (i.e. \code{f1, f2, f3, ...}) can include the standard arithmetic operators, parentheses and the following \code{MDL} functions:\cr \cr
 - \code{TSLAG(ts,i)} - lag the \code{ts} time series by \code{i}-periods;\cr \cr
 - \code{TSDELTA(ts,i)} - \code{i}-periods difference of the \code{ts} time series;\cr \cr
 - \code{TSDELTAP(ts,i)} - \code{i}-periods percentage difference of the \code{ts} time series;\cr \cr
@@ -238,7 +238,9 @@ IDENTITY> myIdentity
 IF> TSDELTA(myEndog*(1-myExog)) <= 0
 EQ> myIdentity = TSLAG(myIdentity)
 }
-
+- \bold{IV>} specifies the mathematical expression for an instrumental variable used in a behavioral equation. \cr\cr
+The general form for an instrumental variable expression is:\cr \code{IV> f1 + f2 + f3 + ...} \cr \code{f1, f2, f3, ...} are functions of variables.\cr\cr
+The mathematical expression available for using in the \code{IV>} definition are those already described in the \code{EQ>} section.\cr \cr
 - \bold{COMMENT>} can be used to insert comments into a model. The general form of this keyword is:\cr
 \code{COMMENT> text}\cr \cr
 The \code{text} following the \code{COMMENT>} keyword is ignored during all processing, and must lie in the same line. A comment cannot be inserted within another keyword statement. A dollar sign in the first position of a line is equivalent to using the COMMENT> keyword, as in this exmaple:\cr
@@ -473,4 +475,27 @@ model=SIMULATE(model
                ,simConvergence=0.00001
                ,simIterLimit=100
 )
+
+#########################################################
+#SIMPLE MODEL WITH IV
+
+
+#define the model with IVs
+myShortModelDefinition="
+MODEL
+COMMENT> Consumption with IV
+BEHAVIORAL> cn
+TSRANGE 1925 1 1941 1
+EQ> cn = a1 + a2*p + a3*TSLAG(p,1) + a4*(w1+w2)
+COEFF> a1 a2 a3 a4
+IV> 1
+IV> TSLAG(y)
+IV> TSLAG(w1)*pi+0.5
+IV> exp(w2)
+END
+" 
+
+#load model 
+myShortModel=LOAD_MODEL(modelText=myShortModelDefinition)
+
 }

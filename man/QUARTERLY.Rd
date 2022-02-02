@@ -42,7 +42,7 @@ This function returns a quarterly BIMETS time series.
 }
 
 \seealso{
-\code{\link[=ANNUAL]{ANNUAL}}\cr
+\code{\link[=YEARLY]{YEARLY}}\cr
 \code{\link[=SEMIANNUAL]{SEMIANNUAL}}\cr
 \code{\link[=MONTHLY]{MONTHLY}}\cr
 \code{\link[=DAILY]{DAILY}}\cr
@@ -50,7 +50,7 @@ This function returns a quarterly BIMETS time series.
 
 \examples{
 
-	#TS ANNUAL TO QUARTERLY
+	#TS YEARLY TO QUARTERLY
 	n=10
 	ts1=TSERIES(1:n,START=c(2000,1),FREQ=1)
 	ts1[5]=NA

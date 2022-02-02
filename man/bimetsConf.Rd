@@ -18,7 +18,7 @@ getBIMETSconf(opt=NULL)
 \arguments{
   \item{opt}{
 Name of the BIMETS option. Available option names are:\cr \cr 
-\bold{BIMETS_CONF_DIP}: Date In Period. Users can associate to each observation in a time series the first or the last date in the period, i.e.  1 January or 31 December in the case of an annual time series, 1 January/1 July or 30 June/31 December in the case of a semiannual time series, 1 January/31 January in the case of an monthly time series in January, etc. The assignments by date to time series (e.g. \code{ts['2000-01-01']=value}) need to be coherent to the value of this global option. Accepted values are:\cr
+\bold{BIMETS_CONF_DIP}: Date In Period. Users can associate to each observation in a time series the first or the last date in the period, i.e.  1 January or 31 December in the case of an yearly time series, 1 January/1 July or 30 June/31 December in the case of a semiannual time series, 1 January/31 January in the case of an monthly time series in January, etc. The assignments by date to time series (e.g. \code{ts['2000-01-01']=value}) need to be coherent to the value of this global option. Accepted values are:\cr
 LAST: (default) each observation has associated the last date of the period, e.g. 31 Mar for a quarterly time series, 31 January for a monthly time series in the first period, etc.\cr
 FIRST: each observation has associated the first date of the period, e.g. 1 Jan for a quarterly time series, 1 Feb for a monthly time series in the second period, etc.
 \cr \cr

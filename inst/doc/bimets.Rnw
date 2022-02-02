@@ -21,7 +21,7 @@
 This package supports daily, weekly, monthly, quarterly, semiannual and yearly time series. Time series with frequency of 24 and 36 periods per year are also supported. Users can access and modify time series data by date, year-period and observation index. Advanced time series manipulation and (dis)aggregation capabilities are provided, e.g. time series extension, merging, projection, lag, cumulative and moving product and sum, etc.
 \bigskip
 
-Econometric modeling capabilities comprehend advanced model definition (e.g. conditional evaluation of equations, per-equation estimation method and time range), estimation of equations with instrumental variables, coefficient restrictions and error autocorrelation, static and dynamic simulation of simultaneous equations with exogenizations and add-factors, interim and impact multipliers analysis, endogenous targeting with model "renormalization".
+Econometric modeling capabilities comprehend advanced model definition (e.g. conditional evaluation of equations, per-equation estimation method and time range), estimation of equations with instrumental variables, coefficient restrictions and error autocorrelation, structural stability analysis, static and dynamic simulation of simultaneous equations with exogenizations and add-factors, interim and impact multipliers analysis, endogenous targeting with model "renormalization".
 \bigskip
 
 \pkg{bimets} does not depend on compilers or third-party software so it can be freely downloaded and installed on Linux, MS Windows\textsuperscript{\textregistered} and Mac OSX\textsuperscript{\textregistered}, without any further requirements. 
@@ -60,6 +60,7 @@ Econometric modeling capabilities comprehend advanced model definition (e.g. con
 %\VignettePackage{bimets}
 <<echo=FALSE>>=
 options( prompt = "R> ", continue = "   " )
+library(bimets)
 @
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
@@ -67,27 +68,6 @@ options( prompt = "R> ", continue = "   " )
 \linespread{1.2}
 \pkg{bimets} is a software framework developed by using \proglang{R} language and designed for time series analysis and econometric modeling, which allows creating and manipulating time series, specifying simultaneous equation models of any size by using a kind of high-level description language, and performing model estimation, simulation and forecasting.\\ \\
 In addition, \pkg{bimets} computational capabilities provide many tools to pre-process data and post-process results, designed for statisticians and economists. These operations are fully integrated with the \proglang{R} environment.\\ \\
-\pkg{bimets} estimation and simulation results have been compared to the output results of leading commercial econometric software, by using several large and complex models.\\ \\
-The models used in the comparison have more than:
-\begin{itemize} 
-\item +100  behavioral equations;
-\item +700  technical identities;
-\item +500  coefficients;
-\item +1000 time series of endogenous and exogenous variables;
-\end{itemize}
-\linespread{1.2}
-In these models we can find equations with restricted coefficients, polynomial distributed lags, error autocorrelation and conditional evaluation of technical identities; all models have been simulated in \emph{static}, \emph{dynamic}, and \emph{forecast} mode, with exogenization and constant adjustments of endogenous variables through the use of \pkg{bimets} capabilities.\\ \\
-In the +800 endogenous simulated time series over the +20 simulated periods (i.e. more than 16.000 simulated observations), the average \emph{percentage} difference between \pkg{bimets} and leading commercial software results has a magnitude of \(10^{-7} \% \). The difference between results calculated using different commercial software has the same average magnitude.\\ \\
-\pkg{bimets} stands for Bank of Italy Model Easy Time Series; it does not depend on compilers or third-party software so it can be freely downloaded and installed on Linux, MS Windows\textsuperscript{\textregistered} and Mac OSX\textsuperscript{\textregistered}, without any further requirements. \\ \\
-The package can be installed and loaded in \proglang{R} with the following commands (with "\code{R>}" as the \proglang{R} command prompt):
-\begin{footnotesize}
-<<eval=FALSE>>=
-install.packages('bimets')
-@
-<<>>=
-library(bimets)
-@
-\end{footnotesize}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Time Series}
 
@@ -147,8 +127,8 @@ Example:
 myMonthlyTS <- TIMESERIES(1:100,START=c(2000,1),FREQ='M')
 @
 <<>>=
-#convert to annual time series using the average as aggregation fun
-myAnnualTS <- ANNUAL(myMonthlyTS,'AVE')
+#convert to yearly time series using the average as aggregation fun
+myYearlyTS <- YEARLY(myMonthlyTS,'AVE')
 @
 <<>>=
 #convert to daily using central interpolation as disaggregation fun
@@ -218,12 +198,12 @@ TABIT(myMovAveTS,
 \item[--] \emph{Estimation} 
 \item[--] \emph{Simulation} 
 \item[--] \emph{Multipliers Analysis} 
-\item[--] \emph{Renormalization (Tinbergen Classification)} 
+\item[--] \emph{Endogenous Targeting} 
 \end{itemize}
 
-We will go through each item of the list with a simple Tinbergen-Klein model example. 
+We will go through each item of the list with a simple Klein\footnote{\emph{"Economic Fluctuations in the United States 1921-1941"} by L. R. Klein, Wiley and Sons Inc., New York, 1950}  model example. 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
-\subsection{Model Definition Language}
+\subsection{Model Definition Language} \label{ssec:1}
 \pkg{bimets} provides a language to unambiguously specify an econometric model. This section describes how to create a model and its general structure. The specification of an econometric model is translated and identified by keyword statements which are grouped in a model file, i.e. a plain text file or a \code{character} variable with a specific syntax. Collectively, these keyword statements constitute the \pkg{bimets} Model Description Language (from now on "\code{MDL}"). The model specifications consist of groups of statements. Each statement begins with a keyword. The keyword classifies the component of the model which is beign specified.
 \bigskip
 
@@ -266,12 +246,30 @@ EQ> k = TSLAG(k,1) + i
 END
 "
 @
-\end{footnotesize}
+\end{footnotesize} 
+Given:   \\ \\
+- \code{cn} as private consumption expenditure;   \\ 
+- \code{i} as investment;    \\ 
+- \code{w1} as wage bill of the private sector (demand for labor);   \\ 
+- \code{p} as profits;  \\ 
+- \code{k} as stock of capital goods;   \\ 
+- \code{y} as gross national product;  \\    
+- \code{w2} as wage bill of the government sector;   \\  
+- \code{time} as an index of the passage of time, e.g. 1931 = zero;   \\ 
+- \code{g} as government expenditure plus net exports;   \\ 
+- \code{t} as business taxes.   \\ \\ 
+\code{a1, a2, a3, a4, b1, b2, b3, b4, c1, c2, c3, c4} are coefficient to be estimated.  \\ \\
+This system has only 6 equations, three of which must be fitted in order to assess the coefficients. It may not seem so difficult to solve this system, but the real complexity emerges if you look at the incidence graph in the following figure, wherein endogenous variables are plotted in blue and exogenous variables are plotted in pink.\\ \\
+\clearpage
 
-Please note that there are circular dependencies between equations of the model, i.e. \code{cn <- w1 <- y <- cn}. Circular dependencies imply that the model simulation must be solved with an iterative algorithm.
+\includegraphics[width=6in]{KleinIG.png}
+\\ \\
+Each edge states a simultaneous dependence from a variable to another, e.g. the \code{w1} equation depends on the current value of the \code{time} time series; complexity arises because in this model there are several circular dependencies, one of which is plotted in dark blue.  \\ \\
+A circular dependency in the incidence graph of a model implies that the model is a \textit{simultaneous} equations model and that it must be estimated by using ad-hoc procedures; moreover it can be simulated, i.e. performing a forecast, only by using an iterative algorithm.  
+
 \bigskip
 
-As shown, the model definition is quite intuitive. The first keyword is \code{MODEL}, while at the end of the model definition we can find the \code{END} keyword. Available tags in the definition of a generic \pkg{bimets} model are: 
+As shown in the code, the model definition is quite intuitive. The first keyword is \code{MODEL}, while at the end of the model definition we can find the \code{END} keyword. Available tags in the definition of a generic \pkg{bimets} model are: 
 \begin{itemize}
 \item[--] \textbf{EQUATION>} or \textbf{BEHAVIORAL>} indicate the beginning of a series of keyword statements describing a behavioral equation. The behavioral statement general form is: \\
 \code{BEHAVIORAL> name  [TSRANGE startYear, startPeriod, endYear, endPeriod]}  \\
@@ -304,7 +302,7 @@ The following \code{MDL} functions can be used in the \code{LHS} left-hand side 
 - \code{TSDELTALOG(name,i)} - \code{i}-periods logarithmic difference of the \code{name} time series;\\ \\
 - \code{LOG(name)} - log of the \code{name} time series;\\ \\
 - \code{EXP(name)} - exponential of the \code{name} time series.\\ \\
-On the other side the mathematical expression available for using in the \code{RHS} right-hand side of the \code{EQ>} equation (i.e. \code{f1, f2, f3, ...}) can include the standard arithmetic operators, parentheses and the following \code{MDL} functions:\\ \\
+On the other side the mathematical expression available for using in the \code{RHS} right-hand side of the \code{EQ>} equation and in the \code{IV>} expression described later in this page (i.e. \code{f1, f2, f3, ...}) can include the standard arithmetic operators, parentheses and the following \code{MDL} functions:\\ \\
 -  \code{TSLAG(ts,i)}: lag the \code{ts} time series by \code{i}-periods;\\ \\
 -  \code{TSDELTA(ts,i)}: \code{i}-periods difference of the \code{ts} time series;\\ \\
 -  \code{MOVAVG(ts,i)}: \code{i}-periods moving average of the \code{ts} time series;\\ \\
@@ -456,6 +454,9 @@ IDENTITY> myIdentity \\
 IF> TSDELTA(myEndog*(1-myExog)) <= 0 \\
 EQ> myIdentity = TSLAG(myIdentity) 
 } \\ \\
+\item[--] \textbf{IV>} specifies the mathematical expression for an instrumental variable used in a behavioral equation. \\ \\
+The general form for an instrumental variable expression is:\\ \code{IV> f1 + f2 + f3 + ...} \\ \code{f1, f2, f3, ...} are functions of variables.\\ \\
+The mathematical expression available for using in the \code{IV>} definition are those already described in the \code{EQ>} section.\\ \\
 \item[--] \textbf{COMMENT>} can be used to insert comments into a model. The general form of this keyword is: \\
 \code{COMMENT> text} \\ \\
 The \code{text} following the \code{COMMENT>} keyword is ignored during all processing, and must lie in the same line. A comment cannot be inserted within another keyword statement. A dollar sign in the first position of a line is equivalent to using the COMMENT> keyword, as in the following example: \\
@@ -826,43 +827,44 @@ the add-factors \({\bar{z}=[z_1, ... ,z_n]}\) can be interpreted as estimates of
 \item compute the difference between the historical and the simulated values for each endogenous variables;
 \item average, or process in a suitable way, the difference arising from point 4 in the time periods beyond the estimation sample to compute the constant value to be used as an add-factor in the following forecasting exercises;
 \end{enumerate}
-Back to Kelin's model example, let's forecast the GNP (i.e. the "\code{y}" endogenous variable) up to 1943: \\
+Back to Kelin's model example, let's forecast the GNP\footnote{originally referred as "Net national income, measured in billions of 1934 dollars", pag. 141 in \emph{"Economic Fluctuations in the United States 1921-1941"} by L. R. Klein, Wiley and Sons Inc., New York, 1950} (i.e. the "\code{y}" endogenous variable) up to 1944: \\
 \begin{footnotesize}
 <<>>=
-#FORECAST GNP in 1942 and 1943 
-#we need to extend exogenous variables in 1942 and 1943
+#FORECAST GNP in 1942:1944
+#we need to extend exogenous variables in 1942 up to 1944
+#in this exercise we perform a simple time series extension
 kleinModel$modelData <- within(kleinModel$modelData,{
-                    w2   = TSEXTEND(w2,  UPTO=c(1943,1))
-                    t    = TSEXTEND(t,   UPTO=c(1943,1))
-                    g    = TSEXTEND(g,   UPTO=c(1943,1))
-                    time = TSEXTEND(time,UPTO=c(1943,1)
-                                     ,EXTMODE='LINEAR')
-                    })
+            w2   = TSEXTEND(w2,  UPTO=c(1944,1),EXTMODE='CONSTANT')
+            t    = TSEXTEND(t,   UPTO=c(1944,1),EXTMODE='CONSTANT')
+            g    = TSEXTEND(g,   UPTO=c(1944,1),EXTMODE='CONSTANT')
+            time = TSEXTEND(time,UPTO=c(1944,1),EXTMODE='LINEAR')
+            })
 
  
 #simulate model
 kleinModel <- SIMULATE(kleinModel
-                  ,simType='FORECAST'
-                  ,TSRANGE=c(1940,1,1943,1)
-                  ,simConvergence=0.00001
-                  ,simIterLimit=100
-                  )
+            ,simType='FORECAST'
+            ,TSRANGE=c(1941,1,1944,1)
+            ,simConvergence=0.00001
+            ,simIterLimit=100
+            ,quietly=TRUE
+            )
+
 #get forecasted GNP
 TABIT(kleinModel$simulation$y)
 @
 \end{footnotesize}
-Historical GNP was 166.36 in 1942 and 203.41 in 1943 (source FRED - Federal Reserve Bank of St. Louis).\\ \\
-In the following figure you will find the historical consumption, the dynamic simulated consumption and the RHS computation of the consumption equation, from 1921 to 1941: \\ \\
-\includegraphics[width=6in]{CnSim.png}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+\clearpage
+\includegraphics[width=6in]{KleinGNP.png}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{The Optimal Reordering}
 In fact, the simulation process takes advantage of an appropriate ordering of the equations to increase the performances by iteratively solving only one subset of equations, while the others are solved straightforwardly\footnote{\emph{"...a different ordering of the equations can substantially affect the speed of convergence of the algorithm; indeed some orderings may produce divergence. The less feedback there is, the better the chances for fast convergence..."} - Don, Gallo - Solving large sparse systems of equations in econometric models - Journal of Forecasting 1987.}.\\ \\
-The \code{LOAD_MODEL()} function builds the incidence matrix of the model, then defines the proper equation reordering. The incidence matrix is built from the equations of the model; it is a square matrix in which each row and each column represents an endogenous variable. If the \code{(i,j)} element is equal to 1 then in the model definition the current value of the endogenous variable referred by the \code{i}-row depends directly from the current value of the endogenous variable referred by the \code{j}-column.\\ \\
+The \code{LOAD_MODEL()} function builds the incidence matrix of the model, then defines the proper equation reordering. The incidence matrix is built from the equations of the model; it is a square matrix in which each row and each column represents an endogenous variable. If the \code{(i,j)} element is equal to 1 then in the model definition the current value of the endogenous variable referred by the \code{i}-row depends directly from the current value of the endogenous variable referred by the \code{j}-column. You can see an incidence matrix example in the subsection \ref{ssec:1} wherein the content of the \code{kleinModel$incidence_matrix} variable is printed out.\\ \\
 In econometric models, the incidence matrix is usually very sparse. Only a few of the total set of endogenous variables are used in each equation. In this situation, ordering the equation in a certain sequence will lead to a sensible reduction of the number of iterations needed to achieve convergence. Reordering the equations is equivalent to rearranging rows and columns of the incidence matrix. In this way the incidence matrix might be made lower triangular for a subset of the equations.
-For this subset, an endogenous variable determined in a specific equation has no \emph{incidence} in any equation above it, although the same variable might have incidence in equations below it. Such a subset of equations is called recursive. Recursive systems are easy to solve. It is only necessary to solve each equation once if this is done in the right order. On the other hand, it is unlikely for the whole model to be recursive. Indeed the incidence graph is often cyclic, as in the Klein's model that presents the following circular dependecies in the incidence matrix: \code{cn <- w1 <- y <- cn}\\ \\
+For this subset, an endogenous variable determined in a specific equation has no \emph{incidence} in any equation above it, although the same variable might have incidence in equations below it. Such a subset of equations is called recursive. Recursive systems are easy to solve. It is only necessary to solve each equation once if this is done in the right order. On the other hand, it is unlikely for the whole model to be recursive. Indeed the incidence graph is often cyclic, as in the Klein's model that presents the following circular dependencies in the incidence matrix: \code{p <- w1 <- y <- i <- p}, as shown in the subsection \ref{ssec:1} figure.\\ \\
 For a subset of the equations, some 1's will occur in the upper triangle of the incidence matrix for all possible orderings. Such subset of equations is called \emph{simultaneous}. In order to be able to solve the endogenous variables in the simultaneous block of equations, an iterative algorithm has to be used. Nevertheless, the equations in the simultaneous block may be ordered so that the pattern of the 1's in the upper triangle of the incidence matrix forms a spike. The variables corresponding to the 1's in the upper triangle are called \emph{feedback} variables.\\ \\
 A qualitative graphical example of an ordered incidence matrix is given in the following figure. The white areas are all 0's, the gray areas contains both 0's and 1's. The 1's in the light gray areas refer to variables already assessed in previous blocks, therefore they are known terms within the block. The 1's in the dark gray areas refer to variables assessed within the block. \\ \\
-\includegraphics[width=5in]{Reordering.png} \\ \\ 
+\includegraphics[width=6in]{Reordering.png} \\ \\ 
 The final pattern of an incidence matrix after the equation reordering generally features three blocks: 
 \begin{enumerate}
 \item a recursive block (the pre-recursive block);
@@ -966,14 +968,14 @@ kleinModel$MultiplierMatrix
 @
 \end{footnotesize}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
-\subsection{Renormalization}
-The renormalization\footnote{On the Theory of Economic Policy - Tinbergen J. 1952} of econometric models consists of solving the model while interchanging the role of one or more endogenous variables with an equal number of exogenous variables.\\ \\ The \pkg{bimets} \code{RENORM()} procedure determines the values for the \code{INSTRUMENT} exogenous variables which allow the objective \code{TARGET} endogenous variables to be achieved, with respect to the constraints given by the model \code{MDL} definition.\\ \\
+\subsection{Endogenous Targeting}
+The endogenous targeting\footnote{On the Theory of Economic Policy - Tinbergen J. 1952} of econometric models consists of solving the model while interchanging the role of one or more endogenous variables with an equal number of exogenous variables.\\ \\ The \pkg{bimets} \code{RENORM()} procedure determines the values for the \code{INSTRUMENT} exogenous variables which allow the objective \code{TARGET} endogenous variables to be achieved, with respect to the constraints given by the model \code{MDL} definition.\\ \\
 This is an approach to economic and monetary policy analysis, and is based on two assumptions:
 \begin{enumerate}
 \item there exists a desired level for a set of \code{n} endogenous variables defined as \code{TARGET};
 \item there exists a set of \code{n} exogenous variables defined as \code{INSTRUMENT};
 \end{enumerate}
-Given these premises, the renormalization process consists in determining the values of the exogenous variables chosen as \code{INSTRUMENT} allowing us to achieve the desired values for the endogenous variables designated as \code{TARGET}. In other words the procedure allows users to exchange the role of exogenous and endogenous among a set of time series pairs. \\ \\
+Given these premises, the endogenous targeting process consists in determining the values of the exogenous variables chosen as \code{INSTRUMENT} allowing us to achieve the desired values for the endogenous variables designated as \code{TARGET}. In other words the procedure allows users to exchange the role of exogenous and endogenous among a set of time series pairs. \\ \\
 Given a list of exogenous \code{INSTRUMENT} variables and a list of \code{TARGET} endogenous time series, the iterative procedure can be split into the following steps:
 \begin{enumerate}
 \item Computation of the multipliers matrix \code{MULTMAT} of the \code{TARGET} endogenous variables with respect to the \code{INSTRUMENT} exogenous variables (this is a square matrix by construction);
@@ -983,7 +985,7 @@ Given a list of exogenous \code{INSTRUMENT} variables and a list of \code{TARGET
 \end{enumerate}
 Users can also declare an endogenous variable as an \code{INSTRUMENT} variable. In this case, the constant adjustment related to the provided endogenous variable will be used as the instrument exogenous variable. This procedure is particularly suited for the automatic computation of the add-factors needed to fine tune the model into a baseline path and to improve the forecasting accuracy.\\ \\
 If the convergence condition is satisfied, the \code{RENORM} procedure will return the requested \code{INSTRUMENT} time series allowing us to achieve the desired values for the endogenous variables designated as \code{TARGET}.\\ \\
-Back to our Klein's model example, we can perform the renormalization of the previously estimated model. First of all, the targets must be defined:
+Back to our Klein's model example, we can perform the endogenous targeting of the previously estimated model. First of all, the targets must be defined:
 \begin{footnotesize}
 <<>>=
 #we want an arbitrary value on Consumption of 66 in 1940 and 78 in 1941
@@ -994,7 +996,7 @@ kleinTargets <- list(
               )
 @
 \end{footnotesize}
-Then, we can perform the model renormalization by using the "\code{w2}" (Wage Bill of the Government Sector) and the "\code{g}" (Government non-Wage Spending) exogenous variables as \code{INSTRUMENT}, in the years 1940 and 1941 (output omitted):
+Then, we can perform the model endogenous targeting by using the "\code{w2}" (Wage Bill of the Government Sector) and the "\code{g}" (Government non-Wage Spending) exogenous variables as \code{INSTRUMENT}, in the years 1940 and 1941 (output omitted):
 \begin{footnotesize}
 <<computation>>=
 kleinModel <- RENORM(kleinModel
@@ -1059,6 +1061,31 @@ with(kleinRenorm$simulation,
 \end{footnotesize}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \clearpage
+\section{Computational details}
+
+\pkg{bimets} estimation and simulation results have been compared to the output results of leading commercial econometric software, by using several large and complex models.\\ \\
+The models used in the comparison have more than:
+\begin{itemize} 
+\item +100  behavioral equations;
+\item +700  technical identities;
+\item +500  coefficients;
+\item +1000 time series of endogenous and exogenous variables;
+\end{itemize}
+\linespread{1.2}
+In these models we can find equations with restricted coefficients, polynomial distributed lags, error autocorrelation and conditional evaluation of technical identities; all models have been simulated in \emph{static}, \emph{dynamic}, and \emph{forecast} mode, with exogenization and constant adjustments of endogenous variables through the use of \pkg{bimets} capabilities.\\ \\
+In the +800 endogenous simulated time series over the +20 simulated periods (i.e. more than 16.000 simulated observations), the average \emph{percentage} difference between \pkg{bimets} and leading commercial software results has a magnitude of \(10^{-7} \% \). The difference between results calculated by using different commercial software has the same average magnitude.\\ \\
+\pkg{bimets} stands for Bank of Italy Model Easy Time Series; it does not depend on compilers or third-party software so it can be freely downloaded and installed on Linux, MS Windows\textsuperscript{\textregistered} and Mac OSX\textsuperscript{\textregistered}, without any further requirements. \\ \\
+The package can be installed and loaded in \proglang{R} with the following commands (with "\code{R>}" as the \proglang{R} command prompt):
+\begin{footnotesize}
+<<eval=FALSE>>=
+install.packages('bimets')
+@
+<<>>=
+library(bimets)
+@
+\end{footnotesize}
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{References}
 \begin{enumerate}[label={[\arabic*]}]
 \item F. J. Henk Don and Giampiero M. Gallo \textit{Solving large sparse systems of equations in econometric models}. Journal of Forecasting, 6(3):167-180, 1987.
@@ -1066,6 +1093,7 @@ with(kleinRenorm$simulation,
 \item Daniel Gabay, Pierre Nepomiastchy, M'Hamed Rachdi and Alain Ravelli \textit{Numerical methods for simulation and optimal control of large-scale macroeconomic models}. Applied stochastic control in econometrics and management science:115-158, 1980
 \item M. R. Garey, D. S. Johnson \textit{Computers and Intractability: a Guide to the Theory of NP-completeness}. San Francisco, Freeman 1979
 \item G. C. Chow, \textit{ Tests of equality between sets of coefficients in two linear regressions}. Econometrica, Vol 28, 4. July 1960
+\item L. R. Klein \textit{Economic Fluctuations in the United States}. Wiley and Sons Inc., New York, 1950
 \end{enumerate}
 \end{document}
 

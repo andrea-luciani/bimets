@@ -6,7 +6,7 @@ Convert TS to XTS
 }
 \description{
 This function transforms a BIMETS compliant \code{ts} time series (as defined in \code{\link[=is.bimets]{is.bimets}}) into a time series of class \code{xts()}.\cr The core XTS function \code{as.xts()} 
- does not satisfy all the requirements of the compliance control check, so it has been extended.  If the output time series has an \code{.indexClass} of type \code{Date()}, i.e. neither monthly nor quarterly, the output dates are chosen accordingly to the BIMETS option \code{BIMETS_CONF_DIP}: if this option is set to \code{LAST} (default), the output \code{xts()} time series will have the date of the period set equal to the last day in the same period, e.g. 31 December for annual time series, 30 June for semiannual, etc.; if BIMETS option \code{BIMETS_CONF_DIP} is set to \code{FIRST}, the output \code{xts()} time series will have the date of the period set equal to the first day in the same period, e.g. 1 January for annual time series, 1 July for semiannual time series on the second period, etc. \cr In the case of quarterly time series the \code{.indexClass=yearqtr}; \cr
+ does not satisfy all the requirements of the compliance control check, so it has been extended.  If the output time series has an \code{.indexClass} of type \code{Date()}, i.e. neither monthly nor quarterly, the output dates are chosen accordingly to the BIMETS option \code{BIMETS_CONF_DIP}: if this option is set to \code{LAST} (default), the output \code{xts()} time series will have the date of the period set equal to the last day in the same period, e.g. 31 December for yearly time series, 30 June for semiannual, etc.; if BIMETS option \code{BIMETS_CONF_DIP} is set to \code{FIRST}, the output \code{xts()} time series will have the date of the period set equal to the first day in the same period, e.g. 1 January for yearly time series, 1 July for semiannual time series on the second period, etc. \cr In the case of quarterly time series the \code{.indexClass=yearqtr}; \cr
 in the case of monthly time series the \code{.indexClass=yearmon}.\cr Attributes and description of the input time series will be copied to the output time series (see \code{\link[=TSERIES]{TIMESERIES}})
 }
 \usage{
@@ -43,7 +43,7 @@ This function returns a time series of class \code{xts()} that has the same obse
 	Sys.setlocale('LC_TIME','C')
   
 	#BIMETS_CONF_DIP default on LAST
-	print('annual')
+	print('yearly')
 	t=ts(1:20,start=c(2005,2),frequency=1)
 	ts=fromTStoXTS(t)
 	print(t);print(ts) #...dates on 31 Dec
@@ -56,7 +56,7 @@ This function returns a time series of class \code{xts()} that has the same obse
 	#set configuration BIMETS_CONF_DIP on FIRST
 	setBIMETSconf('BIMETS_CONF_DIP','FIRST')
 	
-	print('annual')
+	print('yearly')
 	t=ts(1:20,start=c(2005,2),frequency=1)
 	ts=fromTStoXTS(t)
 	print(t);print(ts) #...dates on 1 Jan
