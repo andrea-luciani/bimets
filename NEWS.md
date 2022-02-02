@@ -1,6 +1,10 @@
 
 **bimets Change-Log**
 
+*bimets ver. 1.5.1 - Jun. 2020*
+
+* fixed typos on `MDL` LHS function examples
+
 *bimets ver. 1.5.0 - May 2020*
 
 * added LHS functions on `MDL` `EQ>` definition

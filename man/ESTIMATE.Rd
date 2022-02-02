@@ -111,7 +111,7 @@ For each behavioral in the \code{eqList} this function will add 4 new named elem
 1) \code{coefficients}: a numerical array built with the estimated coefficients;\cr
 2) \code{errorCoefficients}: a numerical array built with the estimated coefficient for the error autoregression, if the \code{ERROR>} structure has been provided in the model \code{\link[=MDL]{MDL}} definition;\cr
 3) \code{residuals}: the time series of the regression residuals. If an \code{ERROR>} structure has been provided in the behavioral definition, the related residuals will be calculated as described in the Cochrane-Orcutt procedure (see \code{\link[=MDL]{MDL}}).\cr
-3) \code{residuals_no_error_correction}:  if an \code{ERROR>} structure has been provided in the behavioral definition, the residuals caclucated by using the original dependant and independent varibles are stored into this list element.\cr
+3) \code{residuals_no_error_correction}:  if an \code{ERROR>} structure has been provided in the behavioral definition, the residuals caclucated by using the original dependent and independent varibles are stored into this list element.\cr
 4) \code{statistics}: a list built with the parameters and the statistics of the estimation, e.g.:\cr
 - \code{TSRANGE}: TSRANGE requested in the latest estimation of the behavioral;\cr
 - \code{estimationTechinque}: estimation technique requested in the latest estimation of the behavioral;\cr

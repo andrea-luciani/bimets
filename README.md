@@ -39,35 +39,35 @@ time series data presentation `TABIT()`
 Example:
 ```r
 #create ts
-myTS=TIMESERIES((1:100),START=c(2000,1),FREQ='D');
+myTS=TIMESERIES((1:100),START=c(2000,1),FREQ='D')
  
-myTS[1:3];                    #get first three obs.
-myTS['2000-01-12'];           #get Jan 12, 2000 data
+myTS[1:3]                     #get first three obs.
+myTS['2000-01-12']            #get Jan 12, 2000 data
 myTS['2000-02-03/2000-03-04'] #get Feb 3 up to Mar 4
-myTS[[2000,14]];              #get year 2000 period 14
-myTS[[2032,1]];               #get year 2032 period 1 (out of range)
+myTS[[2000,14]]               #get year 2000 period 14
+myTS[[2032,1]]                #get year 2032 period 1 (out of range)
     
-myTS['2000-01-15']=NA;        #assign to Jan 15, 2000
-myTS[[2000,3]]=NA;            #assign to Jan 3, 2000
+myTS['2000-01-15']=N          #assign to Jan 15, 2000
+myTS[[2000,3]]=NA             #assign to Jan 3, 2000
 myTS[[2000,42]] = NA          #assign to Feb 11, 2000
-myTS[[2000,100]]= c(-1,-2,-3);#assign array starting from 2000 					
+myTS[[2000,100]]= c(-1,-2,-3) #assign array starting from 2000 					
                               #period 100 (i.e. extend series)
                               
 #aggregation/disaggregation
-myMonthlyTS=TIMESERIES(1:100,START=c(2000,1),FREQ='M');
-myAnnualTS=ANNUAL(myMonthlyTS,'AVE');
-myDailyTS=DAILY(myMonthlyTS,'INTERP_CENTER');
+myMonthlyTS=TIMESERIES(1:100,START=c(2000,1),FREQ='M')
+myAnnualTS=ANNUAL(myMonthlyTS,'AVE')
+myDailyTS=DAILY(myMonthlyTS,'INTERP_CENTER')
 
 #manipulation
-myTS1=TIMESERIES(1:100,START=c(2000,1),FREQ='M');
-myTS2=TIMESERIES(-(1:100),START=c(2005,1),FREQ='M');
-myExtendedTS=TSEXTEND(myTS1,UPTO = c(2020,4),EXTMODE = 'QUADRATIC');
-myMergedTS=TSMERGE(myExtendedTS,myTS2,fun = 'SUM');
-myProjectedTS=TSPROJECT(myMergedTS,TSRANGE = c(2004,2,2006,4));
-myLagTS=TSLAG(myProjectedTS,2);
-myDeltaPTS=TSDELTAP(myLagTS,2);
-myMovAveTS=MOVAVG(myDeltaPTS,5);
-TABIT(myMovAveTS,myTS1);
+myTS1=TIMESERIES(1:100,START=c(2000,1),FREQ='M')
+myTS2=TIMESERIES(-(1:100),START=c(2005,1),FREQ='M')
+myExtendedTS=TSEXTEND(myTS1,UPTO = c(2020,4),EXTMODE = 'QUADRATIC')
+myMergedTS=TSMERGE(myExtendedTS,myTS2,fun = 'SUM')
+myProjectedTS=TSPROJECT(myMergedTS,TSRANGE = c(2004,2,2006,4))
+myLagTS=TSLAG(myProjectedTS,2)
+myDeltaPTS=TSDELTAP(myLagTS,2)
+myMovAveTS=MOVAVG(myDeltaPTS,5)
+TABIT(myMovAveTS,myTS1)
 
 #     DATE, PER, myMovAveTS     , myTS1          
 # 
@@ -157,7 +157,7 @@ IF> i <= 0
 END"
 
 #load the model
-kleinModel=LOAD_MODEL(modelText = klein1.txt);
+kleinModel=LOAD_MODEL(modelText = klein1.txt)
 
 # Loading model: "klein1.txt"...
 # Analyzing behaviorals...
@@ -235,7 +235,7 @@ kleinModelData=list(
                  START=c(1920,1),FREQ=1)
 	);
 
-kleinModel=LOAD_MODEL_DATA(kleinModel,kleinModelData);
+kleinModel=LOAD_MODEL_DATA(kleinModel,kleinModelData)
 # Load model data "kleinModelData" into model "klein1.txt"...
 # ...LOAD MODEL DATA OK
  
@@ -347,7 +347,7 @@ kleinModel=RENORM(kleinModel
                    ,TARGET = kleinTargets
                    ,TSRANGE = c(1940,1,1941,1)
                    ,simIterLimit = 100
- );
+					)
 
 # Convergence reached in 3 iterations.
 # ...RENORM OK
@@ -404,6 +404,7 @@ with(kleinRenorm$simulation,
 #    1941, 1  ,  78.05216      ,  98.09119 
 
 ```
+Transformations of the dependent variable are allowed in `EQ>` definition, e.g. `TSDELTA(cn)=...`, `EXP(i)=...`, `TSDELTALOG(y)=...`, etc.
 
 **bimets** estimation and simulation results have been compared to the output results of leading commercial econometric software, by using several large and complex models.
 

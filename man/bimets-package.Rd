@@ -342,26 +342,23 @@ COMMENT> conditional evaluations and LHS functions on EQ
 COMMENT> Exp Consumption
 BEHAVIORAL> cn
 TSRANGE 1925 1 1941 1
-EQ> EXP(cn) = a1 + a2*p + a3*LAG(p,1) + a4*(w1+w2)
+EQ> EXP(cn) = a1 + a2*p + a3*TSLAG(p,1) + a4*(w1+w2)
 COEFF> a1 a2 a3 a4
 ERROR> AUTO(2)
-STORE> coe(1)
 
 COMMENT> Log Investment
 BEHAVIORAL> i
 TSRANGE 1925 1 1941 1
-EQ> LOG(i) = b1 + b2*p + b3*LAG(p,1) + b4*LAG(k,1)
+EQ> LOG(i) = b1 + b2*p + b3*TSLAG(p,1) + b4*TSLAG(k,1)
 COEFF> b1 b2 b3 b4
 RESTRICT> b2 + b3 = 1
-STORE> coe(15)
 
 COMMENT> Demand for Labor
 BEHAVIORAL> w1
 TSRANGE 1925 1 1941 1
-EQ> w1 = c1 + c2*(TSDELTA(y)+t-w2) + c3*LAG(TSDELTA(y)+t-w2,1)+c4*time
+EQ> w1 = c1 + c2*(TSDELTA(y)+t-w2) + c3*TSLAG(TSDELTA(y)+t-w2,1)+c4*time
 COEFF> c1 c2 c3 c4
 PDL> c3 1 3
-STORE> coe(29)
 
 COMMENT> Delta Gross National Product
 IDENTITY> y
@@ -373,11 +370,11 @@ EQ> p = TSDELTA(y) - (w1+w2)
 
 COMMENT> Capital Stock with switches
 IDENTITY> k
-EQ> k = LAG(k,1) + LOG(i)
-IF> LOG(i).GT.0
+EQ> k = TSLAG(k,1) + LOG(i)
+IF> LOG(i) > 0
 IDENTITY> k
-EQ> k = LAG(k,1)
-IF> LOG(i).LE.0
+EQ> k = TSLAG(k,1)
+IF> LOG(i) <= 0
 
 END"
 
