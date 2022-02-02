@@ -1,12 +1,19 @@
 
 **bimets Change-Log**
 
+*bimets ver. 1.5.3 - Mar. 2021*
+
+* fixed information messages on `MULTMATRIX`
+* added missings check in lagged time series in `SIMULATE`
+* fixed error messages in `SIMULATE` and `RENORM`
+* fixed bug in `IF>` condition having `<-` (`R` assign operator)
+
 *bimets ver. 1.5.2 - Dec. 2020*
 
 * F-prob in Chow Test output moved from [0,100] to [0,1]
 * `IV>` definition allowed in `MDL`
 * added `forceIV` in `ESTIMATE`
-* fixed bugs in `SIMULATE()` error messages
+* fixed error messages in `SIMULATE` 
 * added alias `YEARLY` for `ANNUAL`
 
 *bimets ver. 1.5.1 - Jun. 2020*

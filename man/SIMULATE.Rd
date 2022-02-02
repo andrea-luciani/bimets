@@ -126,7 +126,7 @@ SIMULATE(model=NULL,
 		 TSRANGE=NULL,
 		 simType='DYNAMIC',
 		 simConvergence=0.01,
-		 simIterLimit=20,
+		 simIterLimit=100,
 		 ZeroErrorAC=FALSE,
 		 BackFill=0,
 		 Exogenize=NULL,
@@ -179,7 +179,7 @@ SIMULATE(model=NULL,
   A named list that specifies the constant adjustments (i.e. add factors) to be added to the selected equations of the model. Each constant adjustment can be see as a new exogenous variable added to the equation of the specified endogenous variable. The list names are the names of the involved endogenous variables; each element of this is list contains the time series to be added to the equation of the related endogenous variable. Each provided time series must verify the compliance control check defined in \code{\link[=is.bimets]{is.bimets}} (see examples);
   }
   \item{verbose}{
-  If \code{TRUE} some verbose output will be activated. Moreover the values of all endogenous variables will be printed out during each iteration and for all time periods inside the simulation \code{TSRANGE};
+  If \code{TRUE} some verbose output will be activated. Moreover the values of all endogenous variables will be printed out during each iteration of the convergence algorithm for all time periods in the simulation \code{TSRANGE};
   }
   \item{verboseSincePeriod}{
   An integer that activate the verbose output, during the iterative process, only after the provided number of simulation periods;
@@ -194,7 +194,7 @@ SIMULATE(model=NULL,
   }
     \item{MM_SHOCK}{The value of the shocks added to variables in the derivative calculation of the multipliers. The default value is \code{0.00001} times the value of the exogenous variable (see \code{\link[=MULTMATRIX]{MULTMATRIX}});
   }  
- \item{quietly}{ If \code{TRUE}, information messages will be suppressed.
+ \item{quietly}{ If \code{TRUE}, information messages will be suppressed, e.g. an information message will be printed out if any time series has a missing value in the extended \code{TSRANGE}, that is the simulation \code{TSRANGE} backward extended by \code{model$max_lag} periods (See \code{\link[=LOAD_MODEL]{LOAD_MODEL}} for info on model max lag).
   } 
 \item{RESCHECKeqList}{ If \code{simType=RESCHECK}, by using this arguments users can select a subset of target endogenous variables: the simulation will be perfmormed only for the selected variables. It must be provided as an array of endogenous names, e.g. \code{c('endo1','endo2',...)}.
   } 
@@ -454,10 +454,10 @@ myModel=SIMULATE(myModel
                   ,Exogenize=exogenizeList
                   ,ConstantAdjustment=constantAdjList 
  )
-#Endogenous variable cn has been exogenized from year-period 1923-1 to 1925-1
-#Endogenous variable i has been exogenized from year-period 1923-1 to 1941-1
-#Endogenous variable i has a constant adjustment from year-period 1923-1 to 1924-1
-#Endogenous variable i has a constant adjustment from year-period 1926-1 to 1928-1
+#SIMULATE(): endogenous variable cn has been exogenized from year-period 1923-1 to 1925-1
+#SIMULATE(): endogenous variable i has been exogenized from year-period 1923-1 to 1941-1
+#SIMULATE(): endogenous variable cn has a constant adjustment from year-period 1923-1 to 1924-1
+#SIMULATE(): endogenous variable y has a constant adjustment from year-period 1926-1 to 1928-1
 #
 #Simulation:    100.00%
 #...SIMULATE OK

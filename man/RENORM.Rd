@@ -34,7 +34,6 @@ RENORM(model=NULL,
         INSTRUMENT=NULL,
         ConstantAdjustment=NULL,
         quietly=FALSE,
-        showWarnings=FALSE,
         tol=.Machine$double.eps,
         avoidCompliance=FALSE,
         ...)
@@ -52,7 +51,6 @@ RENORM(model=NULL,
 \item{ConstantAdjustment}{A named list that specifies the constant adjustments (i.e. add factors) to be added to the selected equations of the model (see also \code{\link[=SIMULATE]{SIMULATE}});}
 \item{quietly}{If \code{TRUE}, information messages will be suppressed.
  } 
-\item{showWarnings}{If \code{TRUE}, a warning message will be shown if any input time series has missing values.}
  \item{tol}{
   the tolerance for detecting linear dependencies in the columns of a matrix while an inversion is requested. The default is \code{.Machine$double.eps}.
   }

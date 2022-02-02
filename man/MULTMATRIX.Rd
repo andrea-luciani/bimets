@@ -197,7 +197,7 @@ myModel=MULTMATRIX(myModel,
                   INSTRUMENT=c('w2','g'),
                   TARGET=c('cn','y'))
                   
-#Multipliter Matrix:    100.00%
+#Multiplier Matrix:    100.00%
 #...MULTMATRIX OK
 
 print(myModel$MultiplierMatrix)
@@ -241,7 +241,7 @@ myModel=MULTMATRIX(myModel,
                     INSTRUMENT=c('w2','w1'),
                     TARGET=c('cn','y'))
 
-#Multipliter Matrix:    100.00%
+#Multiplier Matrix:    100.00%
 #...MULTMATRIX OK
 myModel$MultiplierMatrix
 #           w2_1 w1_ADDFACTOR_1      w2_2 w1_ADDFACTOR_2

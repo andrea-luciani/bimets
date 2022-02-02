@@ -339,7 +339,7 @@ kleinModel <- MULTMATRIX(kleinModel,
                         TARGET=c('cn','y'),
                         simIterLimit = 100)
 
-# Multipliter Matrix:    100.00%
+# Multiplier Matrix:    100.00%
 # ...MULTMATRIX OK
 
 kleinModel$MultiplierMatrix

@@ -916,7 +916,7 @@ R> kleinModel <- MULTMATRIX(kleinModel,
                         INSTRUMENT=c('w2','g'),
                         TARGET=c('cn','y')
                         )
-Multipliter Matrix: 100.00%
+Multiplier Matrix: 100.00%
 ...MULTMATRIX OK
 
 R> kleinModel$MultiplierMatrix
@@ -933,7 +933,7 @@ R> kleinModel <- MULTMATRIX(kleinModel,
                    TSRANGE=c(1940,1,1941,1),
                    INSTRUMENT=c('w2','g'),
                    TARGET=c('cn','y'))
-Multipliter Matrix: 100.00%
+Multiplier Matrix: 100.00%
 ...MULTMATRIX OK
 
 R> #output multipliers matrix (note the zeros where the period

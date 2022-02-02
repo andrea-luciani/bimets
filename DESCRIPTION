@@ -1,8 +1,8 @@
 Package: bimets
 Type: Package
 Title: Time Series and Econometric Modeling
-Version: 1.5.2
-Date: 2020-12-25
+Version: 1.5.3
+Date: 2021-02-04
 Authors@R: c(person("Andrea", "Luciani", email = "andrea.luciani@bancaditalia.it", role = c("aut", "cre")), person("Roberto", "Stok", email = "roberto.stok@bancaditalia.it", role = c("aut")), person("Bank of Italy",role = c("cph")))
 Maintainer: Andrea Luciani <andrea.luciani@bancaditalia.it>
 Author: Andrea Luciani [aut, cre], Roberto Stok [aut], Bank of Italy [cph]
@@ -14,4 +14,4 @@ LazyData: true
 License: GPL-3
 Encoding: UTF-8
 NeedsCompilation: no
-Packaged: 2021-01-21 15:50:54 UTC; m025732
+Packaged: 2021-02-04 16:22:53 UTC; m025732

@@ -1,6 +1,6 @@
 #############################################################################
 #
-# Copyright (C) 2019 Bank of Italy
+# Copyright (C) 2021-2031 Bank of Italy
 #  
 #  This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
   #clear console
   packageStartupMessage("\014 ");
   
-  packageStartupMessage(gsub("\\$","",'bimets is active - version 1.5.2\nFor help type \'?bimets\'\n'))
+  packageStartupMessage(gsub("\\$","",'bimets is active - version 1.5.3\nFor help type \'?bimets\'\n'))
   
   #packageStartupMessage('Loading required libraries...OK'); 
   #packageStartupMessage('\nBIMETS is active.\n');
