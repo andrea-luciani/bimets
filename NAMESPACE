@@ -1,0 +1,7 @@
+exportPattern("^[[:alpha:]]+")
+S3method(summary,BIMETS_MODEL)
+S3method(print,BIMETS_MODEL)
+S3method(frequency,xts)
+import("stats")
+import("xts")
+import("zoo")
