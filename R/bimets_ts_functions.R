@@ -32,7 +32,7 @@
   #clear console
   packageStartupMessage("\014 ");
   
-  packageStartupMessage(gsub("\\$","",'bimets is active - version 2.0.1\nFor help type \'?bimets\'\n'))
+  packageStartupMessage(gsub("\\$","",'bimets is active - version 2.0.2\nFor help type \'?bimets\'\n'))
   
   #packageStartupMessage('Loading required libraries...OK'); 
   #packageStartupMessage('\nBIMETS is active.\n');
@@ -1169,6 +1169,25 @@ frequency.xts <- function(x=NULL, ...)
 	return(TRUE);
 }
 
+#fix ts tsp. window bug workaround
+.fixTsp <- function(x=NULL)
+{
+  if (! is.ts(x)) stop('.fixTsp(): input must be of class ts()')
+  
+  starty=start(x)[1]
+  startp=start(x)[2]
+  
+  endy=end(x)[1]
+  endp=end(x)[2]
+  
+  freq=frequency(x)
+  
+  attr(x,'tsp')=c(starty+(startp-1)/freq,endy+(endp-1)/freq,freq)
+  
+  return(x)
+}
+      
+
 #convert yearmon to c(year,period)
 ym2yp <- function(x=NULL)
 {
@@ -1621,6 +1640,9 @@ TSEXTEND <- function(x=NULL,BACKTO=NULL,UPTO=NULL,EXTMODE='GROWTH',FACTOR=NA,avo
 				value2ins=NA;
 				value2ins2=NA;
 				
+				#fix tsp before window
+				outF=.fixTsp(outF)
+				
 				#TSEXTEND range
 				tryCatch({outF=window(outF,start=BACKTO,extend=TRUE);},error=function(e){cat('TSEXTEND():',e$message);});				
 				
@@ -1822,6 +1844,9 @@ TSEXTEND <- function(x=NULL,BACKTO=NULL,UPTO=NULL,EXTMODE='GROWTH',FACTOR=NA,avo
 				#default value to insert in extension
 				value2ins=NA;
 				value2ins2=NA;
+				
+				#fix tsp before window
+				outF=.fixTsp(outF)
 				
 				#TSEXTEND range
 				tryCatch({outF=window(outF,end=UPTO,extend=TRUE);},error=function(e){cat('TSEXTEND():',e$message);});
@@ -7311,7 +7336,7 @@ TSDATES <- GETYEARPERIOD;
 
 #TSPROJECT projects time series into a time interval.
 TSPROJECT <- function(x=NULL, TSRANGE=NULL, ARRAY=FALSE, EXTEND=FALSE, avoidCompliance=FALSE,...)
-{
+{ 
   
   if (is.null(x)) stop('TSPROJECT(): input time series needs to be instance of ts() or xts() class.');
   if (is.null(ARRAY)) stop('TSPROJECT(): ARRAY must be boolean.');
@@ -7343,6 +7368,8 @@ TSPROJECT <- function(x=NULL, TSRANGE=NULL, ARRAY=FALSE, EXTEND=FALSE, avoidComp
       
     },error=function(e){stop('TSPROJECT(): TSRANGE misformed. Usage: TSPROJECT(ts, TSRANGE=c(START_Y, START_P, END_Y, END_P))');});
     
+    #fix tsp before window()
+    x=.fixTsp(x)
     
     suppressWarnings({
       tryCatch({

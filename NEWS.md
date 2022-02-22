@@ -1,6 +1,12 @@
 
 **bimets Change-Log**
 
+*bimets ver. 2.0.2 - Feb. 2022*
+
+* added workaround on stats::window bug on daily series
+* fixed minor bug and typos on vignette
+* added git support
+
 *bimets ver. 2.0.1 - Jan. 2022*
 
 * added `STOCHSIMULATE`

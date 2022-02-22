@@ -8,27 +8,27 @@ library(bimets)
 
 
 ###################################################
-### code chunk number 2: bimets.Rnw:77-79
+### code chunk number 2: bimets.Rnw:78-80
 ###################################################
 #yearly time series
 myTS <- TIMESERIES(1:10, START = as.Date('2000-01-01'), FREQ = 1)
 
 
 ###################################################
-### code chunk number 3: bimets.Rnw:82-84
+### code chunk number 3: bimets.Rnw:83-85
 ###################################################
 #monthly time series
 myTS <- TIMESERIES(1:10, START = c(2002,3), FREQ = 'M')
 
 
 ###################################################
-### code chunk number 4: bimets.Rnw:86-87
+### code chunk number 4: bimets.Rnw:87-88
 ###################################################
 print(class(myTS))
 
 
 ###################################################
-### code chunk number 5: bimets.Rnw:107-109
+### code chunk number 5: bimets.Rnw:108-110
 ###################################################
 #create a daily time series
 myTS <- TIMESERIES((1:100), START = c(2000,1), FREQ = 'D')
@@ -48,28 +48,28 @@ myTS[[2000,100]] <- c(-1,-2,-3) #extend time series starting from period 100
 
 
 ###################################################
-### code chunk number 7: bimets.Rnw:128-130
+### code chunk number 7: bimets.Rnw:129-131
 ###################################################
 #create a monthly time series
 myMonthlyTS <- TIMESERIES(1:100, START = c(2000,1), FREQ = 'M')
 
 
 ###################################################
-### code chunk number 8: bimets.Rnw:132-134
+### code chunk number 8: bimets.Rnw:133-135
 ###################################################
 #convert to yearly time series using the average as aggregation fun
 myYearlyTS <- YEARLY(myMonthlyTS, 'AVE')
 
 
 ###################################################
-### code chunk number 9: bimets.Rnw:136-138
+### code chunk number 9: bimets.Rnw:137-139
 ###################################################
 #convert to daily using central interpolation as disaggregation fun
 myDailyTS <- DAILY(myMonthlyTS, 'INTERP_CENTER')
 
 
 ###################################################
-### code chunk number 10: bimets.Rnw:158-161
+### code chunk number 10: bimets.Rnw:159-162
 ###################################################
 #define two time series
 myTS1 <- TIMESERIES(1:100, START = c(2000,1), FREQ = 'M')
@@ -77,28 +77,28 @@ myTS2 <- TIMESERIES(-(1:100), START = c(2005,1), FREQ = 'M')
 
 
 ###################################################
-### code chunk number 11: bimets.Rnw:163-165
+### code chunk number 11: bimets.Rnw:164-166
 ###################################################
 #extend time series up to Apr 2020 with quadratic formula
 myExtendedTS <- TSEXTEND(myTS1, UPTO = c(2020,4), EXTMODE = 'QUADRATIC')
 
 
 ###################################################
-### code chunk number 12: bimets.Rnw:167-169
+### code chunk number 12: bimets.Rnw:168-170
 ###################################################
 #merge two time series with sum
 myMergedTS <- TSMERGE(myExtendedTS, myTS2, fun = 'SUM')
 
 
 ###################################################
-### code chunk number 13: bimets.Rnw:171-173
+### code chunk number 13: bimets.Rnw:172-174
 ###################################################
 #project time series on arbitrary time range
 myProjectedTS <- TSPROJECT(myMergedTS, TSRANGE = c(2004,2,2006,4))
 
 
 ###################################################
-### code chunk number 14: bimets.Rnw:175-178
+### code chunk number 14: bimets.Rnw:176-179
 ###################################################
 #lag and delta% time series
 myLagTS <- TSLAG(myProjectedTS,2)
@@ -106,14 +106,14 @@ myDeltaPTS <- TSDELTAP(myLagTS,2)
 
 
 ###################################################
-### code chunk number 15: bimets.Rnw:180-182
+### code chunk number 15: bimets.Rnw:181-183
 ###################################################
 #moving average
 myMovAveTS <- MOVAVG(myDeltaPTS,5)
 
 
 ###################################################
-### code chunk number 16: bimets.Rnw:184-189
+### code chunk number 16: bimets.Rnw:185-190
 ###################################################
 #print data
 TABIT(myMovAveTS,
@@ -123,7 +123,7 @@ TABIT(myMovAveTS,
 
 
 ###################################################
-### code chunk number 17: bimets.Rnw:218-253
+### code chunk number 17: bimets.Rnw:219-254
 ###################################################
 klein1.txt <- "
 MODEL 
@@ -163,19 +163,19 @@ END
 
 
 ###################################################
-### code chunk number 18: bimets.Rnw:475-476
+### code chunk number 18: bimets.Rnw:476-477
 ###################################################
 kleinModel <- LOAD_MODEL(modelText = klein1.txt)
 
 
 ###################################################
-### code chunk number 19: bimets.Rnw:485-486
+### code chunk number 19: bimets.Rnw:486-487
 ###################################################
 kleinModel$behaviorals$cn
 
 
 ###################################################
-### code chunk number 20: bimets.Rnw:492-497
+### code chunk number 20: bimets.Rnw:493-498
 ###################################################
 kleinModel$incidence_matrix
 kleinModel$vpre
@@ -185,7 +185,7 @@ kleinModel$vpost
 
 
 ###################################################
-### code chunk number 21: bimets.Rnw:505-540
+### code chunk number 21: bimets.Rnw:506-541
 ###################################################
 kleinModelData <- list(  
     cn   = TIMESERIES(39.8,41.9,45,49.2,50.6,52.6,55.1,56.2,57.3,57.8,
@@ -305,19 +305,19 @@ lhsKleinModel <- SIMULATE(lhsKleinModel, TSRANGE = c(1925,1,1930,1))
 
 
 ###################################################
-### code chunk number 26: bimets.Rnw:640-641
+### code chunk number 26: bimets.Rnw:641-642
 ###################################################
 kleinModel <- ESTIMATE(kleinModel, quietly = TRUE)
 
 
 ###################################################
-### code chunk number 27: bimets.Rnw:646-647
+### code chunk number 27: bimets.Rnw:647-648
 ###################################################
 kleinModel <- ESTIMATE(kleinModel, eqList = c('cn'))
 
 
 ###################################################
-### code chunk number 28: bimets.Rnw:652-662
+### code chunk number 28: bimets.Rnw:653-663
 ###################################################
 #print estimated coefficients
 kleinModel$behaviorals$cn$coefficients
@@ -332,7 +332,7 @@ kleinModel$behaviorals$cn$statistics$LogLikelihood
 
 
 ###################################################
-### code chunk number 29: bimets.Rnw:670-716
+### code chunk number 29: bimets.Rnw:671-717
 ###################################################
 #define model
 advancedKlein1.txt <- 
@@ -383,7 +383,7 @@ END"
 
 
 ###################################################
-### code chunk number 30: bimets.Rnw:718-721
+### code chunk number 30: bimets.Rnw:719-722
 ###################################################
 #load model and data
 advancedKleinModel <- LOAD_MODEL(modelText = advancedKlein1.txt)
@@ -391,14 +391,14 @@ advancedKleinModel <- LOAD_MODEL_DATA(advancedKleinModel, kleinModelData)
 
 
 ###################################################
-### code chunk number 31: bimets.Rnw:723-725
+### code chunk number 31: bimets.Rnw:724-726
 ###################################################
 #estimate model
 advancedKleinModel <- ESTIMATE(advancedKleinModel)
 
 
 ###################################################
-### code chunk number 32: bimets.Rnw:760-767
+### code chunk number 32: bimets.Rnw:761-768
 ###################################################
 #chow test for the consumption equation
 #base TSRANGE set to 1921/1935
@@ -410,7 +410,7 @@ kleinModelChow <- ESTIMATE(kleinModel
 
 
 ###################################################
-### code chunk number 33: bimets.Rnw:839-861
+### code chunk number 33: bimets.Rnw:840-862
 ###################################################
 #FORECAST GNP in 1942:1944
 #we need to extend exogenous variables in 1942 up to 1944
@@ -443,7 +443,7 @@ TABIT(kleinModel$simulation$y)
  
 #define exogenization list
 #'cn' exogenized in 1923-1925
-#'i' exogenized in the whole TSRANGE
+#'i' exogenized in whole TSRANGE
 exogenizeList <- list(
                  cn = c(1923,1,1925,1)
                 ,i  = TRUE
@@ -467,14 +467,14 @@ kleinModel <- SIMULATE(kleinModel
 
 
 ###################################################
-### code chunk number 35: bimets.Rnw:942-960
+### code chunk number 35: bimets.Rnw:943-961
 ###################################################
 
 #we want to perform a stochastic forecast of the GNP up to 1944
 #we will add normal disturbances to endogenous Consumption 'cn' 
 #in 1942 by using its regression standard error
 #we will add uniform disturbances to exogenous Government Expenditure 'g'
-#in the whole TSRANGE
+#in whole TSRANGE
 myStochStructure <- list(
   cn = list(
          TSRANGE = c(1942,1,1942,1)
@@ -490,7 +490,7 @@ myStochStructure <- list(
 
 
 ###################################################
-### code chunk number 36: bimets.Rnw:962-970
+### code chunk number 36: bimets.Rnw:963-971
 ###################################################
 #we need to extend exogenous variables up to 1944
 advancedKleinModel$modelData <- within(advancedKleinModel$modelData,{
@@ -503,7 +503,7 @@ advancedKleinModel$modelData <- within(advancedKleinModel$modelData,{
 
 
 ###################################################
-### code chunk number 37: bimets.Rnw:972-979
+### code chunk number 37: bimets.Rnw:973-980
 ###################################################
 #stochastic model forecast
 advancedKleinModel <- STOCHSIMULATE(advancedKleinModel
@@ -515,14 +515,14 @@ advancedKleinModel <- STOCHSIMULATE(advancedKleinModel
 
 
 ###################################################
-### code chunk number 38: bimets.Rnw:981-983
+### code chunk number 38: bimets.Rnw:982-984
 ###################################################
-#print mean and standard deviation for the forecasted GNP
+#print mean and standard deviation of forecasted GNP
 with(advancedKleinModel$stochastic_simulation, TABIT(y$mean, y$sd))
 
 
 ###################################################
-### code chunk number 39: bimets.Rnw:985-988
+### code chunk number 39: bimets.Rnw:986-989
 ###################################################
 #print the unperturbed forecasted GNP along with the
 #first 5 perturbed realizations
@@ -530,7 +530,7 @@ with(advancedKleinModel$simulation_MM, print(y[,1:6]))
 
 
 ###################################################
-### code chunk number 40: bimets.Rnw:1014-1021
+### code chunk number 40: bimets.Rnw:1015-1022
 ###################################################
 kleinModel <- MULTMATRIX(kleinModel
                         ,TSRANGE = c(1941,1,1941,1)
@@ -542,7 +542,7 @@ kleinModel$MultiplierMatrix
 
 
 ###################################################
-### code chunk number 41: bimets.Rnw:1027-1036
+### code chunk number 41: bimets.Rnw:1028-1037
 ###################################################
 #multi-period interim multipliers
 kleinModel <- MULTMATRIX(kleinModel
@@ -556,7 +556,7 @@ kleinModel$MultiplierMatrix
 
 
 ###################################################
-### code chunk number 42: bimets.Rnw:1059-1065
+### code chunk number 42: bimets.Rnw:1060-1066
 ###################################################
 #we want an arbitrary value on Consumption of 66 in 1940 and 78 in 1941
 #we want an arbitrary value on GNP of 77 in 1940 and 98 in 1941
@@ -578,7 +578,7 @@ kleinModel <- RENORM(kleinModel
 
 
 ###################################################
-### code chunk number 44: bimets.Rnw:1081-1088
+### code chunk number 44: bimets.Rnw:1082-1089
 ###################################################
 with(kleinModel,TABIT(modelData$w2
                       ,renorm$INSTRUMENT$w2
@@ -590,21 +590,21 @@ with(kleinModel,TABIT(modelData$w2
 
 
 ###################################################
-### code chunk number 45: bimets.Rnw:1095-1097
+### code chunk number 45: bimets.Rnw:1096-1098
 ###################################################
 #create a new model
 kleinRenorm <- kleinModel
 
 
 ###################################################
-### code chunk number 46: bimets.Rnw:1099-1101
+### code chunk number 46: bimets.Rnw:1100-1102
 ###################################################
 #get instruments to be used
 newInstruments <- kleinModel$renorm$INSTRUMENT
 
 
 ###################################################
-### code chunk number 47: bimets.Rnw:1103-1114
+### code chunk number 47: bimets.Rnw:1104-1115
 ###################################################
 #change exogenous by using new instruments data
 kleinRenorm$modelData <- within(kleinRenorm$modelData,
@@ -620,7 +620,7 @@ kleinRenorm$modelData <- within(kleinRenorm$modelData,
 
 
 ###################################################
-### code chunk number 48: bimets.Rnw:1116-1122
+### code chunk number 48: bimets.Rnw:1117-1123
 ###################################################
 #simulate the new model
 kleinRenorm <- SIMULATE(kleinRenorm
@@ -631,7 +631,7 @@ kleinRenorm <- SIMULATE(kleinRenorm
 
 
 ###################################################
-### code chunk number 49: bimets.Rnw:1124-1128
+### code chunk number 49: bimets.Rnw:1125-1129
 ###################################################
 #verify targets are achieved
 with(kleinRenorm$simulation,
@@ -640,7 +640,7 @@ with(kleinRenorm$simulation,
 
 
 ###################################################
-### code chunk number 50: bimets.Rnw:1161-1164
+### code chunk number 50: bimets.Rnw:1162-1165
 ###################################################
 #load the advanced model
 advancedKleinModel <- LOAD_MODEL(modelText = advancedKlein1.txt
@@ -648,7 +648,7 @@ advancedKleinModel <- LOAD_MODEL(modelText = advancedKlein1.txt
 
 
 ###################################################
-### code chunk number 51: bimets.Rnw:1166-1170
+### code chunk number 51: bimets.Rnw:1167-1171
 ###################################################
 #load time series into the model object
 advancedKleinModel <- LOAD_MODEL_DATA(advancedKleinModel
@@ -657,7 +657,7 @@ advancedKleinModel <- LOAD_MODEL_DATA(advancedKleinModel
 
 
 ###################################################
-### code chunk number 52: bimets.Rnw:1172-1175
+### code chunk number 52: bimets.Rnw:1173-1176
 ###################################################
 #estimate the model
 advancedKleinModel <- ESTIMATE(advancedKleinModel 
@@ -665,7 +665,7 @@ advancedKleinModel <- ESTIMATE(advancedKleinModel
 
 
 ###################################################
-### code chunk number 53: bimets.Rnw:1177-1184
+### code chunk number 53: bimets.Rnw:1178-1185
 ###################################################
 #we want to maximize the non-linear objective function:
 #f()=(y-110)+(cn-90)*ABS(cn-90)-(g-20)^0.5
@@ -677,7 +677,7 @@ advancedKleinModel <- ESTIMATE(advancedKleinModel
 
 
 ###################################################
-### code chunk number 54: bimets.Rnw:1186-1194
+### code chunk number 54: bimets.Rnw:1187-1195
 ###################################################
 #we need to extend exogenous variables up to 1942
 advancedKleinModel$modelData <- within(advancedKleinModel$modelData,{
@@ -690,7 +690,7 @@ advancedKleinModel$modelData <- within(advancedKleinModel$modelData,{
 
 
 ###################################################
-### code chunk number 55: bimets.Rnw:1196-1203
+### code chunk number 55: bimets.Rnw:1197-1204
 ###################################################
 #define INSTRUMENT and boundaries
 myOptimizeBounds <- list(
@@ -702,7 +702,7 @@ myOptimizeBounds <- list(
 
 
 ###################################################
-### code chunk number 56: bimets.Rnw:1205-1211
+### code chunk number 56: bimets.Rnw:1206-1212
 ###################################################
 #define restrictions
 myOptimizeRestrictions <- list(
@@ -713,7 +713,7 @@ myOptimizeRestrictions <- list(
 
 
 ###################################################
-### code chunk number 57: bimets.Rnw:1213-1219
+### code chunk number 57: bimets.Rnw:1214-1220
 ###################################################
 #define objective function
 myOptimizeFunctions <- list(
@@ -724,9 +724,9 @@ myOptimizeFunctions <- list(
 
 
 ###################################################
-### code chunk number 58: bimets.Rnw:1221-1234
+### code chunk number 58: bimets.Rnw:1222-1235
 ###################################################
-#Monte-Carlo optimization by using 10.000 stochastic realizations
+#Monte-Carlo optimization by using 10000 stochastic realizations
 #and 1E-4 convergence criterion 
 advancedKleinModel <- OPTIMIZE(advancedKleinModel
                           ,simType = 'FORECAST'
@@ -742,21 +742,21 @@ advancedKleinModel <- OPTIMIZE(advancedKleinModel
 
 
 ###################################################
-### code chunk number 59: bimets.Rnw:1236-1238
+### code chunk number 59: bimets.Rnw:1237-1239
 ###################################################
 #print local maximum
 advancedKleinModel$optimize$optFunMax
 
 
 ###################################################
-### code chunk number 60: bimets.Rnw:1240-1242
+### code chunk number 60: bimets.Rnw:1241-1243
 ###################################################
 #print INSTRUMENT that allow local maximum to be achieved
 advancedKleinModel$optimize$INSTRUMENT
 
 
 ###################################################
-### code chunk number 61: bimets.Rnw:1244-1248
+### code chunk number 61: bimets.Rnw:1245-1249
 ###################################################
 #LET'S VERIFY RESULTS
 #copy into modelData the computed INSTRUMENT 
@@ -765,7 +765,7 @@ advancedKleinModel$modelData <- advancedKleinModel$optimize$modelData
 
 
 ###################################################
-### code chunk number 62: bimets.Rnw:1250-1262
+### code chunk number 62: bimets.Rnw:1251-1263
 ###################################################
 #simulate the model by using the new INSTRUMENT
 #note: we used cn add-factor as OPTIMIZE instrument, so we need 
@@ -782,7 +782,7 @@ advancedKleinModel <- SIMULATE(advancedKleinModel
 
 
 ###################################################
-### code chunk number 63: bimets.Rnw:1264-1270
+### code chunk number 63: bimets.Rnw:1265-1271
 ###################################################
 #calculate objective function by using the SIMULATE output time series
 #(y-110)+(cn-90)*ABS(cn-90)-(g-20)^0.5
@@ -793,7 +793,7 @@ optFunTest <- (y-110)+(cn-90)*abs(cn-90)-(g-20)^0.5
 
 
 ###################################################
-### code chunk number 64: bimets.Rnw:1272-1279
+### code chunk number 64: bimets.Rnw:1273-1280
 ###################################################
 #verify computed max is equal to optimization max
 #(in the following command TSPROJECT could be omitted because
@@ -805,13 +805,13 @@ abs(sum(TSPROJECT(optFunTest
 
 
 ###################################################
-### code chunk number 65: bimets.Rnw:1304-1305 (eval = FALSE)
+### code chunk number 65: bimets.Rnw:1305-1306 (eval = FALSE)
 ###################################################
 ## install.packages('bimets')
 
 
 ###################################################
-### code chunk number 66: bimets.Rnw:1307-1308
+### code chunk number 66: bimets.Rnw:1308-1309
 ###################################################
 library(bimets)
 

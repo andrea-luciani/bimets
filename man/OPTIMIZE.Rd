@@ -27,12 +27,12 @@ The following steps can describe the procedure implemented in \code{OPTIMIZE}:
 4) once the \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} completes, select the stochastic realization that presents the higher value in the sum of the corresponding objective-function time series values, and return, among other data, the related optimal \code{INSTRUMENT} time series.\cr\cr
 \cr
 \if{latex}{
-In the following figure, the scatter plot is populated with \code{2.916} objective function stochastic realizations, computed by using the example code at the end of this section; the \code{210.58} local maximum  is highlighted\cr(i.e. \code{advancedKleinModel$optimize$optFunMax} in first example).\cr\cr In this example:\cr\cr 
+In the following figure, the scatter plot is populated with \code{2916} objective function stochastic realizations, computed by using the example code at the end of this section; the \code{210.58} local maximum  is highlighted\cr(i.e. \code{advancedKleinModel$optimize$optFunMax} in first example).\cr\cr In this example:\cr\cr 
 i) The objective function definition is:\cr 
 \eqn{f(y,cn,g) = (y-110)+(cn-90)*|cn-90|-\sqrt{g-20}} \cr
 given \eqn{y} as the simulated \emph{Gross National Product}, \eqn{cn} as the simulated \emph{Consumption} and \eqn{g} as the exogenous \emph{Government Expenditure}: the basic idea is to maximize \emph{Consumption}, and secondarily the \emph{Gross National Product}, while reducing the \emph{Government Expenditure};\cr\cr 
 ii) The \code{INSTRUMENT} variables are the \eqn{cn} \emph{Consumption} "booster" (i.e. the add-factor, not to be confused with the simulated \emph{Consumption} in the objective function) and the \eqn{g} \emph{Government Expenditure}, defined over the following domains: \eqn{ cn \in (-5,5)}, \eqn{g \in (15,25)};\cr\cr
-iii) The following restrictions are applied to the \code{INSTRUMENT}: \eqn{g + cn^2/2 < 27  \wedge  g + cn > 17}, given the \eqn{cn} as the \emph{Consumption} "booster" (i.e. the add-factor) and the \eqn{g} as the \emph{Government Expenditure};
+iii) The following restrictions are applied to the \code{INSTRUMENT}: \eqn{g + cn^2/2 < 27  \wedge  g + cn > 17}, given \eqn{cn} as the \emph{Consumption} "booster" (i.e. the add-factor) and \eqn{g} as the \emph{Government Expenditure};
 
 \figure{OptKlein.png}{options: width=14cm} \cr \cr
 The figure clearly shows that non-linear restrictions have been applied, and that non-computable objective functions have been discarded, e.g. the stochastic realizations having \eqn{g<20} due to the square root operation in the objective function, given instrument \eqn{g \in (15,25)}.
@@ -282,7 +282,7 @@ myOptimizeFunctions <- list(
         FUNCTION='(y-110)+(cn-90)*ABS(cn-90)-(g-20)^0.5')
 )
 
-#Monte-Carlo optimization by using 10.000 stochastic realizations
+#Monte-Carlo optimization by using 10000 stochastic realizations
 #and 1E-4 convergence criterion 
 advancedKleinModel <- OPTIMIZE(advancedKleinModel
                           ,simType = 'FORECAST'

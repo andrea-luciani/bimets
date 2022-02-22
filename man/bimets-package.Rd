@@ -17,7 +17,7 @@ The package can be installed and loaded in \code{R} with the following commands 
 R> install.packages('bimets')
 R> library(bimets)
 }
-
+If you have general questions about using BIMETS, or for bug reports, please use the \href{https://github.com/andrea-luciani/bimets/issues}{git issue tracker} or write to the \href{mailto:andrea.luciani@bancaditalia.it}{maintainer}.
 
 \tabular{c}{\bold{TIME SERIES }  }
 
@@ -829,7 +829,7 @@ BIMETS simulation capabilities support:\cr\cr
 - \emph{Forecast simulations}: similar to dynamic simulation, but during the initialization of the iterative algorithm the starting values of endogenous variables in a period are set equal to the simulated values of the previous period. This allows the simulation of future endogenous observations, i.e. the forecast;  \cr\cr
 - \emph{Residuals check}: a single period, single equation simulation; simulated time series in output are just the computation of the RHS (right-hand-side) of their equation, by using the historical values of the involved time series and by accounting for error autocorrelation and PDLs, if any;\cr\cr
 - \emph{Stochastic Simulation}: see \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}};\cr\cr
-- \emph{Partial or total exogenization of endogenous variables}: in the provided time interval (i.e. partial exog.) or in the whole simulation time range (i.e. total exog.), the values of the selected endogenous variables can be definitely set to their historical values, by excluding their equations from the iterative algorithm of simulation;\cr\cr
+- \emph{Partial or total exogenization of endogenous variables}: in the provided time interval (i.e. partial exog.) or in whole simulation time range (i.e. total exog.), the values of the selected endogenous variables can be definitely set to their historical values, by excluding their equations from the iterative algorithm of simulation;\cr\cr
 - \emph{Constant adjustment of endogenous variables (add-factors)}: adds up a new exogenous time series - the "constant adjustment" - in the equation of the selected endogenous variables.\cr\cr
 More details are available in the \code{\link[=SIMULATE]{SIMULATE}} help page. \cr \cr
 
@@ -878,7 +878,7 @@ R> #STATIC SIMULATION EXAMPLE WITH EXOGENIZATION AND CONSTANT ADJUSTMENTS
  
 R> #define exogenization list
 R> #'cn' exogenized in 1923-1925
-R> #'i' exogenized in the whole TSRANGE
+R> #'i' exogenized in whole TSRANGE
 R> exogenizeList <- list(
                   cn = c(1923,1,1925,1),
                   i  = TRUE
@@ -905,12 +905,12 @@ R> kleinModel <- SIMULATE(kleinModel
 
 \tabular{c}{\emph{Stochastic Simulation}}
 Forecasts produced by structural econometric models are subject to several sources of error, such as random disturbance term of each stochastic equation, errors in estimated coefficients, errors in forecasts of exogenous variables, errors in preliminary data and mis-specification of the model.\cr\cr
-The forecasting error depending on the structural disturbances can be analyzed by using the stochastic simulation procedure.\cr\cr
+The forecast error depending on the structural disturbances can be analyzed by using the stochastic simulation procedure.\cr\cr
 The deterministic simulation is the simultaneous solution of an econometric model obtained by applying, for each stochastic (behavioral) equation, the expected values of the structural disturbances, which are all zero by assumption. In the BIMETS \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} stochastic simulation, the structural disturbances are given values that have specified stochastic properties. The error terms of the estimated behavioral equation of the model are appropriately perturbed. Identity equations and exogenous variables can be as well perturbed by disturbances that have specified stochastic properties. The model is then solved for each data set with different values of the disturbances. Finally, mean and standard deviation are computed for each simulated endogenous variable. \cr\cr
 In terms of computational efficiency, the procedure takes advantage of the fact that multiple datasets are bind together in matrices. Therefore, to achieve a global convergence, the iterative simulation algorithm is executed once for all perturbed datasets. This solution can be viewed as a sort of a SIMD (i.e. Single Instruction Multiple Data) parallel simulation: \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} function transforms time series into matrices; consequently, the procedure can easily bind multiple datasets by column. At the same time, a single run ensures a fast code execution. Finally, each column in the output matrices represents a stochastic realization.\cr\cr
 By using the \code{StochStructure} argument of this function, users can define a stochastic structure for the disturbances. For each variable of the model, users can provide a distinct probability distribution for the disturbance, and a specific time range of application. Mean and standard deviation for each simulated endogenous time series will be stored in the \code{stochastic_simulation} element of the output model object; all the stochastic realizations will be stored in the \code{simulation_MM} element of the output model object as named matrices.
 \if{latex}{
-In the following figure, the advanced Klein model (see code example), has been perturbed during the forecast operation by applying a normal disturbance to the endogenous \emph{Consumption} behavioral \code{cn} add-factor in year 1942, and a uniform disturbance to the exogenous \emph{Government Expenditure} time series \code{g} along all the simulation \code{TSRANGE}. The normal disturbance applied to the \code{cn} behavioral has a zero mean and a standard deviation equal to the behavioral regression standard error,\cr i.e. \code{advancedKleinModel$behaviorals$cn$statistics$StandardErrorRegression}, thus replicating the \code{\link[=ESTIMATE]{ESTIMATE}} regression error during the current perturbation (not accounting for inter-equations cross-covariance).\cr \cr 
+In the following figure, the advanced Klein model (see code example), has been perturbed during the forecast operation by applying a normal disturbance to the endogenous \emph{Consumption} behavioral \code{cn} add-factor in year 1942, and a uniform disturbance to the exogenous \emph{Government Expenditure} time series \code{g} along all the simulation \code{TSRANGE}. The normal disturbance applied to the \code{cn} behavioral has a zero mean and a standard deviation equal to the behavioral regression standard error,\cr i.e. \code{advancedKleinModel$behaviorals$cn$statistics$StandardErrorRegression}, thus roughly replicating the \code{\link[=ESTIMATE]{ESTIMATE}} regression error during the current perturbation (not accounting for inter-equations cross-covariance).\cr \cr 
 \figure{StochKleinGNP.png}{options: width=14cm} \cr \cr
 }
 \preformatted{
@@ -919,7 +919,7 @@ R> #we want to perform a stochastic forecast of the GNP up to 1944
 R> #we will add normal disturbances to endogenous Consumption 'cn' 
 R> #in 1942 by using its regression standard error
 R> #we will add uniform disturbances to exogenous Government Expenditure 'g'
-R> #in the whole TSRANGE
+R> #in whole TSRANGE
 R> nSD=advancedKleinModel$behaviorals$cn$statistics$StandardErrorRegression
 R> myStochStructure <- list(
   cn=list(
@@ -951,7 +951,7 @@ R> advancedKleinModel <- STOCHSIMULATE(advancedKleinModel
                       ,StochSeed=123
                       )
                       
-R> #print mean and standard deviation for the forecasted GNP
+R> #print mean and standard deviation of forecasted GNP
 R> with(advancedKleinModel$stochastic_simulation,TABIT(y$mean, y$sd))
 
       Date, Prd., y$mean         , y$sd           
@@ -975,7 +975,7 @@ The \code{MULTMATRIX} procedure is articulated as follows:\cr\cr
 2. the first simulation establishes the base line solution (without shocks);\cr\cr
 3. the other simulations are done with shocks applied to each of the \code{INSTRUMENT} one at a time for every period in \code{TSRANGE};\cr\cr
 4. each simulation follows the defaults described in the \code{\link[=SIMULATE]{SIMULATE}} help page, but has to be \code{STATIC} for the IMPACT multipliers and \code{DYNAMIC} for INTERIM multipliers;\cr\cr
-5. given the \code{MM_SHOCK} shock amount as a very small positive number, derivatives are computed by subtracting the base line solution of the \code{TARGET} from the shocked solution, then dividing by the value of the base line \code{INSTRUMENT} times the \code{MM_SHOCK};\cr\cr\cr
+5. given \code{MM_SHOCK} shock amount as a very small positive number, derivatives are computed by subtracting the base line solution of the \code{TARGET} from the shocked solution, then dividing by the value of the base line \code{INSTRUMENT} times the \code{MM_SHOCK};\cr\cr\cr
 BIMETS users can also declare an endogenous variable as the \code{INSTRUMENT} variable. In this case, the constant adjustment (see \code{\link[=SIMULATE]{SIMULATE}}) related to the provided endogenous variable will be used as the \code{INSTRUMENT} exogenous variable. \cr\cr
 Back to our Klein's model example, we can calculate impact multipliers of \emph{Government Expenditure} "\code{g}" and \emph{Government Wage Bill} "\code{w2}" with respect of \emph{Consumption} "\code{cn}" and \emph{Gross National Product} "\code{y}" in the year 1941 by using the previously estimated model: 
 \preformatted{
@@ -1128,12 +1128,12 @@ The optimization consists of maximizing a social welfare function, i.e. the obje
 The core of the \code{\link[=OPTIMIZE]{OPTIMIZE}} procedure is based on a Monte Carlo method that takes advantage of the \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} procedure. Policy variables, i.e. \code{INSTRUMENT}, are uniformly perturbed in the range defined by the user-provided boundaries, then the \code{INSTRUMENT} values that i) verify the user-provided constraints and ii) maximize the objective-functions are selected and stored into the \code{optimize} element of the output BIMETS model.
 \cr\cr
 \if{latex}{
-In the following figure, the scatter plot is populated with \code{2.916} objective function stochastic realizations, computed by using the example code at the end of this section; the \code{210.58} local maximum  is highlighted\cr(i.e. \code{advancedKleinModel$optimize$optFunMax} in code example).\cr\cr In this example:\cr\cr 
+In the following figure, the scatter plot is populated with \code{2916} objective function stochastic realizations, computed by using the example code at the end of this section; the \code{210.58} local maximum  is highlighted\cr(i.e. \code{advancedKleinModel$optimize$optFunMax} in code example).\cr\cr In this example:\cr\cr 
 i) The objective function definition is:\cr 
 \eqn{f(y,cn,g) = (y-110)+(cn-90)*|cn-90|-\sqrt{g-20}} \cr
 given \eqn{y} as the simulated \emph{Gross National Product}, \eqn{cn} as the simulated \emph{Consumption} and \eqn{g} as the exogenous \emph{Government Expenditure}: the basic idea is to maximize \emph{Consumption}, and secondarily the \emph{Gross National Product}, while reducing the \emph{Government Expenditure};\cr\cr 
 ii) The \code{INSTRUMENT} variables are the \eqn{cn} \emph{Consumption} "booster" (i.e. the add-factor, not to be confused with the simulated \emph{Consumption} in the objective function) and the \eqn{g} \emph{Government Expenditure}, defined over the following domains: \eqn{ cn \in (-5,5)}, \eqn{g \in (15,25)};\cr\cr
-iii) The following restrictions are applied to the \code{INSTRUMENT}: \eqn{g + cn^2/2 < 27 \wedge g + cn > 17}, given the \eqn{cn} as the \emph{Consumption} "booster" (i.e. the add-factor) and the \eqn{g} as the \emph{Government Expenditure};
+iii) The following restrictions are applied to the \code{INSTRUMENT}: \eqn{g + cn^2/2 < 27 \wedge g + cn > 17}, given \eqn{cn} as the \emph{Consumption} "booster" (i.e. the add-factor) and \eqn{g} as the \emph{Government Expenditure};
 
 \figure{OptKlein.png}{options: width=14cm} \cr \cr
 The figure clearly shows that non-linear restrictions have been applied, and that non-computable objective functions have been discarded, e.g. the stochastic realizations having \eqn{g<20} due to the square root operation in the objective function, given instrument \eqn{g \in (15,25)}.
@@ -1184,7 +1184,7 @@ R> myOptimizeFunctions <- list(
         FUNCTION='(y-110)+(cn-90)*ABS(cn-90)-(g-20)^0.5')
 )
 
-R> #Monte-Carlo optimization by using 10.000 stochastic realizations
+R> #Monte-Carlo optimization by using 10000 stochastic realizations
 R> #and 1E-4 convergence criterion 
 R> advancedKleinModel <- OPTIMIZE(advancedKleinModel
                           ,simType = 'FORECAST'

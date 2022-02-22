@@ -11,7 +11,7 @@ For bug reports, please use the [issue tracker](https://github.com/bimets/issues
 -->
 Please consider reading the [package vignette](https://cran.r-project.org/package=bimets/vignettes/bimets.pdf), wherein there are figures and the mathematical expressions are better formatted than in html.
 
-If you have general questions about using **bimets**, or for bug reports, please write to the maintainer: [Andrea.Luciani@bancaditalia.it](mailto:andrea.luciani@bancaditalia.it)
+If you have general questions about using **bimets**, or for bug reports, please use the [git issue tracker](https://github.com/andrea-luciani/bimets/issues) or write to the [maintainer](mailto:andrea.luciani@bancaditalia.it).
 
 ## Features
 
@@ -350,7 +350,7 @@ TABIT(kleinModel$simulation$y)
 #we will add normal disturbances to endogenous Consumption 'cn' 
 #in 1942 by using its regression standard error
 #we will add uniform disturbances to exogenous Government Expenditure 'g'
-#in the whole TSRANGE
+#in whole TSRANGE
 myStochStructure <- list(
   cn=list(
         TSRANGE=c(1942,1,1942,1),
@@ -381,7 +381,7 @@ kleinModel <- STOCHSIMULATE(kleinModel
                       ,StochSeed=123
                       )
                       
-#print mean and standard deviation for the forecasted GNP
+#print mean and standard deviation of forecasted GNP
 with(kleinModel$stochastic_simulation,TABIT(y$mean, y$sd))
 
 #      Date, Prd., y$mean         , y$sd           
@@ -613,7 +613,7 @@ devtools::install_github("bimets")
 
 ## Guidelines for contributing
 
-We welcome contributions to the **bimets** package. In the case, please write to the maintainer: [Andrea.Luciani@bancaditalia.it](mailto:andrea.luciani@bancaditalia.it). 
+We welcome contributions to the **bimets** package. In the case, please use the [git issue tracker](https://github.com/andrea-luciani/bimets/issues) or write to the [maintainer](mailto:andrea.luciani@bancaditalia.it). 
 
 ## License
 

@@ -1,8 +1,8 @@
 Package: bimets
 Type: Package
 Title: Time Series and Econometric Modeling
-Version: 2.0.1
-Date: 2022-01-01
+Version: 2.0.2
+Date: 2022-02-21
 Authors@R: c(person("Andrea", "Luciani", email = "andrea.luciani@bancaditalia.it", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-7372-358X")), person("Roberto", "Stok", email = "roberto.stok@bancaditalia.it", role = c("aut")), person("Bank of Italy",role = c("cph")))
 Maintainer: Andrea Luciani <andrea.luciani@bancaditalia.it>
 Author: Andrea Luciani [aut, cre] (<https://orcid.org/0000-0002-7372-358X>), Roberto Stok [aut], Bank of Italy [cph]
@@ -13,5 +13,7 @@ Imports: stats
 LazyData: true
 License: GPL-3
 Encoding: UTF-8
+BugReports: https://github.com/andrea-luciani/bimets/issues
+URL: https://github.com/andrea-luciani/bimets
 NeedsCompilation: no
-Packaged: 2022-01-06 16:25:19 UTC; m025732
+Packaged: 2022-02-22 11:33:08 UTC; m025732
