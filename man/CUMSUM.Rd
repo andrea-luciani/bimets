@@ -50,6 +50,8 @@ This function returns an object of the same class of the input, i.e. an array or
 \code{\link[=TSLEAD]{TSLEAD}}\cr
 \code{\link[=INDEXNUM]{INDEXNUM}}\cr
 \code{\link[=CUMPROD]{CUMPROD}}\cr
+\code{\link[=VERIFY_MAGNITUDE]{VERIFY_MAGNITUDE}}\cr
+\code{\link[=GETRANGE]{GETRANGE}}\cr
 }
 
 

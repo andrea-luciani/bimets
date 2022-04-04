@@ -18,7 +18,9 @@
 #
 # @description: BIMETS - Time Series FUNs 		    
 #
-# @authors: ANDREA.LUCIANI@bancaditalia.it, ROBERTO.STOK@bancaditalia.it - ECS - Bank of Italy
+# @authors: ANDREA LUCIANI, ROBERTO STOK 
+#
+# @copyright: Bank of Italy
 #
 # @license: GPL-3 - GNU GENERAL PUBLIC LICENSE - Version 3
 #
@@ -32,7 +34,7 @@
   #clear console
   packageStartupMessage("\014 ");
   
-  packageStartupMessage(gsub("\\$","",'bimets is active - version 2.0.2\nFor help type \'?bimets\'\n'))
+  packageStartupMessage(gsub("\\$","",'bimets is active - version 2.1.0\nFor help type \'?bimets\'\n'))
   
   #packageStartupMessage('Loading required libraries...OK'); 
   #packageStartupMessage('\nBIMETS is active.\n');
@@ -198,7 +200,7 @@
       #print(idx);
       
       #if not numeric take in charge
-      if ((!(missing(idx))) && (!(is.null(idx))) && ((is.character(idx) || class(idx)=='Date' || class(idx)=='yearmon' || class(idx)=='yearqtr'  )))
+      if ((!(missing(idx))) && (!(is.null(idx))) && ((is.character(idx) || inherits(idx,'Date') || inherits(idx,'yearmon') || inherits(idx,'yearqtr')  )))
       {
         xtsT=NULL;
         
@@ -224,7 +226,7 @@
     registerS3method('[<-','ts' , function (x, idx, jdx, value, avoidCompliance=FALSE) {
       
       #if not numeric take in charge
-      if ((!(missing(idx))) && (!(is.null(idx))) && ((is.character(idx) || class(idx)=='Date' || class(idx)=='yearmon' || class(idx)=='yearqtr'  )))
+      if ((!(missing(idx))) && (!(is.null(idx))) && ((is.character(idx) || inherits(idx,'Date') || inherits(idx,'yearmon') || inherits(idx,'yearqtr') )))
       {
         tsT=NULL;
         xtsT=NULL;
@@ -272,7 +274,7 @@
         
         startXTS=index(x)[1];
         
-        if (class( startXTS )=='yearqtr') 
+        if (inherits( startXTS ,'yearqtr') )
           
           startXTSYP=NULL;
         
@@ -281,9 +283,9 @@
         
         tryCatch({
           
-          if (class( startXTS )=='Date')     startXTSYP=date2yp(startXTS,xtsF);
-          if (class( startXTS )=='yearqtr')  startXTSYP=yq2yp(startXTS);
-          if (class( startXTS )=='yearmon')  startXTSYP=ym2yp(startXTS);
+          if (inherits( startXTS ,'Date')  )   startXTSYP=date2yp(startXTS,xtsF);
+          if (inherits( startXTS ,'yearqtr') ) startXTSYP=yq2yp(startXTS);
+          if (inherits( startXTS ,'yearmon') ) startXTSYP=ym2yp(startXTS);
           
           if (is.null(startXTSYP)) stop('unknown xts tclass()');
           
@@ -534,9 +536,9 @@ as.bimets <- function(x=NULL,FILLVALUE=NA,VERBOSE=FALSE,...)
 .getStaticYP <- function (start=NULL,end=NULL,freq=NULL)
 {
   
-  if (!(class(start)=='Date')) stop('.getStaticYP(): "start" must be of class Date().');
+  if (! inherits( start,'Date')) stop('.getStaticYP(): "start" must be of class Date().');
   
-  if (!is.null(end)) if (!(class(end)=='Date')) stop('.getStaticYP(): "end" must be of class Date().');
+  if (!is.null(end)) if (! inherits( end,'Date')) stop('.getStaticYP(): "end" must be of class Date().');
 
   
   if (!.isCompliantF(freq)) stop('.getStaticYP(): uncompliant frequency.');
@@ -1194,7 +1196,7 @@ ym2yp <- function(x=NULL)
 	if (is.null(x)) stop('ym2yp(): input needs to be instance of yearmon class.');
 	outF=NA;
 	
-	if ( any(is.na(x)) || any(is.null(class( x ))) || !(all(class( x )=='yearmon'))) stop('ym2yp(): input needs to be instance of class yearmon.');
+	if ( any(is.na(x)) || is.null(class( x )) || !inherits( x ,'yearmon')) stop('ym2yp(): input needs to be instance of class yearmon.');
 	
 	tryCatch({
 	  
@@ -1214,7 +1216,7 @@ yq2yp <- function(x=NULL)
 	if (is.null(x)) stop('yq2yp(): input needs to be instance of yearqtr class.');
 	outF=NA;
 	
-	if ( any(is.na(x)) || any(is.null(class( x ))) || !(all(class( x )=='yearqtr'))) stop('yq2yp(): input needs to be instance of class yearqtr.');
+	if ( any(is.na(x)) || (is.null(class( x ))) || !(inherits( x ,'yearqtr'))) stop('yq2yp(): input needs to be instance of class yearqtr.');
 	
 	tryCatch({
 	  
@@ -1236,7 +1238,7 @@ date2yp <- function(x=NULL,f=1)
   if (is.null(x)) stop('date2yp(): input needs to be instance of class Date().');
 	outF=NA;
 	
-	if (any(is.na(x)) || any(is.null(class( x ))) || !(all(class( x )=='Date'))  ) stop('date2yp(): input needs to be instance of class Date().');
+	if (any(is.na(x)) || (is.null(class( x ))) || !(inherits( x ,'Date'))  ) stop('date2yp(): input needs to be instance of class Date().');
 
   if (!(f %in% (c(1,2,4,3,12,24,36,53,366)))) stop('date2yp(): frequency f needs to be 1, 2, 3, 4, 12, 24, 36, 53 or 366.');
 	
@@ -6851,10 +6853,10 @@ TSERIES <- function(..., START = c(2000,1), FREQ = 1, SOURCE=NULL, TITLE=NULL, U
   if (! FREQ %in% c(1,2,3,4,12,24,36,53,366)) stop('TIMESERIES(): FREQ must be 1, 2, 3, 4, 12, 24, 36, 53 or 366.');  
   
   tryCatch({
-    if (class(START)=='Date') START=date2yp(START,FREQ);
-    if (class(START)=='yearmon' && FREQ==12) START=ym2yp(START);
+    if (inherits(START,'Date')) START=date2yp(START,FREQ);
+    if (inherits(START,'yearmon') && FREQ==12) START=ym2yp(START);
     
-    if (class(START)=='yearqtr' && FREQ==4) START=yq2yp(START);
+    if (inherits(START,'yearqtr') && FREQ==4) START=yq2yp(START);
     .isCompliantYP(START,FREQ);},error=function(e){stop('TIMESERIES(): uncompliant start date.')});  
   
  
@@ -8156,6 +8158,137 @@ INDEXNUM <- function(x=NULL, BASEYEAR=NULL, avoidCompliance=FALSE,...)
   outF=x*factor;
   
   return(outF);
+  
+}
+
+# VERIFY_MAGNITUDE code -------------------------------------------------------------------------
+
+VERIFY_MAGNITUDE <- function(x=list(), magnitude=10e-7, verbose=TRUE, ...)
+{
+  #check args
+  if (! is.list(x)) stop('VERIFY_MAGNITUDE(): "x" must be a list of time series.')
+  if (! is.logical(verbose) || is.na(verbose)) stop('VERIFY_MAGNITUDE(): "verbose" must be TRUE or FALSE.')
+  if (length(x)==0) stop('VERIFY_MAGNITUDE(): "x" is an empty list.')
+  
+  #check list of time series
+  isTimeSeries=unlist(lapply(x,function(x) is.ts(x) || is.xts(x)))
+  if (! all(isTimeSeries))
+  {
+      stop('VERIFY_MAGNITUDE(): "x" must be a time series list of class ts() or xts(). Objects related to the following list indices are not time series: ',
+           paste(which(! isTimeSeries),collapse=', '))
+  }
+  
+  if (is.null(magnitude) || ! is.finite(magnitude) || magnitude <0)
+    stop('VERIFY_MAGNITUDE(): "magnitude" must be a positive number.')
+  
+  outF=c()
+  
+  
+  tmpOut=which(unlist(lapply(x,function(x) any(is.na(x)))))
+  
+  if (length(tmpOut)>0)
+    for (idx in 1:length(tmpOut))
+    {
+      if (verbose) cat(paste0('VERIFY_MAGNITUDE(): warning, the time series in list position #',
+                              tmpOut[idx],ifelse(! is.null(names(x)[tmpOut[idx]]),paste0(' with name "',names(x)[tmpOut[idx]],'"'),''),
+                              ' has missing values. Missing values will be discarded.\n'))
+    }
+  
+  #output calc
+  outF=which(unlist(lapply(x, function(x) sqrt(sum(x^2,na.rm = TRUE))>magnitude)))
+  
+  #outF=setdiff(outF,tsToBeRemoved)
+  
+  if (length(outF) > 0 && verbose)
+  {
+    for (idx in 1:length(outF))
+    {
+      cat(paste0('VERIFY_MAGNITUDE(): the time series in list position #',
+                 outF[idx],ifelse(! is.null(names(x)[outF[idx]]),paste0(' with name "',names(x)[outF[idx]],'"'),''),
+               ' has significative values.\n'))
+    }
+  }
+  
+  return(outF)
+  
+}
+
+# GETRANGE code -------------------------------------------------------------------------
+
+GETRANGE <- function(x=list(), type='INNER', avoidCompliance=FALSE,  ...)
+{
+  #check args
+  if (! (is.list(x) || is.ts(x) || is.xts(x))) stop('GETRANGE(): "x" must be a time series or a list of time series.')
+  if (! is.logical(avoidCompliance) || is.na(avoidCompliance)) stop('GETRANGE(): "verbose" must be TRUE or FALSE.')
+  if (! is.character(type) || (type!='INNER' && type!='OUTER' ) ) stop('GETRANGE(): "type" must be "INNER" or "OUTER".')
+  #if single ts then transform to list
+  if ( (is.ts(x) || is.xts(x))) x=list(x)
+    
+  
+  if (length(x)==0) stop('GETRANGE(): "x" is an empty list.')
+   
+  #check list of time series
+  isTimeSeries=unlist(lapply(x,function(x) is.ts(x) || is.xts(x)))
+  if (! all(isTimeSeries))
+  {
+   stop('GETRANGE(): "x" must be a time series list of class ts() or xts(). Objects related to the following list indices are not time series: ',
+        paste(which(! isTimeSeries),collapse=', '))
+  }
+  
+  localF=frequency(x[[1]])
+  
+  if (length(x)>1) 
+    for (idx in 2:length(x))
+    { 
+      if (frequency(x[[idx]]) != localF)
+        stop('GETRANGE(): time series in the input list must have the same frequency.');
+    }
+  
+  
+  #get ts metadata
+  localTSL=TSLOOK(x[[1]],avoidCompliance=avoidCompliance)
+  localStart=c(localTSL$STARTY,localTSL$STARTP)
+  localEnd=c(localTSL$ENDY,localTSL$ENDP)
+  
+  if (length(x)>1) 
+    for (idx in 2:length(x))
+    {
+      tmpTSL=TSLOOK(x[[idx]],avoidCompliance=avoidCompliance)
+      tmpStart=c(tmpTSL$STARTY,tmpTSL$STARTP)
+      tmpEnd=c(tmpTSL$ENDY,tmpTSL$ENDP)
+      
+      if (type=='INNER')
+      {
+        if (NUMPERIOD(localStart,tmpStart,localF)>0)
+        {
+          localStart=tmpStart
+        }
+        
+        if (NUMPERIOD(localEnd,tmpEnd,localF)<0)
+        {
+          localEnd=tmpEnd
+        }
+      }
+      
+      if (type=='OUTER')
+      {
+        if (NUMPERIOD(localStart,tmpStart,localF)<0)
+        {
+          localStart=tmpStart
+        }
+        
+        if (NUMPERIOD(localEnd,tmpEnd,localF)>0)
+        {
+          localEnd=tmpEnd
+        }
+        
+      }
+    }
+  
+  #if INNER we can have no intersection
+  if(NUMPERIOD(localStart,localEnd,localF)<0) return(NULL)
+  
+  return(c(localStart,localEnd))
   
 }
 

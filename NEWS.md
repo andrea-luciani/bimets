@@ -1,6 +1,14 @@
 
 **bimets Change-Log**
 
+*bimets ver. 2.1.0 - Apr. 2022*
+
+* added `VERIFY_MAGNITUDE`
+* added `GETRANGE`
+* fixed bug on `ESTIMATE` w. Chow Test, tol and IV enabled
+* reduced tolerance in matrix inversion 
+* fixed R-devel compliance in class comparison
+
 *bimets ver. 2.0.2 - Feb. 2022*
 
 * added workaround on stats::window bug on daily series

@@ -43,6 +43,7 @@ This function returns an object of the same class of the input, i.e. an array or
 \code{\link[=TSEXTEND]{TSEXTEND}}\cr
 \code{\link[=TSLEAD]{TSLEAD}}\cr
 \code{\link[=INDEXNUM]{INDEXNUM}}\cr
+\code{\link[=VERIFY_MAGNITUDE]{VERIFY_MAGNITUDE}}\cr
 }
 
 

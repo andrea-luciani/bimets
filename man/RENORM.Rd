@@ -38,12 +38,12 @@ RENORM(model=NULL,
        verboseSincePeriod=0,
        verboseVars=NULL,
        renormIterLimit=10,
-       renormConvergence=10E-5,
+       renormConvergence=1e-4,
        TARGET=NULL,
        INSTRUMENT=NULL,
        MM_SHOCK=0.00001,
        quietly=FALSE,
-       tol=.Machine$double.eps,
+       tol=1e-28,
        avoidCompliance=FALSE,
        ...
        )
@@ -69,7 +69,7 @@ RENORM(model=NULL,
 \item{INSTRUMENT}{A \code{character} array built with the names of the instrument exogenous variables involved in the renormalization. User can also declare an endogenous variable as \code{INSTRUMENT} variable: in this case the constant adjustment (see \code{\link[=SIMULATE]{SIMULATE}}) related to the provided endogenous variable will be used as instrument exogenous variable (see example)
  }
  \item{tol}{
-  the tolerance for detecting linear dependencies in the columns of a matrix while an inversion is requested. The default is \code{.Machine$double.eps} }
+  the tolerance for detecting linear dependencies in the columns of a matrix while an inversion is requested. }
 \item{MM_SHOCK}{see \code{\link[=MULTMATRIX]{MULTMATRIX}}}
 \item{quietly}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{avoidCompliance}{see \code{\link[=SIMULATE]{SIMULATE}}}

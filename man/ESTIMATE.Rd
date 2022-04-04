@@ -26,7 +26,7 @@ ESTIMATE(model=NULL,
          IV=NULL,
          forceIV=FALSE,
          quietly=FALSE,
-         tol=.Machine$double.eps,
+         tol=1e-28,
          digits=getOption('digits'),
          centerCOV=TRUE,
          CHOWTEST=FALSE,
@@ -62,7 +62,7 @@ ESTIMATE(model=NULL,
    If \code{TRUE}, information messages will be suppressed, e.g. results and regression statistics.
    }
   \item{tol}{
-  The tolerance for detecting linear dependencies in a matrix's columns when its inverse is requested. The default is \code{.Machine$double.eps}.
+  The tolerance for detecting linear dependencies in a matrix's columns when its inverse is requested. 
   }
   \item{digits}{
   Controls the number of digits to print when printing coefficients and statistics of the estimation. Valid values are 1 to 22 with a default of 7.

@@ -18,7 +18,9 @@
 #
 # @description: BIMETS - Modeling FUNs 		    
 #
-# @authors: ANDREA.LUCIANI@bancaditalia.it, ROBERTO.STOK@bancaditalia.it - ECS - Bank of Italy
+# @authors: ANDREA LUCIANI, ROBERTO STOK 
+#
+# @copyright: Bank of Italy
 #
 # @license: GPL-3 - GNU GENERAL PUBLIC LICENSE - Version 3
 #
@@ -61,7 +63,7 @@
 .renameListItems = function(inputList=NULL,namesInput=NULL,namesOutput=NULL)
 {
   #check inputs
-  if (is.null(inputList) || class(inputList) !='list') stop(paste0('.renameListItems(): please provide an input list'));
+  if (is.null(inputList) || !(inherits(inputList,'list'))) stop(paste0('.renameListItems(): please provide an input list'));
   if (length(namesInput) != length(namesOutput)) stop(paste0('.renameListItems(): input and output names array must have the same length.'));
   
   #prepare output
@@ -3461,7 +3463,7 @@ LOAD_MODEL_DATA <- function(model=NULL,
 {
   #check args
   if (is.null(model)) stop('LOAD_MODEL_DATA(): NULL model argument.');  
-  if (!(class( model )=='BIMETS_MODEL')) stop('LOAD_MODEL_DATA(): model must be instance of BIMETS_MODEL class.');
+  if (!(inherits( model ,'BIMETS_MODEL')) ) stop('LOAD_MODEL_DATA(): model must be instance of BIMETS_MODEL class.');
   
   #check arg
   if (!(is.logical(quietly))) stop('LOAD_MODEL_DATA(): "quietly" must be TRUE or FALSE.')
@@ -3491,7 +3493,7 @@ LOAD_MODEL_DATA <- function(model=NULL,
   #check args
   
   if (is.null(model)) stop(caller,'NULL model argument.');  
-  if (!(class( model )=='BIMETS_MODEL')) stop(caller,'model must be instance of BIMETS_MODEL class.');
+  if (!(inherits( model ,'BIMETS_MODEL'))) stop(caller,'model must be instance of BIMETS_MODEL class.');
   
   if (is.null(model$vendog))  stop(caller,'list of endogenous variables not found.');
   if (is.null(model$vexog))  stop(caller,'list of exogenous variables not found.');
@@ -3541,7 +3543,7 @@ ESTIMATE <- function(model=NULL,
                      IV=NULL,
                      forceIV=FALSE,
                      quietly=FALSE,
-                     tol=.Machine$double.eps,
+                     tol=1e-28,
                      digits=getOption('digits'),
                      centerCOV=TRUE,
                      CHOWTEST=FALSE,
@@ -3553,7 +3555,7 @@ ESTIMATE <- function(model=NULL,
   #check args
   if (is.null(estTech) || ((estTech!='OLS') && (estTech!='IV'))) stop('ESTIMATE(): estimation technique not supported.');
   if (is.null(model) ) stop('ESTIMATE(): NULL model.');
-  if (!(class( model )=='BIMETS_MODEL')) stop('ESTIMATE(): model must be instance of BIMETS_MODEL class.');
+  if (!(inherits( model ,'BIMETS_MODEL'))) stop('ESTIMATE(): model must be instance of BIMETS_MODEL class.');
   
     if (! is.finite(tol) || tol<=0) stop('ESTIMATE(): please provide a valid tolerance value.')
   
@@ -4236,7 +4238,7 @@ ESTIMATE <- function(model=NULL,
             
           },error=function(e)
           {
-            stop('ESTIMATE(): given Z = the matrix of the instrumental variables as columns, Z\'*Z is not invertible. Behavioral: "',eqList[eqIdx],'". ',e$message);        
+            stop('ESTIMATE(): given Z = the matrix of the instrumental variables as columns, Z\'*Z is not invertible. Behavioral: "',eqList[eqIdx],'". Check regressors and "IV" or try to reduce tolerance "tol" value. ',e$message);        
           }
           );
           
@@ -4288,7 +4290,7 @@ ESTIMATE <- function(model=NULL,
         },error=function(e)
         {
           stop('ESTIMATE(): in restriction ',currentBehavioral$restrictRaw,
-               ' given betaHat = (W\'X)^(-1) * (W\'Y), W\'X is not invertible.  Behavioral: "',eqList[eqIdx],'". ',e$message);         
+               ' given betaHat = (W\'X)^(-1) * (W\'Y), W\'X is not invertible.  Behavioral: "',eqList[eqIdx],'". Check regressors or try to reduce tolerance "tol" value. ',e$message);         
         }
         );
         
@@ -4304,7 +4306,7 @@ ESTIMATE <- function(model=NULL,
                                   tol=tol);       
           },error=function(e)
           {
-            stop('ESTIMATE(): given y = X * b + u, X\'*X is not invertible (un-restricted case in F-test). Behavioral: "',eqList[eqIdx],'". ',e$message);        
+            stop('ESTIMATE(): given y = X * b + u, X\'*X is not invertible (un-restricted case in F-test). Behavioral: "',eqList[eqIdx],'". Check regressors or try to reduce tolerance "tol" value. ',e$message);        
           }
           );
           
@@ -4330,7 +4332,7 @@ ESTIMATE <- function(model=NULL,
             
           },error=function(e)
           {
-            stop('ESTIMATE(): given y = X * b + u and given Z = the matrix of the instrumental variables as columns, and X_hat = Z * ( Z\' * Z )^(-1) * Z\' * X, X_hat\'*X_hat is not invertible (un-restricted case in F-test). Behavioral: "',eqList[eqIdx],'". ',e$message);        
+            stop('ESTIMATE(): given y = X * b + u and given Z = the matrix of the instrumental variables as columns, and X_hat = Z * ( Z\' * Z )^(-1) * Z\' * X, X_hat\'*X_hat is not invertible (un-restricted case in F-test). Behavioral: "',eqList[eqIdx],'". Check regressors or try to reduce tolerance "tol" value. ',e$message);        
           }
           );
           
@@ -4354,7 +4356,7 @@ ESTIMATE <- function(model=NULL,
                                   tol=tol);       
           },error=function(e)
           {
-            stop('ESTIMATE(): given y = X * b + u, X\'*X is not invertible. Behavioral: "',eqList[eqIdx],'". ',e$message);        
+            stop('ESTIMATE(): given y = X * b + u, X\'*X is not invertible. Behavioral: "',eqList[eqIdx],'". Check regressors or try to reduce tolerance "tol" value. ',e$message);        
           }
           );
           
@@ -4382,7 +4384,7 @@ ESTIMATE <- function(model=NULL,
             
           },error=function(e)
           {
-            stop('ESTIMATE(): given Z = the matrix of the instrumental variables as columns, Z\'*Z is not invertible. Behavioral: "',eqList[eqIdx],'". ',e$message);        
+            stop('ESTIMATE(): given Z = the matrix of the instrumental variables as columns, Z\'*Z is not invertible. Behavioral: "',eqList[eqIdx],'". Check regressors and "IV" or try to reduce tolerance "tol" value. ',e$message);        
           }
           );
           
@@ -4394,7 +4396,7 @@ ESTIMATE <- function(model=NULL,
             
           },error=function(e)
           {
-            stop('ESTIMATE(): given y = X * b + u and given Z = the matrix of the instrumental variables as columns, and X_hat = Z * ( Z\' * Z )^(-1) * Z\' * X, X_hat\'*X_hat is not invertible. Behavioral: "',eqList[eqIdx],'". ',e$message);        
+            stop('ESTIMATE(): given y = X * b + u and given Z = the matrix of the instrumental variables as columns, and X_hat = Z * ( Z\' * Z )^(-1) * Z\' * X, X_hat\'*X_hat is not invertible. Behavioral: "',eqList[eqIdx],'". Check regressors and "IV" or try to reduce tolerance "tol" value. ',e$message);        
           }
           );
           
@@ -4466,7 +4468,7 @@ ESTIMATE <- function(model=NULL,
         },error=function(e)
         {
           stop('ESTIMATE(): given u = LAG(u) * rho + z, LAG(u)\'*LAG(u) is not invertible (Cochrane-Orcutt). Behavioral: "',
-               eqList[eqIdx],'". ',e$message);        
+               eqList[eqIdx],'". Check residuals or try to reduce tolerance "tol" value. ',e$message);        
         }
         );
         
@@ -4684,7 +4686,7 @@ ESTIMATE <- function(model=NULL,
     # R & SPK differs in Rsquared! we choosed R 
     # https://stats.stackexchange.com/questions/26176/removal-of-statistically-significant-intercept-term-increases-r2-in-linear-mo
     
-    bm_rSquared=1-(bm_ssr)/(sum((bm_vectorY-ifelse(bm_ConstTermExist,ave(bm_vectorY),0))^2));
+    bm_rSquared=1-(bm_ssr)/(sum((bm_vectorY-ifelse(bm_ConstTermExist,ave(bm_vectorY),0))^2))
     
     # #r-squared
     # if (thereAreErrorCorr==TRUE  )
@@ -4758,6 +4760,7 @@ ESTIMATE <- function(model=NULL,
       #f-test for restrictions
       if( thereAreRestrictions==TRUE ) 
       {
+        
         bm_Ftest_restriction=ifelse(bm_numObs-bm_coeffNum-bm_errorDim<=0,NA,((bm_ssr-bm_ssr_unrestricted )/bm_restrictionsNum)/((bm_ssr_unrestricted)/(bm_numObs-bm_coeffNum-bm_errorDim)));
         bm_Ftest_probability=ifelse(bm_numObs-bm_coeffNum-bm_errorDim<=0,NA,((1-pf(bm_Ftest_restriction,bm_restrictionsNum,bm_numObs-bm_coeffNum))));
       }
@@ -5155,7 +5158,7 @@ ESTIMATE <- function(model=NULL,
         
         # perform second estimation on extended tsrange
         tryCatch({
-          
+           
           second_model=ESTIMATE(model=model
                                 ,TSRANGE = c(first_estimation_tsrange[1],first_estimation_tsrange[2],CHOWPAR[1],CHOWPAR[2])
                                 ,forceTSRANGE = TRUE
@@ -5163,6 +5166,11 @@ ESTIMATE <- function(model=NULL,
                                 ,quietly=TRUE
                                 ,digits=digits
                                 ,CHOWTEST=FALSE #this is mandatory
+                                ,tol=tol
+                                ,IV=IV
+                                ,forceIV=forceIV
+                                ,centerCOV = centerCOV
+                                ,avoidCompliance = TRUE
                                 ,...);
           
         },error=function(e){
@@ -5185,6 +5193,11 @@ ESTIMATE <- function(model=NULL,
                                 ,quietly=TRUE
                                 ,digits=digits
                                 ,CHOWTEST=FALSE #this is mandatory
+                                ,tol=tol
+                                ,IV=IV
+                                ,forceIV=forceIV
+                                ,centerCOV = centerCOV
+                                ,avoidCompliance = TRUE
                                 ,...);
           
         },error=function(e){
@@ -5208,6 +5221,10 @@ ESTIMATE <- function(model=NULL,
                                   ,digits=digits
                                   ,CHOWTEST=FALSE #this is mandatory
                                   ,avoidCompliance=TRUE
+                                  ,tol=tol
+                                  ,IV=IV
+                                  ,forceIV=forceIV
+                                  ,centerCOV = centerCOV
                                   ,...);
             
             #if estimation completes, update the CHOWPAR
@@ -5391,12 +5408,12 @@ RENORM <- function(model=NULL,
                    verboseSincePeriod=0,
                    verboseVars=NULL,
                    renormIterLimit=10,
-                   renormConvergence=10E-5,
+                   renormConvergence=1e-4,
                    TARGET=NULL,
                    INSTRUMENT=NULL,
                    MM_SHOCK=0.00001,
                    quietly=FALSE,
-                   tol=.Machine$double.eps,
+                   tol=1e-28,
                    avoidCompliance=FALSE,
                    ...)
 {
@@ -5406,7 +5423,7 @@ RENORM <- function(model=NULL,
   
   #checks...
   if (is.null(model) ) stop('RENORM(): NULL model.');
-  if (is.null(class( model )) || !(class( model )=='BIMETS_MODEL')) 
+  if (is.null(class( model )) || !(inherits( model ,'BIMETS_MODEL')) )
     stop('RENORM(): "model" must be instance of BIMETS_MODEL class.');
   if (! (
     is.numeric(renormIterLimit) &&  (renormIterLimit > 0) 
@@ -6015,7 +6032,7 @@ SIMULATE <- function(model=NULL,
   #check arguments
   if (is.null(model) ) stop(callerName,'NULL model.');
   if (is.null(TSRANGE) ) stop(callerName,'"TSRANGE" must be defined.');
-  if (is.null(class( model )) || !(class( model )=='BIMETS_MODEL')) 
+  if (is.null(class( model )) || !(inherits( model ,'BIMETS_MODEL')) )
     stop(callerName,'model must be instance of BIMETS_MODEL class.');
   if (! (
     is.numeric(simIterLimit) &&  (simIterLimit > 0) 
@@ -9278,7 +9295,7 @@ print.BIMETS_MODEL <- function(x=NULL, ...)
 {
   model=x;
   
-  if (class(model) != "BIMETS_MODEL") stop("print.BIMETS_MODEL(): model object is not a BIMETS model.");
+  if (! inherits(model, "BIMETS_MODEL")) stop("print.BIMETS_MODEL(): model object is not a BIMETS model.");
   
   
   
