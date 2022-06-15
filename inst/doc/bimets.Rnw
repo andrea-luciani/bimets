@@ -214,7 +214,10 @@ More details on \pkg{bimets} econometric capabilities are available in the \href
 \pkg{bimets} provides a language to specify an econometric model unambiguously. This section describes how to create a model and its general structure. The specification of an econometric model is translated and identified by keyword statements which are grouped in a model file, i.e. a plain text file or a \code{character} variable with a specific syntax. Collectively, these keyword statements constitute the \pkg{bimets} Model Description Language (from now on "\code{MDL}"). The model specifications consist of groups of statements. Each statement begins with a keyword. The keyword classifies the component of the model which is being specified.
 \bigskip
 
-Below is an example of Klein's model, which can either be stored in an \proglang{R} variable of class \code{character} or in a plain text file with an \code{MDL} compliant syntax. \\ \\The content of the \emph{klein1.txt} variable  is:
+Below is an example of Klein's model, which can either be stored in an \proglang{R} variable of class \code{character} or in a plain text file with an \code{MDL} compliant syntax. 
+
+\clearpage
+The content of the \emph{klein1.txt} variable  is:
 \begin{footnotesize}
 <<>>=
 klein1.txt <- "
@@ -310,6 +313,8 @@ The following \code{MDL} functions can be used in the \code{LHS} left-hand side 
 On the other side, the mathematical expression available for use in the \code{RHS} right-hand side of the \code{EQ>} equation and in the \code{IV>} expression described later in this page (i.e. \code{f1, f2, f3, ...}) can include the standard arithmetic operators, parentheses and the following \code{MDL} functions:\\ \\
 -  \code{TSLAG(ts,i)}: lag the \code{ts} time series by \code{i}-periods;\\ \\
 -  \code{TSDELTA(ts,i)}: \code{i}-periods difference of the \code{ts} time series;\\ \\
+-  \code{TSDELTAP(ts,i)} - \code{i}-periods percentage difference of the \code{ts} time series;\\ \\
+-  \code{TSDELTALOG(ts,i)} - \code{i}-periods logarithmic difference of the \code{ts} time series;\\ \\
 -  \code{MOVAVG(ts,i)}: \code{i}-periods moving average of the \code{ts} time series;\\ \\
 -  \code{MOVSUM(ts,i)}: \code{i}-periods moving sum of the \code{ts} time series;\\ \\
 -  \code{LOG(ts)}: log of the \code{ts} time series;\\ \\

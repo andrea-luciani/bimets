@@ -5565,6 +5565,12 @@ RENORM <- function(model=NULL,
                      '" is not a model exogenous variable.'));
   }
   
+   
+  model$renorm[['__RENORM_PARAMETERS__']]$Exogenize=Exogenize 
+  model$renorm[['__RENORM_PARAMETERS__']]$ConstantAdjustment=ConstantAdjustment 
+  model$renorm[['__RENORM_PARAMETERS__']]$renormIterLimit=renormIterLimit
+  model$renorm[['__RENORM_PARAMETERS__']]$renormConvergence=renormConvergence
+  
   #this is required otherwise R store only values and no ts... ??
   if (! is.list(model$simulation)) model$simulation=list()
   													  
@@ -5788,12 +5794,11 @@ RENORM <- function(model=NULL,
   }
   model$renorm$TARGET=tmpL;
   
-  #export renorm parameters
-  model$renorm[['__RENORM_PARAMETERS__']]$renormIterLimit=renormIterLimit;
+  #export renorm parameters 
   model$renorm[['__RENORM_PARAMETERS__']]$TSRANGE=TSRANGE;
   model$renorm[['__RENORM_PARAMETERS__']]$TARGET=TARGET;
   model$renorm[['__RENORM_PARAMETERS__']]$INSTRUMENT=INSTRUMENT;
-  #model$renorm[['__RENORM_PARAMETERS__']]$simType=simType;
+  
   
   
   return(model)
@@ -6313,8 +6318,7 @@ SIMULATE <- function(model=NULL,
           || all(sort(names(StochStructure[[idxN]])) != c('PARS','TSRANGE','TYPE')))
         stop(callerName,'"StochStructure$',idxN,'" must be a named list built of the following 3 components: TSRANGE, TYPE, PARS.')
       
-      
-      if (is.logical(StochStructure[[idxN]]$TSRANGE) && ! is.na(StochStructure[[idxN]]$TSRANGE)) 
+      if (length(StochStructure[[idxN]]$TSRANGE)==1 && is.logical(StochStructure[[idxN]]$TSRANGE) && ! is.na(StochStructure[[idxN]]$TSRANGE)) 
       {
         if (StochStructure[[idxN]]$TSRANGE!=TRUE) 
           stop(callerName,'"StochStructure$',idxN,'$TSRANGE" must be TRUE or a 4 element integer array.')

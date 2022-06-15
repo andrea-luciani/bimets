@@ -1,6 +1,12 @@
 
 **bimets Change-Log**
 
+*bimets ver. 2.1.1 - Jun 2022*
+
+* extended report on `__RENORM_PARAMETERS__`
+* fixed vignette MDL EQ RHS functions list
+* fixed unexpected warning on `STOCHSIMULATE`
+
 *bimets ver. 2.1.0 - Apr. 2022*
 
 * added `VERIFY_MAGNITUDE`
