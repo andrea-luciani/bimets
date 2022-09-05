@@ -6,7 +6,7 @@
 Optimal control of a BIMETS model
 }
 \description{
-\if{html}{(Note: this is the html version of the reference manual. Please consider reading the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{pdf version} of this reference manual, or the package \href{https://cran.r-project.org/package=bimets/vignettes/bimets.pdf}{vignette}, wherein there are figures and the mathematical expressions are better formatted than in html.)\cr\cr}
+
 The \code{OPTIMIZE} procedure provides a convenient method for performing optimal control exercises; the procedure maximizes an arbitrary objective-function under the constraints imposed by the econometric model and by user-specified constraints.
 \cr\cr
 An approach to policy evaluation is via a so-called "social welfare function". This approach relaxes the assumptions of the instruments-targets framework, i.e. the \code{\link[=RENORM]{RENORM}} procedure. Rather than assuming specific desired targets for some endogenous variables, it assumes the existence of a social welfare function determining a scalar measure of performance based on both endogenous and policy (exogenous) variables.
@@ -25,8 +25,7 @@ The following steps can describe the procedure implemented in \code{OPTIMIZE}:
 2) perform a \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} by uniformly perturbing the \code{INSTRUMENT} variables inside the user-boundaries provided in the \code{OptimizeBounds} function argument;\cr\cr
 3) during the \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}, for each period in the optimization \code{TSRANGE}: i) discard the stochastic realizations that do not verify the restrictions provided in the \code{OptimizeRestrictions} argument; ii) for all the remaining realizations, compute the current value of the objective-functions time series, as defined in the \code{OptimizeFunctions} argument, by using the exogenous and (simulated) endogenous stochastic time series;\cr\cr
 4) once the \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} completes, select the stochastic realization that presents the higher value in the sum of the corresponding objective-function time series values, and return, among other data, the related optimal \code{INSTRUMENT} time series.\cr\cr
-\cr
-\if{latex}{
+
 In the following figure, the scatter plot is populated with \code{2916} objective function stochastic realizations, computed by using the example code at the end of this section; the \code{210.58} local maximum  is highlighted\cr(i.e. \code{advancedKleinModel$optimize$optFunMax} in first example).\cr\cr In this example:\cr\cr 
 i) The objective function definition is:\cr 
 \eqn{f(y,cn,g) = (y-110)+(cn-90)*|cn-90|-\sqrt{g-20}} \cr
@@ -34,9 +33,10 @@ given \eqn{y} as the simulated \emph{Gross National Product}, \eqn{cn} as the si
 ii) The \code{INSTRUMENT} variables are the \eqn{cn} \emph{Consumption} "booster" (i.e. the add-factor, not to be confused with the simulated \emph{Consumption} in the objective function) and the \eqn{g} \emph{Government Expenditure}, defined over the following domains: \eqn{ cn \in (-5,5)}, \eqn{g \in (15,25)};\cr\cr
 iii) The following restrictions are applied to the \code{INSTRUMENT}: \eqn{g + cn^2/2 < 27  \wedge  g + cn > 17}, given \eqn{cn} as the \emph{Consumption} "booster" (i.e. the add-factor) and \eqn{g} as the \emph{Government Expenditure};
 
-\figure{OptKlein.png}{options: width=14cm} \cr \cr
+\figure{OptKlein.png}\cr \cr
+
 The figure clearly shows that non-linear restrictions have been applied, and that non-computable objective functions have been discarded, e.g. the stochastic realizations having \eqn{g<20} due to the square root operation in the objective function, given instrument \eqn{g \in (15,25)}.
-}
+
 }
 
 

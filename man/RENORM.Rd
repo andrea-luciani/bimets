@@ -6,7 +6,6 @@
 Endogenous targeting of a BIMETS model.
 }
 \description{
-\if{html}{(Note: this is the html version of the reference manual. Please consider reading the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{pdf version} of this reference manual, or the package \href{https://cran.r-project.org/package=bimets/vignettes/bimets.pdf}{vignette}, wherein there are figures and the mathematical expressions are better formatted than in html.)\cr\cr}
 
 The endogenous targeting of econometric models (a.k.a. "renormalization") consists of solving the model while interchanging the role of one or more endogenous variables with an equal number of exogenous variables.\cr\cr This procedure determines the values for the \code{INSTRUMENT} exogenous variables that allow the objective \code{TARGET} endogenous values to be achieved, with respect to the constraints given by the model equations (see \code{\link[=MDL]{MDL}}).\cr\cr
 This is an approach to economic and monetary policy analysis, and is based on two assumptions:\cr\cr
@@ -98,6 +97,7 @@ This new \code{renorm} element is a named list that contains the following eleme
 \code{\link[=SIMULATE]{SIMULATE}}\cr
 \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}\cr
 \code{\link[=MULTMATRIX]{MULTMATRIX}}\cr
+\code{\link[=OPTIMIZE]{OPTIMIZE}}\cr
 \code{\link[=TSERIES]{TIMESERIES}}\cr
 \code{\link[=idxOver]{BIMETS indexing}}\cr
 \code{\link[=bimetsConf]{BIMETS configuration}}\cr

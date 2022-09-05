@@ -5715,7 +5715,7 @@ RENORM <- function(model=NULL,
       
     }, error=function(err){
       #cat('\n');
-      stop(paste0('\nRENORM(): error in iteration #',renormNIter,': ',err$message));
+      stop(paste0('\nRENORM(): error in iteration #',renormNIter+1,': ',err$message));
     })
     
     

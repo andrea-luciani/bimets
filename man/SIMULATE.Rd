@@ -6,7 +6,7 @@
 Simulation of a BIMETS model
 }
 \description{
-\if{html}{(Note: this is the html version of the reference manual. Please consider reading the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{pdf version} of this reference manual, or the package \href{https://cran.r-project.org/package=bimets/vignettes/bimets.pdf}{vignette}, wherein there are figures and the mathematical expressions are better formatted than in html.)\cr\cr}
+
 The simulation of an econometric model basically consists in solving the system of the equations describing the model for each time period in the specified time interval. Since the equations may not be linear in the variables, and since the graph derived from the incidence matrix may be cyclic, the usual methods based on linear algebra are not applicable. The simulation must be solved by using an iterative algorithm.\cr\cr
 BIMETS simulation capabilities support:\cr\cr
 - \emph{Static simulations}: a static multiple equation simulation, in which the historical values for the lagged endogenous variables are used in the solutions of subsequent periods; \cr\cr
@@ -17,16 +17,11 @@ BIMETS simulation capabilities support:\cr\cr
 - \emph{Partial or total exogenization of endogenous variables}: in the provided time interval (i.e. partial exog.) or in whole simulation time range (i.e. total exog.), the values of the selected endogenous variables can be definitely set equal to their historical values, by excluding their equations from the iterative algorithm of simulation;\cr\cr
 - \emph{Constant adjustment of endogenous variables (add-factors)}: adds up a new exogenous time series - the "constant adjustment" - in the equation of the selected endogenous variables.\cr\cr
 In details, the generic model suitable for simulation in BIMETS can be written as: \cr
-\if{latex}{
+
 \eqn{y_1=f_1(\bar{x},\bar{y}) + z_1} \cr
 \eqn{...} \cr
 \eqn{y_n=f_n(\bar{x},\bar{y}) + z_n} \cr
-}
-\if{html}{
-\eqn{y_1=f_1(x,y) + z_1} \cr
-\eqn{...} \cr
-\eqn{y_n=f_n(x,y) + z_n} \cr\cr
-}
+
 being: \cr\cr
 \eqn{n} the number of equations in the model; \cr
 \eqn{\bar{y}=[y_1, ... , y_n]}{y=[y_1, ... , y_n]} the \code{n}-dimensional vector of the endogenous variables;\cr
@@ -88,11 +83,10 @@ The \code{\link[=LOAD_MODEL]{LOAD_MODEL}} function builds the model's incidence 
 In econometric models, the incidence matrix is usually very sparse. Only a few of the total set of endogenous variables are used in each equation. In this situation, ordering the equation in a particular sequence will lead to a sensible reduction of the number of iterations needed to achieve convergence. Reordering the equations is equivalent to rearranging rows and columns of the incidence matrix. In this way, the incidence matrix might be made lower triangular for a subset of the equations.
 For this subset, an endogenous variable determined in a specific equation has no \emph{incidence} in any equation above it, although the same variable might have incidence in equations below it. Such a subset of equations is called recursive. Recursive systems are easy to solve. It is only necessary to solve each equation once if this is done in the proper order. On the other hand, it is unlikely for whole model to be recursive. Indeed the incidence graph is often cyclic, as in the Klein's model that presents the following circular dependecies in the incidence matrix: \code{p <- w1 <- y <- p} as shown in the \code{\link[=bimets]{"BIMETS package"}} section figure.\cr\cr
 For a subset of the equations, some 1's will occur in the upper triangle of the incidence matrix for all possible orderings. Such subset of equations is called \emph{simultaneous}. To solve the endogenous variables in the simultaneous block of equations, an iterative algorithm has to be used. Nevertheless, the equations in the simultaneous block may be ordered so that the pattern of the 1's in the upper triangle of the incidence matrix forms a spike. The variables corresponding to the 1's in the upper triangle are called \emph{feedback} variables.\cr\cr
-\if{html}{(check the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{pdf version} of this reference manual in order to see a graphical example)\cr\cr}
-\if{latex}{
+
 A qualitative graphical example of an ordered incidence matrix is given in the following figure. The white areas are all 0's, the gray areas contain 0's and 1's. The 1's in the light gray areas refer to variables already evaluated in previous blocks, therefore they are known terms within the block. The 1's in the dark gray areas refer to variables evaluated within the block.\cr\cr
-\figure{Reordering.png}{options: width=14cm}
-}
+\figure{Reordering.png}
+
 The final pattern of an incidence matrix after the equation reordering generally features three blocks: \cr\cr
 1. a recursive block (the pre-recursive block);\cr
 2. a simultaneous block;\cr
@@ -206,7 +200,7 @@ SIMULATE( model=NULL,
   \item{StochStructure}{The \code{list()} that defines the disturbance structure applied to the model. See \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}}
   \item{StochReplica}{An integer value that sets the number of stochastic simulation replications to be performed. See \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}}
   \item{StochSeed}{A number used to initialize the pseudo-random number generator. It can be useful in order to replicate stochastic results. See \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}}
-  \item{OPTIMIZE}{It is \code{TRUE} when the parent call is an optimize operation requested by a \code{\link[=OPTIMIZE]{OPTIMIZE}} procedure}
+  \item{OPTIMIZE}{It is \code{TRUE} when the parent call is an optimize operation requested by a  procedure}
   \item{OptimizeBounds}{see \code{\link[=OPTIMIZE]{OPTIMIZE}}}
   \item{OptimizeRestrictions}{see \code{\link[=OPTIMIZE]{OPTIMIZE}}}
   \item{OptimizeFunctions}{see \code{\link[=OPTIMIZE]{OPTIMIZE}}}
@@ -236,6 +230,7 @@ The new \code{simulation} element is a named list; the names of the \code{simula
 \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}\cr
 \code{\link[=MULTMATRIX]{MULTMATRIX}}\cr
 \code{\link[=RENORM]{RENORM}}\cr
+\code{\link[=OPTIMIZE]{OPTIMIZE}}\cr
 \code{\link[=TSERIES]{TIMESERIES}}\cr
 \code{\link[=idxOver]{BIMETS indexing}}\cr
 \code{\link[=bimetsConf]{BIMETS configuration}}\cr

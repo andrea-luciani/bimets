@@ -6,7 +6,7 @@
 Stochastic simulation of a BIMETS model
 }
 \description{
-\if{html}{(Note: this is the html version of the reference manual. Please consider reading the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{pdf version} of this reference manual, or the package \href{https://cran.r-project.org/package=bimets/vignettes/bimets.pdf}{vignette}, wherein there are figures and the mathematical expressions are better formatted than in html.)\cr\cr}
+
 The \code{STOCHSIMULATE} operation performs a stochastic simulation. The simulation algorithms are the same as those used by the \code{\link[=SIMULATE]{SIMULATE}} operation. 
 \cr\cr
 Forecasts produced by structural econometric models are subject to several sources of error, such as random disturbance term of each stochastic equation, errors in estimated coefficients, errors in forecasts of exogenous variables, errors in preliminary data and mis-specification of the model.\cr\cr
@@ -14,10 +14,10 @@ The forecast error depending on the structural disturbances can be analyzed by u
 The deterministic simulation is the simultaneous solution of an econometric model obtained by applying, for each stochastic (behavioral) equation, the expected values of the structural disturbances, which are all zero by assumption. In the BIMETS \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} stochastic simulation, the structural disturbances are given values that have specified stochastic properties. The error terms of the estimated behavioral equation of the model are appropriately perturbed. Identity equations and exogenous variables can be as well perturbed by disturbances that have specified stochastic properties. The model is then solved for each data set with different values of the disturbances. Finally, mean and standard deviation are computed for each simulated endogenous variable. \cr\cr
 In terms of computational efficiency, the procedure takes advantage of the fact that multiple datasets are bind together in matrices. Therefore, to achieve a global convergence, the iterative simulation algorithm is executed once for all perturbed datasets. This solution can be viewed as a sort of a SIMD (i.e. Single Instruction Multiple Data) parallel simulation: the \code{STOCHSIMULATE} function transforms time series into matrices and consequently can easily bind multiple datasets by column. At the same time, a single run ensures a fast code execution. Finally, each column in the output matrices represents a stochastic realization.\cr\cr
 By using the \code{StochStructure} argument of this function, users can define a stochastic structure for the disturbances. For each variable of the model, users can provide a distinct probability distribution for the disturbance, and a specific time range of application. Mean and standard deviation for each simulated endogenous time series will be stored in the \code{stochastic_simulation} element of the output model object; all the stochastic realizations will be stored in the \code{simulation_MM} element of the output model object as named matrices.
-\if{latex}{
+
 In the following figure, the advanced Klein model (see code example), has been perturbed during the forecast operation by applying a normal disturbance to the endogenous \emph{Consumption} behavioral \code{cn} add-factor in year 1942, and a uniform disturbance to the exogenous \emph{Government Expenditure} time series \code{g} along all the simulation \code{TSRANGE}. The normal disturbance applied to the \code{cn} behavioral has a zero mean and a standard deviation equal to the behavioral regression standard error,\cr i.e. \code{advancedKleinModel$behaviorals$cn$statistics$StandardErrorRegression}, thus roughly replicating the \code{\link[=ESTIMATE]{ESTIMATE}} regression error during the current perturbation (not accounting for inter-equations cross-covariance).\cr \cr 
-\figure{StochKleinGNP.png}{options: width=14cm} \cr \cr
-}
+\figure{StochKleinGNP.png} \cr \cr
+
 At the moment, all the disturbances are i.i.d. and are not transformed into a congruent autoregressive scheme in case the related perturbed endogenous behavioral presents an autocorrelation for the errors in its \code{\link[=MDL]{MDL}} definition, e.g. \code{ERROR> AUTO(n)}
 } 
 \usage{
@@ -94,6 +94,7 @@ The \code{INSTRUMENT_MM} element is a named \code{list()}, having \code{INSTRUME
 \code{\link[=ESTIMATE]{ESTIMATE}}\cr
 \code{\link[=SIMULATE]{SIMULATE}}\cr
 \code{\link[=RENORM]{RENORM}}\cr
+\code{\link[=OPTIMIZE]{OPTIMIZE}}\cr
 \code{\link[=TSERIES]{TIMESERIES}}\cr
 \code{\link[=idxOver]{BIMETS indexing}}\cr
 \code{\link[=bimetsConf]{BIMETS configuration}}\cr

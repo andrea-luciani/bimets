@@ -6,8 +6,6 @@
 Compute the multiplier matrix of a BIMETS model
 }
 \description{
-\if{html}{(Note: this is the html version of the reference manual. Please consider reading the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{pdf version} of this reference manual, or the package \href{https://cran.r-project.org/package=bimets/vignettes/bimets.pdf}{vignette}, wherein there are figures and the mathematical expressions are better formatted than in html.)\cr\cr}
-
 
 This function computes the matrix of both impact and interim multipliers, for a selected set of endogenous variables (i.e. \code{TARGET}) with respect to a selected set of exogenous variables (i.e. \code{INSTRUMENT}), by subtracting the results from different simulations in each period of the provided time range (i.e. \code{TSRANGE}). The simulation algorithms are the same as those used for the \code{\link[=SIMULATE]{SIMULATE}} operation. \cr\cr
 The \code{MULTMATRIX} procedure is articulated as follows:\cr\cr
@@ -17,18 +15,12 @@ The \code{MULTMATRIX} procedure is articulated as follows:\cr\cr
 4- each simulation follows the defaults described in the \code{\link[=SIMULATE]{SIMULATE}} help page, but has to be \code{STATIC} for the IMPACT multipliers and \code{DYNAMIC} for INTERIM multipliers;\cr\cr
 5- given \code{MM_SHOCK} shock amount as a very small positive number, derivatives are computed by subtracting the base line solution of the \code{TARGET} from the shocked solution, then dividing by the value of the base line \code{INSTRUMENT} time the \code{MM_SHOCK}.\cr\cr\cr
 The IMPACT multipliers measure the effects of impulse exogenous changes on the endogenous variables in the same time period. They can be defined as partial derivatives of each current endogenous variable with respect to each current exogenous variable, all other exogenous variables being kept constant.\cr
-\if{html}{
-Given \code{Y(t)} an endogenous variable at time \code{t} and \code{X(t)} an exogenous variable at time \code{t} the impact multiplier \code{m(Y,X,t)} is defined as \code{m(Y,X,t) = dY(t)/dX(t)} and can be approximated by \code{m(Y,X,t)=(Y_shocked(t)-Y(t))/(X_shocked(t)-X(t))}, with \code{Y_shocked(t)} the values fo the simulated endogenous variable \code{Y} at time \code{t} when \code{X(t)} is shocked to \code{X_shocked(t)=X(t)(1+MM_SHOCK)}
-}
-\if{latex}{
+
 Given \eqn{Y(t)} an endogenous variable at time \eqn{t} and \eqn{X(t)} an exogenous variable at time \eqn{t} the impact multiplier \eqn{m(Y,X,t)} is defined as \eqn{m(Y,X,t) = \partial Y(t)/\partial X(t)} and can be approximated by \eqn{m(Y,X,t)\approx(Y_{shocked}(t)-Y(t))/(X_{shocked}(t)-X(t))}, with \eqn{Y_{shocked}(t)} the values fo the simulated endogenous variable \eqn{Y} at time \eqn{t} when \eqn{X(t)} is shocked to \eqn{X_{shocked}(t)=X(t)(1+MM\_SHOCK)}
-}\cr\cr The INTERIM or delay-\code{r} multipliers measure the delay-\code{r} effects of impulse exogenous changes on the endogenous variables in the same time period. The delay-\code{r} multipliers of the endogenous variable \code{Y} with respect to the exogenous variable \code{X} related to a dynamic simulation from time \code{t} to time \code{t+r} can be defined as the partial derivative of the current endogenous variable \code{Y} at time \code{t+r} with respect to the exogenous variable \code{X} at time \code{t}, all other exogenous variables being kept constant.\cr
-\if{html}{
-Given \code{Y(t+r)} an endogenous variable at time \code{t+r} and \code{X(t)} an exogenous variable at time \code{t} the interim or delay-\code{r} multiplier \code{m(Y,X,t,r)} is defined as \code{m(Y,X,t,r) = dY(t+r)/dX(t)} and can be approximated by \code{(m(Y,X,t,r)=Y_shocked(t+r)-Y(t+r))/(X_shocked(t)-X(t))}, with \code{Y_shocked(t+r)} the values fo the simulated endogenous variable \code{Y} at time \code{t+r} when \code{X(t)} is shocked to \code{X_shocked(t)=X(t)(1+MM_SHOCK)}
-}
-\if{latex}{
+\cr\cr The INTERIM or delay-\code{r} multipliers measure the delay-\code{r} effects of impulse exogenous changes on the endogenous variables in the same time period. The delay-\code{r} multipliers of the endogenous variable \code{Y} with respect to the exogenous variable \code{X} related to a dynamic simulation from time \code{t} to time \code{t+r} can be defined as the partial derivative of the current endogenous variable \code{Y} at time \code{t+r} with respect to the exogenous variable \code{X} at time \code{t}, all other exogenous variables being kept constant.\cr
+
 Given \eqn{Y(t+r)} an endogenous variable at time \eqn{t+r} and \eqn{X(t)} an exogenous variable at time \eqn{t} the impact interim or delay-\code{r} multiplier \eqn{m(Y,X,t,r)} is defined as \eqn{m(Y,X,t,r) = \partial Y(t+r)/\partial X(t)} and can be approximated by \eqn{m(Y,X,t,r)\approx(Y_{shocked}(t+r)-Y(t+r))/(X_{shocked}(t)-X(t))}, with \eqn{Y_{shocked}(t+r)} the values fo the simulated endogenous variable \eqn{Y} at time \eqn{t+r} when \eqn{X(t)} is shocked to \eqn{X_{shocked}(t)=X(t)(1+MM\_SHOCK)}
-}\cr \cr
+\cr \cr
 Users can also declare an endogenous variable as the \code{INSTRUMENT} variable. In this case, the constant adjustment (see \code{\link[=SIMULATE]{SIMULATE}}) related to the provided endogenous variable will be used as the \code{INSTRUMENT} exogenous variable (see example);
 
 }

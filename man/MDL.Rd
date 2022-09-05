@@ -6,7 +6,7 @@
 BIMETS Model Description Language
 }
 \description{
-\if{html}{(Note: this is the html version of the reference manual. Please consider reading the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{pdf version} of this reference manual, or the package \href{https://cran.r-project.org/package=bimets/vignettes/bimets.pdf}{vignette}, wherein there are figures and the mathematical expressions are better formatted than in html.)\cr\cr}
+
 BIMETS provides a language to unambiguously specify an econometric model. This page describes how to create a model and its general structure. The specification of an econometric model is translated and identified by keyword statements which are grouped in a model file, i.e. a plain text file or a \code{character} variable with a specific syntax. Collectively, these keyword statements constitute the BIMETS Model Description Language (from now on \code{MDL}). The model specifications consist of groups of statements. Each statement begins with a keyword. The keyword classifies the component of the model which is being specified.\cr\cr
 Below is an example of a Klein's model  with an \code{MDL} compliant syntax which can either be stored in a \code{character} variable or in a plain text file.\cr\cr The content of the \emph{klein1.txt} variable  is:
 \preformatted{
@@ -87,22 +87,13 @@ On the other side, the mathematical expression available for use in the \code{RH
 2) Estimate the error autocorrelation coefficients \eqn{\rho_{i}=\rho_{i,1},...,\rho_{i,n}}{RHO_i=RHO_i[1],...,RHO_i[n]} with \eqn{i=1} by regressing the residuals \eqn{\epsilon_{i}}{RES_i} on their lagged values by using the auxiliary model: \cr \eqn{\epsilon_{i}=\rho_{i,1}*TSLAG(\epsilon_{i},1)+...+\rho_{i,n}*TSLAG(\epsilon_{i},n)}{RES_i=RHO_i[1]*TSLAG(RES_i,1)+...+RHO_i[n]*TSLAG(RES_i,n)}\cr\cr
 3) Transform the data for the dependent and the independent variables by using the estimated \eqn{\rho_{i}}{RHO_i}. The new dependent variable will be: \eqn{Y_{i+1}=P_i*Y_i}{Y_(i+1)=P_i*Y_i}, and the new independent variables will be \eqn{X_{i+1}=P_i*X_i}{X_(i+1)=P_i*X_i} with the matrix \eqn{P_i}{P_i} defined as:
 
-\if{latex}{\deqn{ P_i=\begin{pmatrix}
-{
+\deqn{ P_i = \left( \begin{array}{ccccccc}
 1 & 0 & 0 & 0 & ... & 0 & 0 \cr 
 -\rho_{i,1} & 1 & 0 & 0 & ... & 0 & 0 \cr 
 -\rho_{i,2} & -\rho_{i,1} & 1 & 0 & ... & 0 & 0 \cr 
  &  &  & ... &  &  &  \cr 
 0 & 0 & ... & -\rho_{i,n} & ... & -\rho_{i,1} & 1 
-}
-\end{pmatrix} }}
-\if{html}{\tabular{ccccccccc}{
-\tab \tab 1 \tab 0 \tab 0 \tab 0 \tab ... \tab 0 \tab 0\cr
-\tab  \tab -RHO_i[1] \tab 1 \tab 0 \tab 0 \tab ... \tab 0 \tab 0 \cr
-P_i\tab = \tab -RHO_i[2] \tab -RHO_i[1] \tab 1 \tab 0 \tab ... \tab 0 \tab 0 \cr
-\tab \tab \tab \tab ... \cr 
-\tab \tab 0 \tab 0 \tab ... \tab -RHO_i[n] \tab ... \tab -RHO_i[1] \tab 1
-}}
+\end{array} \right) } \cr
 4) Run another estimation on the original model \eqn{Y_{i+1}=\beta_{i+1}*X_{i+1}+\epsilon_{i+1}}{Y_(i+1) = b_(i+1) * X_(i+1) + RES_(i+1)} by using the suitable \code{TSRANGE} and the transformed data coming out of step 3 and compute the new time series for the residuals. \cr\cr
 5) Estimate the new autocorrelation coefficients \eqn{\rho_{i+1}=\rho_{i+1,1},...,\rho_{i+1,n}}{RHO_(i+1)=RHO_(i+1)[1],...,RHO_(i+1)[n]}, by regressing the new residuals arising from step 4 (similar to step 2)\cr\cr
 6) Carry out the convergence check through a comparison among the previous \eqn{\rho_{i}}{RHO_i} and the new ones arising from steps 5. \cr If \eqn{all(abs(\rho_{i+1}-\rho_{i})<\delta)}{all(abs(RHO_(i+1)-RHO_i) < d)}, where \eqn{\rho_{i}}{RHO_i} is the \eqn{\rho}{RHO} vector at the iteration \eqn{i} and \eqn{\delta}{d} is a small convergence factor, then exit otherwise repeat from step 3 with \code{i <- i+1}. \cr\cr
@@ -129,19 +120,9 @@ RESTRICT> 1.1*C1 + 1.3*C3 = 2.1
 Coefficients \code{C1, C2, C3} are to be estimated. They are subject to the linear constraints specified by the \code{RESTRICT>} keyword statement. In the case of \code{OLS} estimation, this is carried out in the following steps:\cr\cr
 1) Compute the cross-product matrices \eqn{X' X } and \eqn{X' Y} where \eqn{X} is a matrix with dimension \cr \code{[NOBS x NREG]} containing the values of the independent variables (regressors) historical observations (and a vector of ones for the constant term, if any), and where \eqn{Y} is a \code{NOBS} elements vector of the dependent variable (regressand) historical observations; \code{NOBS} is the number of observations available on the \code{TSRANGE} specified in the behavioral equation, and \code{NREG} is the number of regressors, or coefficients;\cr\cr
 2) Build the restriction matrices. In the example:\cr\cr
-\if{latex}{\eqn{R=\begin{pmatrix} {1.1 & 0 & 1.3  \cr 0 & 1.2 & 0} \end{pmatrix}}}
-\if{html}{
-\tabular{ccccc}{
-R\tab = \tab 1.1 \tab 0 \tab 1.3  \cr
-\tab \tab 0 \tab 1.2 \tab 0  
-}
-}
+\eqn{R = \left( \begin{array}{ccc}1.1 & 0 & 1.3  \cr 0 & 1.2 & 0 \end{array} \right) } \cr \cr
 and \cr \cr
-\if{latex}{\eqn{r=\begin{pmatrix} {2.1  \cr 0.8 } \end{pmatrix}} \cr}
-\if{html}{\tabular{ccc}{
-r\tab = \tab 2.1  \cr
-\tab \tab 0.8 
-}}
+\eqn{r = \left( \begin{array}{c} 2.1  \cr 0.8  \end{array} \right)} \cr \cr
 
 \code{R} is a matrix of \code{[NRES x NREG]} size, and \code{r} is a vector of \code{[NRES]} length, where \code{NRES} is the number of restrictions;\cr\cr
 3) Compute the scaling factors for the augmentation to be performed in the next step:\cr
@@ -151,38 +132,20 @@ Assuming \eqn{mean(X' X) = 5000}, in the example above we will have:\cr
 \eqn{Rscale[1]=5000 / 1.3} \cr
 \eqn{Rscale[2]=5000 / 1.2} \cr\cr
 The augmented matrices will then be defined as:\cr\cr
-\if{latex}{\eqn{R_{aug}=\begin{pmatrix} {1.1 * Rscale[1] & 0 & 1.3 * Rscale[1] \cr 0 & 1.2 * Rscale[2] & 0} \end{pmatrix}}}
-\if{html}{
-\tabular{ccccc}{
-R_aug\tab = \tab 1.1 * Rscale[1] \tab 0 \tab 1.3 * Rscale[1] \cr
-\tab \tab 0 \tab 1.2 * Rscale[2] \tab 0  
-}
-}
+\eqn{R_{aug} = \left( \begin{array}{ccc} 1.1 * Rscale[1] & 0 & 1.3 * Rscale[1] \cr 0 & 1.2 * Rscale[2] & 0 \end{array} \right) }
+
 and \cr \cr
-\if{latex}{\eqn{r_{aug}=\begin{pmatrix} {2.1 * Rscale[1] \cr 0.8 * Rscale[2] } \end{pmatrix}} \cr}
-\if{html}{\tabular{ccc}{
-r_aug\tab = \tab 2.1 * Rscale[1] \cr
-\tab \tab 0.8 * Rscale[2]
-}}
+\eqn{r_{aug} = \left( \begin{array}{c} 2.1 * Rscale[1] \cr 0.8 * Rscale[2]  \end{array} \right) } \cr
+
 
 4) Compute the so-called "augmented" cross-product matrix \eqn{(X' X)_{aug}}{(X' X)_aug} by adding to the cross-product matrix \eqn{(X' X)} a total of \code{NRES} rows and \code{NRES} columns:
 \cr\cr
-\if{latex}{\eqn{(X' X)_{aug}=\begin{pmatrix} {X' X & R_{aug}' \cr R_{aug} & 0} \end{pmatrix}}}
-\if{html}{
-\tabular{ccccc}{
-(X' X)_aug\tab = \tab X' X \tab R_aug'  \cr
-\tab \tab R_aug \tab 0  
-}
-}\cr\cr
+\eqn{(X' X)_{aug} = \left( \begin{array}{cc} X' X & R_{aug}' \cr R_{aug} & 0 \end{array} \right) }
+\cr\cr
 5) Similarly, compute the so-called "augmented" cross-product matrix \eqn{(X' Y)_{aug}}{(X' Y)_aug} by adding a total of \code{NRES} elements to the cross-product matrix \eqn{(X' Y)}:
 \cr\cr
-\if{latex}{\eqn{(X' Y)_{aug}=\begin{pmatrix} {X' Y \cr r_{aug} } \end{pmatrix}}}
-\if{html}{
-\tabular{ccccc}{
-(X' Y)_aug\tab = \tab X' Y  \cr
-\tab \tab r_aug   
-}
-}\cr\cr
+\eqn{(X' Y)_{aug}=\left( \begin{array}{c} X' Y \cr r_{aug}  \end{array} \right) }
+\cr\cr
 6) Calculate the \eqn{\hat{\beta}_{aug}}{beta_hat_aug} augmented coefficients by regressing the \eqn{(X' Y)_{aug}}{(X' Y)_aug} on the \eqn{(X' X)_{aug}}{(X' X)_aug}.\cr\cr The first \code{NREG} values of the augmented coefficients \eqn{\hat{\beta}_{aug}}{beta_hat_aug} array are the estimated coefficients with requested restrictions. The last \code{NRES} values are the errors we have on the deterministic restrictions.\cr\cr
 In the case of \code{IV} estimation, the procedure is the same as in the \code{OLS} case, but the matrix \eqn{X}{X} has to be replaced with the matrix \eqn{\hat{X}}{X_hat}, as previously defined in the \code{BEHAVIORAL>} keyword.\cr\cr
 - \bold{PDL>} is a keyword that defines an Almon polynomial distributed lag to be used in estimation. Almon Polynomial distributed lags are specific kind of deterministic restrictions imposed on the coefficients of the distributed lags of a specific regressor. Multiple PDLs on a single behavioral equation can be defined. \cr\cr The PDL> statement general form is:\cr \code{PDL> coeffname degree laglength [N] [F]}\cr where \code{coeffname} is the name of a coefficient, \code{degree} is an integer scalar specifying the degree of the polynomial, \code{laglength} is an integer scalar specifying the length of the polynomial (in number of time periods), the optional \code{N} (i.e. "nearest") means that the nearest lagged term of the expansion, i.e., the first term, is restricted to zero, and the optional \code{F} (i.e. "farthest") means that the farthest lagged term of the expansion, i.e., the last term, is restricted to zero; the \code{PDL>} keyword statement thusly defined applies an Almon polynomial distributed lag to the regressor associated with the \code{coeffname} coefficient, of \code{laglength} length and \code{degree} degree, by providing the appropriate expansion and the deterministic restrictions for the degree and length specified. These expansions are not explicitly shown to the user, i.e., the original model is not changed.\cr\cr \code{laglength} must be greater than \code{degree} (see example below).\cr\cr A PDL term can be further referenced in a \code{RESTRICT>} keyword statement by using the following syntax: \code{LAG(coefname, pdllag)}.\cr\cr Example: \code{RESTRICT> LAG(coeff2,3) = 0} means that, during the estimation, the regressor related to the coefficient \code{coeff2} and lagged by 3 periods in the PDL expansion must have a coefficient equal to zero. This example also implies that a \code{PDL> coeff2 x y} with \code{y > 3} has been declared in the same behavioral. \cr\cr
@@ -209,19 +172,10 @@ EQ> Y = C1*X1 + C2*X2 + C3*X3
 COEFF> C1 C2 C3 
 PDL> C2 2 5
 } then \cr \cr
-\if{latex}{\eqn{R=\begin{pmatrix} {0 & 1 & -3 & 3 & 1 & 0 & 0 \cr 0 & 0 & 1 & -3 & 3 & 1 & 0} \end{pmatrix}}}
-\if{html}{
-\tabular{ccccccccc}{
-R\tab = \tab 0 \tab 1 \tab -3 \tab 3  \tab 1 \tab 0 \tab 0 \cr
-\tab \tab 0 \tab 0 \tab 1  \tab -3 \tab 3 \tab 1 \tab 0 
-}
-}
-and \cr \cr
-\if{latex}{\eqn{r=\begin{pmatrix} {0  \cr 0 } \end{pmatrix}}}
-\if{html}{\tabular{ccc}{
-r\tab = \tab 0  \cr
-\tab \tab 0 
-}} \cr\cr \cr
+\eqn{R = \left( \begin{array}{ccccccc} 0 & 1 & -3 & 3 & 1 & 0 & 0 \cr 0 & 0 & 1 & -3 & 3 & 1 & 0 \end{array} \right) }
+\cr \cr and \cr \cr
+\eqn{r = \left( \begin{array}{c} 0  \cr 0 \end{array} \right) }
+\cr\cr \cr
 The expanded regressors are:\cr \code{X1, X2, TSLAG(X2,1), TSLAG(X2,2), TSLAG(X2,3), TSLAG(X2,4), X3}.\cr\cr The scaling factor is given, as in the standard restriction case, by: \eqn{mean(X' X) / max(abs(R[i,]))}{mean(X' X) / max(abs(R[i,]))} \cr\cr
 
 - \bold{IF>} keyword is used to conditionally evaluate an identity during a simulation, depending on a logical expression's value. Thus, it is possible to have a model alternating between two or more identity specifications for each simulation period, depending upon results from other equations.\cr \cr
@@ -262,6 +216,7 @@ $This is a comment
 \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}\cr
 \code{\link[=MULTMATRIX]{MULTMATRIX}}\cr
 \code{\link[=RENORM]{RENORM}}\cr
+\code{\link[=OPTIMIZE]{OPTIMIZE}}\cr
 \code{\link[=TSERIES]{TIMESERIES}}\cr
 \code{\link[=idxOver]{BIMETS indexing}}\cr
 \code{\link[=bimetsConf]{BIMETS configuration}}\cr

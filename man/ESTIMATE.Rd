@@ -6,7 +6,7 @@
 Estimate a BIMETS model
 }
 \description{
-\if{html}{(Note: this is the html version of the reference manual. Please consider reading the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{pdf version} of this reference manual, or the package \href{https://cran.r-project.org/package=bimets/vignettes/bimets.pdf}{vignette}, wherein there are figures and the mathematical expressions are better formatted than in html.)\cr\cr}
+
 This function estimates equations that are linear in the coefficients, as specified in the behavioral equations of the input model object. Coefficients can be estimated for single equations or blocks of simultaneous equations. Coefficients restriction procedure derives from Lagrange Multipliers' theory, while the Cochrane-Orcutt method allows accounting for residuals autocorrelation.\cr\cr The estimation function supports:\cr\cr
 - \emph{Ordinary Least Squares};\cr
 - \emph{Instrumental Variables};\cr
@@ -139,26 +139,17 @@ For each behavioral in the \code{eqList} this function will add 4 new named elem
 
 \emph{Structural Stability - Chow test}\cr\cr
 One of the main purposes of econometric modeling is its use for forecast and policy evaluation and, to this end, the stability of any behavioral equation parameters over time should be verified. In order to check for structural stability two different procedures, which can be derived from the so-called Chow-tests, are applied.\cr
-\if{html}{
-Given a sample of \eqn{T_0 = t_k,...,t_n} observations (i.e. the base \code{TSRANGE}) and selecting an arbitrary forward extension in \eqn{T_1 = t_k,...,t_n,...,t_m} observations (i.e. the extended \code{TSRANGE}) in the general case we have the following two regressions: \cr\cr
-1) \eqn{Y_0 = b_0*X_0+eps_0,  eps_0  in N(0,sigma_0^2) }, having time series projected on the base \code{TSRANGE}\cr
-2) \eqn{Y_1 = b_1*X_1+eps_1,  eps_1  in N(0,sigma_1^2) }, having time series projected on the extended \code{TSRANGE}\cr
-}
-\if{latex}{
-Given a sample of \eqn{T_{0} = t_{k},...,t_{n}} observations (i.e. the base \code{TSRANGE}) and selecting an arbitrary forward extension in \eqn{T_{1} = t_{k},...,t_{n},...,t_{m}} observations (i.e. the extended \code{TSRANGE}) in the general case we have the following two regressions: \cr\cr
+
+Given a sample of \eqn{T_{0} = t_{k},...,t_{n}} observations (i.e. the base \code{TSRANGE}) and selecting an arbitrary forward extension in \eqn{T_{1} = t_{k},...,t_{n},...,t_{m}} observations (i.e. the extended \code{TSRANGE}), with \eqn{ k < n < m}, in the general case we have the following two regressions: \cr\cr
 1) \eqn{Y_{0} = \beta_{0}*X_{0}+\epsilon_{0},  \quad    \epsilon_{0} \sim \mathcal{N}(0,\,\sigma_{0}^{2}) }, having time series projected on the base \code{TSRANGE}\cr
 2) \eqn{Y_{1} = \beta_{1}*X_{1}+\epsilon_{1},  \quad    \epsilon_{1} \sim \mathcal{N}(0,\,\sigma_{1}^{2}) }, having time series projected on the extended \code{TSRANGE}\cr
-}
+
 In general, a stability analysis is carried on in the following ways:\cr
 - comparing the parameter estimates arising from the two regressions: this is known as the covariance analysis;\cr
 - checking the accuracy of the forecast for the dependent variable in the extended \code{TSRANGE}, using the estimates produced in the base \code{TSRANGE}: this is known as the predictive power test.\cr\cr
 The first Chow test is calculated as:
-\if{html}{
-\eqn{tau = ( SSR_1-SSR_0 ) / SSR_0 * DoF_1 / ( DoF_1-DoF_0 ) }, \cr \cr with \eqn{SSR_i} as the sum of squared residuals and \eqn{DoF_i} as the number of degrees of freedom in the regression \eqn{i=0,1}. \cr
-}
-\if{latex}{
 \eqn{\tau = \frac{SSR_{1}-SSR_{0}}{SSR_{0}} \frac{DoF_{1}}{DoF_{1}-DoF_{0}} }, \cr \cr with \eqn{SSR_{i}} as the sum of squared residuals and \eqn{DoF_{i}} as the number of degrees of freedom in the regression \eqn{i=0,1}. \cr
-}
+
 
 The test is completed by calculating the following time series on the extended \code{TSRANGE}:\cr
 - the forecast error;\cr
@@ -166,25 +157,13 @@ The test is completed by calculating the following time series on the extended \
 - the t-statistic for the error;\cr\cr
 The standard error of the forecast for the \eqn{t_j} observation in the extended \code{TSRANGE} is computed according to: \cr
 
-\if{html}{
-\eqn{SE_j = sigma_0 * sqrt(1+t(x_j) * ( t(X_0) * X_0)^(-1) * x_j) } \cr\cr having \eqn{x_j} as the independent values (i.e. regressors) on the \eqn{t_j} observation in the \eqn{T_1} extended \code{TSRANGE},  with \eqn{n < j <= m}. \cr\cr
-The null hypothesis for \eqn{tau} is: \cr\cr
-\eqn{ H* : beta_1 = beta_0}, given \eqn{sigma_1^2 = sigma_0^2} \cr\cr
-The test statistic \eqn{tau} follows the \eqn{F} distribution with  \eqn{ ( DoF_1-DoF_0 ) } and \eqn{DoF_1} degrees of freedom, and can be performed during the \code{ESTIMATE()} function execution by using the \code{CHOWTEST} argument set to \code{TRUE}.
-}
-\if{latex}{
 \eqn{SE_{j} = \sigma_{0} \sqrt{1+x_j^\top * ( X_{0}^\top * X_{0}^{ })^{-1} * x_j} } \cr\cr having \eqn{x_j} as the independent values (i.e. regressors) on the \eqn{t_{j}} observation in the \eqn{T_{1}} extended \code{TSRANGE},  with \eqn{n < j \leq m}. \cr\cr
 The null hypothesis for \eqn{\tau} is: \cr\cr
 \eqn{ H^{*} : \beta_{1} = \beta_{0}}, given \eqn{\sigma_{1}^{2} = \sigma_{0}^{2}} \cr\cr
 The test statistic \eqn{\tau} follows the \eqn{F} distribution with  \eqn{ ( DoF_{1}-DoF_{0} ) } and \eqn{DoF_{1}} degrees of freedom, and can be performed during the \code{ESTIMATE()} function execution by using the \code{CHOWTEST} argument set to \code{TRUE}.
 
-}
-
 If \code{CHOWTEST} is \code{TRUE}, for each behavioral in the \code{eqList} the output model will have the following named element:\cr
 - \code{ChowTest}: it contains the statistics and the time series computed during the last structural analysis performed on the related behavioral.\cr
-
-
-
 
 }
 
@@ -195,6 +174,7 @@ If \code{CHOWTEST} is \code{TRUE}, for each behavioral in the \code{eqList} the 
 \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}\cr
 \code{\link[=MULTMATRIX]{MULTMATRIX}}\cr
 \code{\link[=RENORM]{RENORM}}\cr
+\code{\link[=OPTIMIZE]{OPTIMIZE}}\cr
 \code{\link[=TSERIES]{TIMESERIES}}\cr
 \code{\link[=idxOver]{BIMETS indexing}}\cr
 \code{\link[=bimetsConf]{BIMETS configuration}}\cr

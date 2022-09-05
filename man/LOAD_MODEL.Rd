@@ -6,7 +6,6 @@
 Load a BIMETS model description file
 }
 \description{
-\if{html}{(Note: this is the html version of the reference manual. Please consider reading the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{pdf version} of this reference manual, or the package \href{https://cran.r-project.org/package=bimets/vignettes/bimets.pdf}{vignette}, wherein there are figures and the mathematical expressions are better formatted than in html.)\cr\cr}
 
 This function parses a \code{\link[=MDL]{MDL}} model definition and creates an equivalent R data structure that can be estimated and simulated. The input model definition can be either an external plain text file or a \code{character} variable.
 }
