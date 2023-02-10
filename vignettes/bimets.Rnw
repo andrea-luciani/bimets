@@ -994,9 +994,68 @@ with(advancedKleinModel$stochastic_simulation, TABIT(y$mean, y$sd))
 with(advancedKleinModel$simulation_MM, print(y[,1:6]))
 @
 \end{footnotesize}
-%\clearpage
+
 \includegraphics[width=6in]{StochKleinGNP.png}\\
-At the moment, all the disturbances are i.i.d. and are not transformed into a congruent autoregressive scheme in case the related perturbed endogenous behavioral presents an autocorrelation for the errors in its \code{MDL} definition, e.g. \code{ERROR> AUTO(n)}
+At the moment, all the disturbances are i.i.d. and are not transformed into a congruent autoregressive scheme in case the related perturbed endogenous behavioral presents an autocorrelation for the errors in its \code{MDL} definition, e.g. \code{ERROR> AUTO(n)} \\ \\
+Users can also pass an arbitrary matrix to the stochastic simulation algorithm, by using the \code{TYPE='MATRIX'} directive in the \code{StochStructure} argument: in this case \code{PARS=matrix} with \code{matrix} as a \code{[ TSRANGE x StochReplica ]} matrix. An example follows:\\ 
+\begin{footnotesize}
+<<>>=
+TSRANGE <- c(1935,1,1940,1)
+StochReplica <- 100
+@
+<<>>=
+#we will perturb simulation by using regression residuals
+#get cn and i residuals in TSRANGE
+cn_residuals <- TSPROJECT(advancedKleinModel$behaviorals$cn$residuals, 
+                          TSRANGE=TSRANGE,
+                          ARRAY = TRUE)
+i_residuals <- TSPROJECT(advancedKleinModel$behaviorals$i$residuals,
+                         TSRANGE=TSRANGE,
+                         ARRAY = TRUE)
+@
+<<>>=
+#define stochastic matrices
+cn_matrix <- c()
+i_matrix <- c()
+
+#populate matrices
+for (idx in 1:StochReplica)
+{
+  rand <- rnorm(1,0,1)
+  cn_matrix <- cbind(cn_matrix,rand*cn_residuals)
+  i_matrix <- cbind(i_matrix,rand*i_residuals)
+}
+@
+<<>>=
+#define stochastic structure
+myStochStructure <- list(
+  cn=list(
+    TSRANGE=TRUE,
+    TYPE='MATRIX',
+    PARS=cn_matrix
+  ),
+  i=list(
+    TSRANGE=TRUE,
+    TYPE='MATRIX',
+    PARS=i_matrix
+  )
+)
+@
+<<>>=
+#stochastic simulation
+advancedKleinModel <- STOCHSIMULATE(advancedKleinModel
+                                    ,TSRANGE=TSRANGE
+                                    ,StochStructure=myStochStructure
+                                    ,quietly = TRUE)
+@
+<<>>=
+#print GNP mean and sd
+with(advancedKleinModel$stochastic_simulation,TABIT(y$mean, y$sd))
+@
+\end{footnotesize}
+
+%\clearpage
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
 \subsection{Multipliers Analysis} \label{ssec:8}
 

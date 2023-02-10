@@ -1,3 +1,8 @@
+# bimets 2.3.0 
+
+Dec. 2022
+
+* added a new `MATRIX` type of `StochStructure` in `STOCHSIMULATE`
 
 # bimets 2.2.0 
 

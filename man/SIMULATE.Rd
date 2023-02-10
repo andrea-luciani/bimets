@@ -60,7 +60,7 @@ the add-factors \eqn{\bar{z}=[z_1, ... ,z_n]}{z=[z_1, ... ,z_n]} can be interpre
 3. solve the model, with the \code{simType='RESCHECK'} option, in a time interval including some periods beyond the estimation sample;\cr
 4. compute the difference between the historical and the simulated values for each the endogenous variables;\cr
 5. average, or process in a suitable way, the difference arising from point 4 in the time periods beyond the estimation sample to compute the constant value to be used as an add-factor in the following forecasting exercises;\cr\cr
-Please note that in case of equation that presents an LHS function the add-factor will be added before the application of the inverse function, i.e. during the simulation the following:\cr\cr
+Please note that in the case of equation that presents an LHS function the add-factor will be added before the application of the inverse function, i.e. during the simulation the following:\cr\cr
 \eqn{g_1(y_1)=f_1(\bar{x},\bar{y}) + z_1}{g_1(y_1)=f_1(x,y) + z_1} \cr
 \eqn{...} \cr
 \eqn{g_n(y_n)=f_n(\bar{x},\bar{y}) + z_n}{g_n(y_n)=f_n(x,y) + z_n} \cr\cr

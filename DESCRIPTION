@@ -1,14 +1,14 @@
 Package: bimets
 Type: Package
 Title: Time Series and Econometric Modeling
-Version: 2.2.0
-Date: 2022-08-31
+Version: 2.3.0
+Date: 2023-02-09
 Authors@R: c(person("Andrea", "Luciani", email = "andrea.luciani@bancaditalia.it", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-7372-358X")), person("Roberto", "Stok", email = "roberto.stok@bancaditalia.it", role = c("aut")), person("Bank of Italy",role = c("cph")))
 Maintainer: Andrea Luciani <andrea.luciani@bancaditalia.it>
 Author: Andrea Luciani [aut, cre] (<https://orcid.org/0000-0002-7372-358X>), Roberto Stok [aut], Bank of Italy [cph]
 ByteCompile: no
 Description: Time series analysis, (dis)aggregation and manipulation, e.g. time series extension, merge, projection, lag, lead, delta, moving and cumulative average and product, selection by index, date and year-period, conversion to daily, monthly, quarterly, (semi)annually. Simultaneous equation models definition, estimation, simulation and forecasting with coefficient restrictions, error autocorrelation, exogenization, add-factors, impact and interim multipliers analysis, conditional equation evaluation, endogenous targeting and model renormalization, structural stability, stochastic simulation and forecast, optimal control.
-Depends: R (>= 3.3), xts, zoo
+Depends: R (>= 4.0), xts, zoo
 Imports: stats
 LazyData: true
 License: GPL-3
@@ -16,4 +16,4 @@ Encoding: UTF-8
 BugReports: https://github.com/andrea-luciani/bimets/issues
 URL: https://github.com/andrea-luciani/bimets
 NeedsCompilation: no
-Packaged: 2022-09-02 17:04:16 UTC; m025732
+Packaged: 2023-02-09 15:56:28 UTC; m025732

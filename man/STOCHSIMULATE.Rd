@@ -18,7 +18,7 @@ By using the \code{StochStructure} argument of this function, users can define a
 In the following figure, the advanced Klein model (see code example), has been perturbed during the forecast operation by applying a normal disturbance to the endogenous \emph{Consumption} behavioral \code{cn} add-factor in year 1942, and a uniform disturbance to the exogenous \emph{Government Expenditure} time series \code{g} along all the simulation \code{TSRANGE}. The normal disturbance applied to the \code{cn} behavioral has a zero mean and a standard deviation equal to the behavioral regression standard error,\cr i.e. \code{advancedKleinModel$behaviorals$cn$statistics$StandardErrorRegression}, thus roughly replicating the \code{\link[=ESTIMATE]{ESTIMATE}} regression error during the current perturbation (not accounting for inter-equations cross-covariance).\cr \cr 
 \figure{StochKleinGNP.png} \cr \cr
 
-At the moment, all the disturbances are i.i.d. and are not transformed into a congruent autoregressive scheme in case the related perturbed endogenous behavioral presents an autocorrelation for the errors in its \code{\link[=MDL]{MDL}} definition, e.g. \code{ERROR> AUTO(n)}
+At the moment, all the disturbances are i.i.d. and are not transformed into a congruent autoregressive scheme in the case the related perturbed endogenous behavioral presents an autocorrelation for the errors in its \code{\link[=MDL]{MDL}} definition, e.g. \code{ERROR> AUTO(n)}
 } 
 \usage{
 STOCHSIMULATE(model=NULL,
@@ -60,7 +60,7 @@ If a list element name is equal to an exogenous variable, the disturbance will b
 Each list element must be a named list built with the following three element: \cr \cr 
 - \code{TSRANGE}: the time range  wherein the disturbance is active and additive to the related model variable. The \code{TSRANGE} must be a 4 numerical array, i.e. \code{TSRANGE=c(start_year, start_period, end_year, end_period)} or \code{TSRANGE=TRUE} in order to apply the provided disturbance to whole \code{STOCHSIMULATE} \code{TSRANGE}. \cr \cr  
 - \code{TYPE}: the type of disturbance distribution. At the moment, only normal, i.e. \code{TYPE='NORM'}, and uniform, i.e. \code{TYPE='UNIF'}, disturbance distributions are allowed; \cr \cr
-- \code{PARS}: the parameters that shape the disturbance. In case of a \code{TYPE='NORM'} distribution, these parameters must contain the mean and the standard deviation of the normal distribution, i.e. \code{PARS=c(mean,sd)}; in case of a \code{TYPE='UNIF'} distribution, these parameters must contain the lower and upper bound of the uniform distribution, i.e. \code{PARS=c(min,max)}. \cr \cr 
+- \code{PARS}: the parameters that shape the disturbance. \cr\cr In the case of a \code{TYPE='NORM'} distribution, these parameters must contain the mean and the standard deviation of the normal distribution, i.e. \code{PARS=c(mean,sd)}; \cr\cr  in the case of a \code{TYPE='UNIF'} distribution, these parameters must contain the lower and upper bound of the uniform distribution, i.e. \code{PARS=c(min,max)}; \cr\cr in the case of a \code{TYPE='MATRIX'}, these parameters must contain the user-built matrix of realized disturbances, i.e. \code{PARS=matrix}, with \code{matrix} as a \code{[ TSRANGE x StochReplica ]} matrix.\cr \cr 
 See example in order to learn how to build a compliant stochastic structure.
 }
   
@@ -244,5 +244,55 @@ with(advancedKleinModel$stochastic_simulation,TABIT(y$mean, y$sd))
 #first 5 perturbed realizations
 with(advancedKleinModel$simulation_MM,print(y[,1:6]))
 
+####################################################
+
+#example with TYPE='MATRIX'
+
+TSRANGE <- c(1935,1,1940,1)
+StochReplica <- 100
+
+#we will perturb simulation by using regression residuals
+#get cn and i residuals in TSRANGE
+cn_residuals <- TSPROJECT(advancedKleinModel$behaviorals$cn$residuals, 
+                          TSRANGE=TSRANGE,
+                          ARRAY = TRUE)
+i_residuals <- TSPROJECT(advancedKleinModel$behaviorals$i$residuals,
+                         TSRANGE=TSRANGE,
+                         ARRAY = TRUE)
+
+#define stochastic matrices
+cn_matrix <- c()
+i_matrix <- c()
+
+#populate matrices
+for (idx in 1:StochReplica)
+{
+  rand <- rnorm(1,0,1)
+  cn_matrix <- cbind(cn_matrix,rand*cn_residuals)
+  i_matrix <- cbind(i_matrix,rand*i_residuals)
+}
+
+#define stochastic structure
+myStochStructure <- list(
+  cn=list(
+    TSRANGE=TRUE,
+    TYPE='MATRIX',
+    PARS=cn_matrix
+  ),
+  i=list(
+    TSRANGE=TRUE,
+    TYPE='MATRIX',
+    PARS=i_matrix
+  )
+)
+
+#stochastic simulation
+advancedKleinModel <- STOCHSIMULATE(advancedKleinModel
+                                    ,TSRANGE=TSRANGE
+                                    ,StochStructure=myStochStructure
+)
+
+#print GNP mean and sd
+with(advancedKleinModel$stochastic_simulation,TABIT(y$mean, y$sd))
 
 }

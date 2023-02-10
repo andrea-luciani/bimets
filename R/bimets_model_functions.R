@@ -1650,7 +1650,7 @@ LOAD_MODEL <- function(modelFile=NULL,
       #check EQ contains behavioral name
       #if (length(grep(paste0("^",behavioralName,"="),eqRaw))==0) 
       if (lhsFun$args!=behavioralName)
-        stop('LOAD_MODEL(): LHS of EQ definition: "',eqRaw,'" must contain only the behavioral name "',behavioralName,'" or the allowed LHS functions: ',paste0(paste0(allowedLhsEQfunsPub,'()'),collapse=', '));
+        stop('LOAD_MODEL(): LHS of EQ definition: "',eqRaw,'" must contain only the behavioral name "',behavioralName,'" or the allowed uppercase LHS functions: ',paste0(paste0(allowedLhsEQfunsPub,'()'),collapse=', '));
       
     } else if (lhsFun$funName=='LOG')
     {
@@ -2433,7 +2433,7 @@ LOAD_MODEL <- function(modelFile=NULL,
       #check EQ contains behavioral name
       #if (length(grep(paste0("^",behavioralName,"="),eqRaw))==0) 
       if (lhsFun$args!=identityName)
-        stop('LOAD_MODEL(): LHS of EQ definition: "',eqRaw,'" must contain only the idenity name "',identityName,'" or the allowed LHS functions: ',paste0(paste0(allowedLhsEQfunsPub,'()'),collapse=', '));
+        stop('LOAD_MODEL(): LHS of EQ definition: "',eqRaw,'" must contain only the idenity name "',identityName,'" or the allowed uppercase LHS functions: ',paste0(paste0(allowedLhsEQfunsPub,'()'),collapse=', '));
       
     } else if (lhsFun$funName=='LOG')
     {
@@ -6404,9 +6404,11 @@ SIMULATE <- function(model=NULL,
     
       for (idxN in names(StochStructure))
       {
+        
+        
         if (! is.character(StochStructure[[idxN]]$TYPE) 
-            || ! StochStructure[[idxN]]$TYPE %in% c('NORM','UNIF')
-        ) stop(callerName,'"StochStructure$',idxN,'$TYPE" must be NORM or UNIF.')
+            || ! StochStructure[[idxN]]$TYPE %in% c('NORM','UNIF','MATRIX')
+        ) stop(callerName,'"StochStructure$',idxN,'$TYPE" must be NORM or UNIF or MATRIX.')
         
         if (StochStructure[[idxN]]$TYPE=='UNIF'
             || StochStructure[[idxN]]$TYPE=='NORM')
@@ -6416,10 +6418,18 @@ SIMULATE <- function(model=NULL,
               || length(StochStructure[[idxN]]$PARS) !=2) 
             stop(callerName,'"StochStructure$',idxN,'$PARS" must be a 2 elements finite numerical array.')
         }
+        
+        if (StochStructure[[idxN]]$TYPE=='MATRIX')
+        {
+          if (! is.matrix(StochStructure[[idxN]]$PARS) || !(all(is.finite(StochStructure[[idxN]]$PARS)))) 
+            stop(callerName,'"StochStructure$',idxN,'$PARS" must be a finite matrix.')
+        }
+       
+        
       }
     
     }
-    
+   
     if (is.null(StochReplica) 
         || ! is.finite(StochReplica)
         || StochReplica < 1
@@ -7221,6 +7231,7 @@ SIMULATE <- function(model=NULL,
   
   
   # create proxies -----------------------------------
+   
   
   tryCatch(
     {
@@ -7650,9 +7661,14 @@ SIMULATE <- function(model=NULL,
   if (STOCHSIMULATE && length(StochStructure)>0) 
     for (idxSS in names(StochStructure))
     {
+      typePertS=''
+      if (StochStructure[[idxSS]]$TYPE=='UNIF') typePertS='uniformly'
+      if (StochStructure[[idxSS]]$TYPE=='NORM') typePertS='normally'
+      if (StochStructure[[idxSS]]$TYPE=='MATRIX') typePertS='manually'
+      
       .MODEL_outputText(outputText = !quietly,paste0(callerName,'',ifelse(idxSS %in% model_vendog,'endogenous variable "','exogenous variable "'),
                                                      idxSS,
-                                                     '" has been ',StochStructure[[idxSS]]$TYPE,' perturbed from year-period ',
+                                                     '" has been ',typePertS,' perturbed from year-period ',
                                                      paste0(StochStructure[[idxSS]]$TSRANGE[1:2],collapse='-'),
                                                      ' to ',
                                                      paste0(StochStructure[[idxSS]]$TSRANGE[3:4],collapse='-'),'.\n'));
@@ -7662,6 +7678,14 @@ SIMULATE <- function(model=NULL,
         (NUMPERIOD(EXTENDED_TSRANGE[1:2],StochStructure[[idxSS]]$TSRANGE[1:2],frequency)+1):
           (NUMPERIOD(EXTENDED_TSRANGE[1:2],StochStructure[[idxSS]]$TSRANGE[3:4],frequency)+1)
       )
+      
+      
+      if (StochStructure[[idxSS]]$TYPE == 'MATRIX')
+      { 
+        if( (nrow(StochStructure[[idxSS]]$PARS) != length(StochStructure[[idxSS]]$TSRANGE)) ||
+            (ncol(StochStructure[[idxSS]]$PARS) != (replica-1)) )
+          stop(callerName,paste0('"StochStructure$',idxSS,'PARS" must be a ',length(StochStructure[[idxSS]]$TSRANGE),' x ',replica-1,' matrix (i.e. "periods in TSRANGE" x "StochReplica").'))
+      }
       
     }
   
@@ -7742,7 +7766,8 @@ SIMULATE <- function(model=NULL,
         
       for (idxN in names(StochStructure))
       {
-        
+       
+        #create uniform perturbation
         if (StochStructure[[idxN]]$TYPE=='UNIF')
           noise=matrix(
             stats::runif(
@@ -7752,7 +7777,7 @@ SIMULATE <- function(model=NULL,
             ,nrow=length(StochStructure[[idxN]]$TSRANGE)
           )
         
-        
+        #create normal perturbation
         if (StochStructure[[idxN]]$TYPE=='NORM')
           noise=matrix(
             stats::rnorm(
@@ -7762,16 +7787,23 @@ SIMULATE <- function(model=NULL,
             ,nrow=length(StochStructure[[idxN]]$TSRANGE)
           )
         
+        #pass perturbation matrix to model
+        if (StochStructure[[idxN]]$TYPE=='MATRIX')
+        {
+          
+          noise=StochStructure[[idxN]]$PARS
+        }
+        
         if (idxN %in% model_vendog)
         {
           #get un-noised time series
-          tmpNoised_ORIG=get(paste0(idxN,'__ADDFACTOR','__ORIGINAL'),envir = localE);
+          tmpNoised_ORIG=get(paste0(idxN,'__ADDFACTOR','__ORIGINAL'),envir = localE)
           #tmpNoised=get(paste0(idxN,'__ADDFACTOR'),envir = localE);
           
         } else if(idxN %in% model_vexog)
         {
           #get un-noised time series
-          tmpNoised_ORIG=get(paste0(idxN,'__ORIGINAL'),envir = localE);
+          tmpNoised_ORIG=get(paste0(idxN,'__ORIGINAL'),envir = localE)
           #tmpNoised=get(paste0(idxN),envir = localE);
           
         } else if (! is.null(RESCHECKeqList) && length(base::intersect(idxN,model_fullComponentList))==0)
@@ -7783,18 +7815,24 @@ SIMULATE <- function(model=NULL,
           
         } else stop(callerName,'unknown error while perturbing time series "',idxN,'".')
         
-        #add noise to matrix data
-        tmpNoised_ORIG[StochStructure[[idxN]]$TSRANGE,2:replica]=tmpNoised_ORIG[StochStructure[[idxN]]$TSRANGE,2:replica]+noise;
+        #add noise to matrix data (replace if MATRIX and EXOG)
+        if ((StochStructure[[idxN]]$TYPE=='MATRIX') && (idxN %in% model_vexog))
+        {
+          tmpNoised_ORIG[StochStructure[[idxN]]$TSRANGE,2:replica]=noise
+        } else
+        {
+          tmpNoised_ORIG[StochStructure[[idxN]]$TSRANGE,2:replica]=tmpNoised_ORIG[StochStructure[[idxN]]$TSRANGE,2:replica]+noise
+        }
         
         if (idxN %in% model_vendog)
         {
           #save noised ts
-          assign(paste0(idxN,'__ADDFACTOR','__ORIGINAL'),tmpNoised_ORIG,envir = localE);
+          assign(paste0(idxN,'__ADDFACTOR','__ORIGINAL'),tmpNoised_ORIG,envir = localE)
           
         } else if(idxN %in% model_vexog)
         {
           #save noised ts
-          assign(paste0(idxN,'__ORIGINAL'),tmpNoised_ORIG,envir = localE);
+          assign(paste0(idxN,'__ORIGINAL'),tmpNoised_ORIG,envir = localE)
           
         }  else stop(callerName,'unknown error while storing perturbed time series "',idxN,'".')
         
@@ -8800,6 +8838,7 @@ SIMULATE <- function(model=NULL,
   {
     #intercept sim algo errors
     
+    
     if (!exists('idxIter')) idxIter=0;
     if (!exists('simIterLoopIdx')) simIterLoopIdx=1;
     if (verbose) 
@@ -8876,7 +8915,7 @@ SIMULATE <- function(model=NULL,
         }
       }
     }
-    
+   
     stop(paste0('\n',callerName,'error in simulation of type "',simType,'" at year-period ',
                 paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),
                 ' (simulation period ',simIterLoopIdx,') in iteration ',idxIter,' while evaluating "',
