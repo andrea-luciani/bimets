@@ -785,6 +785,7 @@ The simulation of an econometric model basically consists in solving the system 
 \item[--] \emph{Residuals check}: a single period, single equation simulation; output simulated time series are just the RHS (right-hand-side) computation of their equation, by using the historical values of the involved time series and by accounting for error autocorrelation and PDLs, if any;
 \item[--] \emph{Partial or total exogenization of endogenous variables}: in the provided time interval (i.e. partial exog.) or in whole simulation time range (i.e. total exog.), the values of the selected endogenous variables can be definitely set equal to their historical values, by excluding their equations from the iterative algorithm of simulation;
 \item[--] \emph{Constant adjustment of endogenous variables (add-factors)}: adds up a new exogenous time series - the "constant adjustment" - in the equation of the selected endogenous variables;
+\item[--] \emph{Gauss-Seidel} and \emph{Newton-Raphson} simulation algorithms: the Gauss-Seidel algorithm is simple, robust, and works well for many backward-looking macro-econometric models. Equations are evaluated as-is in a proper order until the convergence, if any, is verified on feedback variables. It is slower than Newton-Raphson algorithms for a very low convergence criterion, and fails to find a convergence for a small set of econometric models, even when a convergence exists. The Newton-Raphson algorithm allows users to solve a broader set of macro-econometric models than the Gauss-Seidel algorithm. Moreover, it is usually faster than the Gauss-Seidel algorithm (on modern computers, users must simulate an extensive econometric model with a low convergence criterion to appreciate the speedup). This type of algorithm requires the construction and the inversion of the Jacobian matrix for the feedback variables; thus, in some scenarios, numerical issues can arise, and users are required to manually exclude some feedback variables from the Jacobian matrix by using the \code{JacobianDrop} argument of the \code{SIMULATE} procedure.
 \end{itemize}
 In details, the generic model suitable for simulation in \pkg{bimets} can be written as: \\ 
 
@@ -796,7 +797,7 @@ being: \\
 \({\bar{y}=[y_1, ... , y_n]}\) the \code{n}-dimensional vector of the endogenous variables;\\
 \({\bar{x}=[x_1, ... , x_m]}\) the \code{m}-dimensional vector of the exogenous variables;\\
 \({f_i(...), i=1..n}\) any kind of functional expression able to be written by using the \code{MDL} syntax;\\ \\
-As described later on, a modified Gauss-Seidel iterative algorithm can solve the system of equations. The convergence properties may vary depending on the model specifications. In some conditions, the algorithm may not converge for a specific model or a specific set of data.\\ \\
+As described later on, a modified Gauss-Seidel iterative algorithm, or a Newton-Raphson algorithm, can solve the system of equations. The convergence properties may vary depending on the model specifications. In some conditions, the algorithm may not converge for a specific model or a specific set of data.\\ \\
 A convergence criterion and a maximum number of iterations to be performed are provided by default. Users can change these criteria by using the \code{simConvergence} and \code{simIterLimit} arguments of the \code{SIMULATE()} function.\\ \\
 The general conceptual scheme of the simulation process (for each time period) is the following:
 \begin{enumerate}
@@ -817,29 +818,7 @@ The initial solution for the iterative process (step 1) can be given alternative
 \end{itemize}
 In the "dynamic" simulations (i.e. simulations performed by using either the default \\ \code{simType = 'DYNAMIC'} or the \code{simType = 'FORECAST'}), whenever lagged endogenous variables are needed in the computation, the simulated values of the endogenous variables \({\bar{y}}\) assessed in the previous time periods are used. In this case, the simulation results in a given time period depend on the simulation results in the previous time periods. This kind of simulation is defined as "multiple equation, multiple period".\\ \\
 As an alternative, the actual historical values can be used in the "static" simulations (i.e. simulations performed by using \code{simType = 'STATIC'}) rather than simulated values whenever lagged endogenous variables are needed in the computations. In this case, the simulation results in a given time period do not depend on the simulation results in the previous time periods. This kind of simulation is defined as "multiple equation, single period".\\ \\
-The last simulation type available is the residual check (\code{simType = 'RESCHECK'}). With this option, a "single equation, single period" simulation is performed. In this case, no iteration must be carried out. The endogenous variables are assessed for each time period by using historical values for each variable on the right-hand side of their equation, for both lagged and current periods. This kind of simulation helps debug and check of the logical coherence of the equations and the data, and can be used as a simple tool to compute the add-factors.\\ \\ The debugging of the logical coherence of equations and data is carried out through a \emph{Residual Check} procedure.\\ \\
-It consists of the following steps:
-\begin{enumerate}
-\item add another exogenous variable - the constant adjustment - to every equation of the model, both behavioral and technical identity (i.e. by using the \code{ConstantAdjustment} argument of the \code{SIMULATE()} function);
-\item fill in with the estimated residuals all the constant adjustments for the behavioral equations; 
-\item fill in with zeroes the constant adjustments for the technical identities;
-\item perform a simulation of the model with the \code{simType = 'RESCHECK'} option;
-\item compute the difference between the historical and the simulated values for all the endogenous variables;
-\item check whether all the differences assessed in step 5 are zero in whole time range;
-\end{enumerate}
-If a perfect tracking of the history is obtained, then the equations have been written coherently with the data, otherwise a simulated equation not tracking the historical values is an unambiguous symptom of data inconsistent with the model definition.\\ \\
-Aside from the residual check, the add-factors constitute an important tool to significantly improve the accuracy of forecasts made through an econometric model. Considering the following model: \\ \\
-\({y_1=f_1(\bar{x},\bar{y}) + z_1}\) \\
-\({...}\) \\
-\({y_n=f_n(\bar{x},\bar{y}) + z_n}\) \\ \\
-the add-factors \({\bar{z}=[z_1, ... ,z_n]}\) can be interpreted as estimates of the disturbance terms' future values or as adjustments of the intercepts in each equation. These add-factors round out the forecasts, by summarizing the effects of all the systematic factors not included in the model. One choice for the computation of the add-factors is given by past estimation residuals and past forecast errors or by an average of these errors. This consideration suggests an easy way of computing the add-factors:
-\begin{enumerate}
-\item add the constant adjustments to every equation of the model, both behavioral and technical identity;
-\item fill in with zeroes all the constant adjustments;
-\item solve the model, with the \code{simType = 'RESCHECK'} option, in a time interval including some periods beyond the estimation sample;
-\item compute the difference between the historical and the simulated values for each endogenous variables;
-\item average, or process in a suitable way, the difference arising from point 4 in the time periods beyond the estimation sample to compute the constant value to be used as an add-factor in the following forecasting exercises;
-\end{enumerate}
+The last simulation type available is the residual check (\code{simType = 'RESCHECK'}). With this option, a "single equation, single period" simulation is performed. In this case, no iteration must be carried out. The endogenous variables are assessed for each time period by using historical values for each variable on the right-hand side of their equation, for both lagged and current periods. This kind of simulation helps debug and check of the logical coherence of the equations and the data, and can be used as a simple tool to compute the add-factors.\\ \\ 
 Back to Kelin's model example, let's forecast the GNP\footnote{originally referred as "Net national income, measured in billions of 1934 dollars", pag. 141 in \emph{"Economic Fluctuations in the United States 1921-1941"} by L. R. Klein, Wiley and Sons Inc., New York, 1950} (i.e. the "\code{y}" endogenous variable) up to 1944: \\
 \begin{footnotesize}
 <<>>=
@@ -867,7 +846,6 @@ kleinModel <- SIMULATE(kleinModel
 TABIT(kleinModel$simulation$y)
 @
 \end{footnotesize}
-\clearpage
 \includegraphics[width=6in]{KleinGNP.png}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{The Optimal Reordering} \label{ssec:6}
@@ -886,12 +864,12 @@ The final pattern of an incidence matrix after the equation reordering generally
 \end{enumerate}
 As said, the pre-recursive and the post-recursive blocks are lower triangular. Therefore the corresponding equations are solvable with a cascade substitution with no iteration. Just the simultaneous equations set needs an iterative algorithm to be solved. It is important to say that the convergence criterion may also be applied to these variables only: when the feedback variables converge, the rest of the simultaneous variables also do.\\ \\ \pkg{bimets} builds and analyzes the model's incidence matrix, and then it orders the equations in pre-recursive, simultaneous and post-recursive blocks. The simultaneous block is then analyzed in order to find a minimal set of feedback variables. This last problem is known to be NP-complete\footnote{Garey, Johnson - \emph{Computers and Intractability: a Guide to the Theory of NP-completeness} - San Francisco, Freeman 1979}.\\ \\The optimal reordering of the model equations is programmatically achieved through the use of an iterative algorithm applied to the incidence matrix that can produce 4 ordered lists of endogenous variables:
 \begin{enumerate}
-\item \code{vpre} is the ordered list containing the names of the endogenous pre-recursive variables to be sequentially computed (using their \code{EQ>} definition in the \code{MDL}) before the simulation iterative algorithm takes place;
-\item \code{vsim} is the ordered list containing the names of the endogenous variables to be sequentially computed during each iteration of the simulation iterative algorithm; 
-\item \code{vfeed} is the list containing the names of the endogenous feedback variables; 
-\item \code{vpost} is the ordered list containing the names of the endogenous post-recursive variables to be sequentially computed once the simulation iterative algorithm has converged;
+\item \code{vpre} is the ordered list containing the names of the endogenous pre-recursive variables to be sequentially computed (once per simulation period, using their \code{EQ>} definition in the \code{MDL}) before the simulation iterative algorithm takes place;
+\item \code{vsim} (the simultaneous block) is the ordered list containing the names of the endogenous variables to be sequentially computed during each iteration of the simulation iterative algorithm;
+\item \code{vfeed} is the list containing the names of the endogenous feedback variables; generally \code{vfeed} are the last variables of the ordered \code{vsim} list; 
+\item \code{vpost} is the ordered list containing the names of the endogenous post-recursive variables to be sequentially computed (once per simulation period, using their \code{EQ>} definition in the \code{MDL}) after the simulation iterative algorithm has found a solution in the simultaneous block;
 \end{enumerate}
-If equations are reordered, the previous conceptual scheme is modified as follow:
+If equations are reordered, the previous conceptual scheme is modified as follows:
 \begin{itemize}
 \item[--] initialize the solution for the current simulation period;
 \item[--] compute the pre-recursive equations (i.e. the equation of the endogenous variables in the \code{vpre} ordered list);
@@ -899,16 +877,29 @@ If equations are reordered, the previous conceptual scheme is modified as follow
 \item[--] compute the post-recursive equations (i.e. the equation of the endogenous variables in the \code{vpost} ordered list);
 \item[--] save the solutions;
 \end{itemize}
-Given \({x_{j}, j=1..m}\) the exogenous variables and \({y_{i,k}, i=1..n}\) the value of the \({i}\)-endogenous variable in the simultaneous block at the iteration \({k}\), with \({i}\) the position of the equation in a reordered model, the modified Gauss-Seidel method takes for the approximation of the endogenous variable \({y_{i,k}}\) the solution of the following:\\ \\
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{The Simulation Algorithms} \label{ssec:65}
+Given \({x_{j}}\) the \({j}\)-exogenous variable, \({j=1..m}\), and \({y_{i,k}}\) the value of the \({i}\)-endogenous variable, \({i=1..n}\), in the simultaneous block at the iteration \({k}\), with \({i}\) the position of the equation in a reordered model, the modified Gauss-Seidel method takes for the approximation of the endogenous variable \({y_{i,k}}\) the solution of the following:\\ \\
 \({y_{i,k}=f_i(x_1, ..., x_m, y_{1,k}, ..., y_{i-1,k}, y_{i,k-1},..., y_{n,k-1})}\)\\ \\
-As said, the convergence is then tested at the end of each iteration on the feedback variables.\\ \\
-Newton's methods on a reordered model require the calculation of the Jacobian matrix on the feedback endogenous variables, i.e. at least \({f+2}\) iterations per simulation period, with \({f}\) as the number of feedback variables. For large models (i.e. more than 30 feedback variables) if the overall required convergence is greater than \({10^{-6} \%}\) the speedup over the Gauss-Siebel method is small or negative. Moreover, the Gauss-Siebel method does not require a matrix inversion, therefore it is more robust against algebraical and numerical issues. For small models both methods are fast on modern computers.\\ \\The simulation of a non-trivial model, if computed by using the same data but on different hardware, software or numerical libraries, produces numerical differences. Therefore a convergence criterion smaller than \({10^{-7} \%}\) frequently leads to a local solution.\\ \\ See \emph{Numerical methods for simulation and optimal control of large-scale macroeconomic models - Gabay, Nepomiastchy, Rachidi, Ravelli - 1980} for further information.\\
+Newton-Raphson methods can be seen as an extension of the modified Gauss-Seidel algorithm, and a further step is required: in Newton-Raphson, feedback variables are updated not by using their model equations, but by using the inverse of the Jacobian matrix and the following assignment:\\ \\
+\({\bar{y}^F_{k} \leftarrow \bar{y}^F_{k-1}+(I-J)^{-1}[\bar{y}^F_{k}-\bar{y}^F_{k-1}]}\)\\ \\
+given the vector of feedback variables values  \({\bar{y}^F_{k}=[y_{n-F+1,k},...,y_{n,k}]}\) at iteration \({k}\), the identity matrix \({I}\), and the Jacobian matrix \({J}\), with \({I,J \in R^{F,F}}\) and \({F}\) equal to the number of feedback variables for the given model. Please note that the modified Gauss-Seidel algorithm can be seen as a reduced form of a Netwotn algorithm, given \({J=0}\).\\ \\ In Newton-Raphson methods, the Jacobian matrix \({J}\) is calculated as follows:\\
+1 - shock the feedback variables one at a time by a small amount;\\
+2 - for each shocked feedback variable, evaluate the shocked solution of the simultaneous block;\\
+3 - calculate the derivatives (i.e. the column in the Jacobian matrix related to the shocked feedback variable) using the difference quotients between the shocked and the base solution of the simultaneous block.\\ \\
+As said, the convergence is tested at each iteration's end on the feedback variables.\\ \\
+Newton-Raphson's methods on a reordered model require the calculation of the Jacobian matrix on the feedback endogenous variables, i.e. at least \({F+2}\) iterations per simulation period, with \({F}\) as the number of feedback variables. For large models (i.e. more than 30 feedback variables) if the overall required convergence is greater than \({10^{-6} \%}\) the speedup over the Gauss-Seidel method is small or negative, if the Jacobian matrix is recalculated at each iteration. Moreover, the Gauss-Seidel method does not require a matrix inversion; therefore, it is more robust against algebraical and numerical issues. For small models, both methods are fast on modern computers.\\ \\
+On the other hand, Gausse-Seidel fails to find a convergence for a small set of econometric models, even when a convergence exists. In general, given a system of equations \({Ax=b}\), with \({x,b \in R^n, n>0}\) and \({A \in R^{n, n}}\), the Gauss-Seidel algorithm is known to converge if either:\\
+- \({A}\) is symmetric positive-definite;\\
+- \({A}\) is strictly or irreducibly diagonally dominant. \\ \\
+To improve simulation speed, \pkg{bimets} evaluates the Newton-Raphson algorithm performance during simulation, and, at each iteration, a new Jacobian matrix is calculated \emph{only if} the convergence speed is slower than a predefined threshold.\\ \\
+The simulation of a non-trivial model, if computed by using the same data but on different hardware, software or numerical libraries, may produce numerical differences. Therefore a convergence criterion smaller than \({10^{-7} \%}\) frequently leads to a local solution.\\ \\ See \emph{Numerical methods for simulation and optimal control of large-scale macroeconomic models - Gabay, Nepomiastchy, Rachidi, Ravelli - 1980} for further information.\\
 
-Below is an example of advanced simulation:
+Below is an example of advanced simulation using the Newton-Raphson algorithm:
 
 \begin{footnotesize}
 <<computation,results=hide>>=
-#STATIC SIMULATION EXAMPLE WITH EXOGENIZATION AND CONSTANT ADJUSTMENTS
+#DYNAMIC NEWTON SIMULATION EXAMPLE WITH EXOGENIZATION AND CONSTANT ADJUSTMENTS
  
 #define exogenization list
 #'cn' exogenized in 1923-1925
@@ -926,12 +917,14 @@ constantAdjList <- list(
  
 #simulate model
 kleinModel <- SIMULATE(kleinModel
-                  ,simType = 'STATIC'
+                  ,simAlgo='NEWTON'
+                  ,simType = 'DYNAMIC'
                   ,TSRANGE = c(1923,1,1941,1)
                   ,simConvergence = 0.00001
                   ,simIterLimit = 100
                   ,Exogenize = exogenizeList
                   ,ConstantAdjustment = constantAdjList 
+                  ,verbose=TRUE
                   )
 @
 \end{footnotesize}
@@ -940,7 +933,7 @@ kleinModel <- SIMULATE(kleinModel
 Forecasts produced by structural econometric models are subject to several sources of error, such as random disturbance term of each stochastic equation, errors in estimated coefficients, errors in forecasts of exogenous variables, errors in preliminary data and mis-specification of the model.\\ \\
 The forecast error depending on the structural disturbances can be analyzed using the stochastic simulation procedure.\\ \\
 The deterministic simulation is the simultaneous solution of an econometric model obtained by applying, for each stochastic (behavioral) equation, the expected values of the structural disturbances, which are all zero by assumption. In the \pkg{bimets} \code{STOCHSIMULATE} stochastic simulation, the structural disturbances are given values that have specified stochastic properties. The error terms of the estimated behavioral equation of the model are appropriately perturbed. Identity equations and exogenous variables can be as well perturbed by disturbances that have specified stochastic properties. The model is then solved for each data set with different values of the disturbances. Finally, mean and standard deviation are computed for each simulated endogenous variable. \\ \\
-In terms of computational efficiency, the procedure takes advantage of the fact that multiple datasets are bind together in matrices. Therefore, to achieve a global convergence, the iterative simulation algorithm is executed once for all perturbed datasets. This solution can be viewed as a sort of a SIMD (i.e. Single Instruction Multiple Data) parallel simulation: the \code{STOCHSIMULATE} function transforms time series into matrices; consequently, the procedure can easily bind multiple datasets by column. At the same time, a single run ensures a fast code execution. Finally, each column in the output matrices represents a stochastic realization.\\ \\
+In terms of computational efficiency, the procedure takes advantage of the fact that multiple datasets are bound together in matrices. Therefore, to achieve a global convergence, the iterative simulation algorithm is executed once for all perturbed datasets. This solution can be viewed as a sort of a SIMD (i.e. Single Instruction Multiple Data) parallel simulation: the \code{STOCHSIMULATE} function transforms time series into matrices; consequently, the procedure can easily bind multiple datasets by column. At the same time, a single run ensures a fast code execution. Finally, each column in the output matrices represents a stochastic realization.\\ \\
 By using the \code{StochStructure} argument of this function, users can define a stochastic structure for the disturbances. For each variable of the model, users can provide a distinct distribution and time range for the disturbance. Mean and standard deviation for each simulated endogenous time series will be stored in the \code{stochastic_simulation} element of the output model object; all the stochastic realizations will be stored in the \code{simulation_MM} element of the output model object as named matrices.\\ \\
 In the following example, we will perform a stochastic forecast of the previously estimated \code{advancedKleinModel}. The advanced Klein model will be perturbed during the forecast operation by applying a normal disturbance to the endogenous \emph{Consumption} behavioral \code{cn} in year 1942, and a uniform disturbance to the exogenous \emph{Government Expenditure} time series \code{g} along all the simulation \code{TSRANGE}. The normal disturbance applied to the \code{cn} behavioral has a zero mean and a standard deviation equal to its regression standard error, i.e. \code{advancedKleinModel$behaviorals$cn$statistics$StandardErrorRegression}, thus roughly replicating the \code{ESTIMATE} regression error during the current perturbation (not accounting for inter-equations cross-covariance).
 
@@ -1349,7 +1342,7 @@ A more complex example is available in the \code{OPTIMIZE} help page of the \hre
 
 \section{Computational Details}
 The iterative simulation procedure is the most time-consuming operation of the \pkg{bimets} package. For small models, this operation is quite immediate; on the other hand, the simulation of models that count hundreds of equations could last for minutes, especially if the requested operation involves a parallel simulation having hundreds of realizations per equation. This could be the case for the endogenous targeting, the stochastic simulation and the optimal control.\\ \\
-The \code{SIMULATE} code has been optimized in order to minimize the execution time in these cases.  In terms of computational efficiency, the procedure takes advantage of the fact that multiple datasets are bind together in matrices, therefore in order to achieve a global convergence, the iterative simulation algorithm is executed once for all perturbed datasets. This solution can be viewed as a sort of a SIMD (i.e. Single Instruction Multiple Data) parallel simulation: the \code{SIMULATE} algorithm transforms time series into matrices and consequently can easily bind multiple datasets by column. At the same time, the single run ensures a fast code execution, while each column in the output matrices represents a stochastic or perturbed realization.\\ \\
+The \code{SIMULATE} code has been optimized in order to minimize the execution time in these cases.  In terms of computational efficiency, the procedure takes advantage of the fact that multiple datasets are bound together in matrices, therefore in order to achieve a global convergence, the iterative simulation algorithm is executed once for all perturbed datasets. This solution can be viewed as a sort of a SIMD (i.e. Single Instruction Multiple Data) parallel simulation: the \code{SIMULATE} algorithm transforms time series into matrices and consequently can easily bind multiple datasets by column. At the same time, the single run ensures a fast code execution, while each column in the output matrices represents a stochastic or perturbed realization.\\ \\
 The above approach is even faster if \proglang{R} has been compiled and linked to optimized multi-threaded numerical libraries, e.g. Intel\textsuperscript{\textregistered} MKL, OpenBlas, Microsoft\textsuperscript{\textregistered} R Open, etc.\\ \\
 Finally, model equations are pre-fetched into sorted \proglang{R} expressions, and an optimized \proglang{R} environment is defined and reserved to the \code{SIMULATE} algorithm; this approach removes the overhead usually caused by expression parsing and by the \proglang{R} looking for variables inside nested environments. \\ \\
 \pkg{bimets} estimation and simulation results have been compared to the output results of leading commercial econometric software by using several large and complex models.\\ \\

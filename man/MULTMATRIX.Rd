@@ -26,6 +26,7 @@ Users can also declare an endogenous variable as the \code{INSTRUMENT} variable.
 }
 \usage{
 MULTMATRIX(model=NULL,
+           simAlgo='GAUSS-SEIDEL',
            TSRANGE=NULL,
            simType='DYNAMIC',
            simConvergence=0.01,
@@ -40,6 +41,8 @@ MULTMATRIX(model=NULL,
            INSTRUMENT=NULL,
            MM_SHOCK=0.00001,
            quietly=FALSE,
+           JACOBIAN_SHOCK=1e-4,
+           JacobianDrop=NULL,
            avoidCompliance=FALSE,
            ...)		   
 
@@ -47,6 +50,7 @@ MULTMATRIX(model=NULL,
 
 \arguments{
    \item{model}{see \code{\link[=SIMULATE]{SIMULATE}}}
+   \item{simAlgo}{see \code{\link[=SIMULATE]{SIMULATE}}}
    \item{TSRANGE}{see \code{\link[=SIMULATE]{SIMULATE}}}
    \item{simType}{see \code{\link[=SIMULATE]{SIMULATE}}}
    \item{simConvergence}{see \code{\link[=SIMULATE]{SIMULATE}}}
@@ -61,9 +65,11 @@ MULTMATRIX(model=NULL,
    \item{INSTRUMENT}{
   A \code{character} array built with the names of the exogenous variables with respect to which the multipliers are evaluated. Users can also declare an endogenous variable as \code{INSTRUMENT} variable: in this case the constant adjustment (see \code{\link[=SIMULATE]{SIMULATE}}) related to the provided endogenous variable will be used as the instrument exogenous variable
   }
-   \item{MM_SHOCK}{The value of the shocks added to variables in the derivative calculation of the multipliers. The default value is \code{0.00001} times the value of the exogenous variable
+   \item{MM_SHOCK}{The value of the shock added to \code{INSTRUMENT} variables in the derivative calculation of the multipliers. The default value is \code{0.00001} times the value of the exogenous variable
   } 
    \item{quietly}{see \code{\link[=SIMULATE]{SIMULATE}}}
+   \item{JACOBIAN_SHOCK}{see \code{\link[=SIMULATE]{SIMULATE}}}
+   \item{JacobianDrop}{see \code{\link[=SIMULATE]{SIMULATE}}}
    \item{avoidCompliance}{see \code{\link[=SIMULATE]{SIMULATE}}}
    \item{...}{see \code{\link[=SIMULATE]{SIMULATE}}}
 

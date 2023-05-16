@@ -42,6 +42,7 @@ The figure clearly shows that non-linear restrictions have been applied, and tha
 
 \usage{
 OPTIMIZE( model=NULL,
+          simAlgo='GAUSS-SEIDEL',
           TSRANGE=NULL,
           simType='DYNAMIC',
           simConvergence=0.01,
@@ -59,6 +60,8 @@ OPTIMIZE( model=NULL,
           OptimizeFunctions=NULL,
           quietly=FALSE,
           RESCHECKeqList=NULL,
+          JACOBIAN_SHOCK=1e-4,
+          JacobianDrop=NULL,
           avoidCompliance=FALSE,
           ...)
 
@@ -66,6 +69,7 @@ OPTIMIZE( model=NULL,
 
 \arguments{
 \item{model}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{simAlgo}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{TSRANGE}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{simType}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{simConvergence}{see \code{\link[=SIMULATE]{SIMULATE}}}
@@ -101,6 +105,8 @@ Two different \code{OptimizeFunctions} list element can not have overlapping \co
 
 \item{quietly}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{RESCHECKeqList}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{JACOBIAN_SHOCK}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{JacobianDrop}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{avoidCompliance}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{...}{see \code{\link[=SIMULATE]{SIMULATE}}}
   }

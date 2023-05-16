@@ -12,7 +12,7 @@ The \code{STOCHSIMULATE} operation performs a stochastic simulation. The simulat
 Forecasts produced by structural econometric models are subject to several sources of error, such as random disturbance term of each stochastic equation, errors in estimated coefficients, errors in forecasts of exogenous variables, errors in preliminary data and mis-specification of the model.\cr\cr
 The forecast error depending on the structural disturbances can be analyzed by using the stochastic simulation procedure.\cr\cr
 The deterministic simulation is the simultaneous solution of an econometric model obtained by applying, for each stochastic (behavioral) equation, the expected values of the structural disturbances, which are all zero by assumption. In the BIMETS \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} stochastic simulation, the structural disturbances are given values that have specified stochastic properties. The error terms of the estimated behavioral equation of the model are appropriately perturbed. Identity equations and exogenous variables can be as well perturbed by disturbances that have specified stochastic properties. The model is then solved for each data set with different values of the disturbances. Finally, mean and standard deviation are computed for each simulated endogenous variable. \cr\cr
-In terms of computational efficiency, the procedure takes advantage of the fact that multiple datasets are bind together in matrices. Therefore, to achieve a global convergence, the iterative simulation algorithm is executed once for all perturbed datasets. This solution can be viewed as a sort of a SIMD (i.e. Single Instruction Multiple Data) parallel simulation: the \code{STOCHSIMULATE} function transforms time series into matrices and consequently can easily bind multiple datasets by column. At the same time, a single run ensures a fast code execution. Finally, each column in the output matrices represents a stochastic realization.\cr\cr
+In terms of computational efficiency, the procedure takes advantage of the fact that multiple datasets are bound together in matrices. Therefore, to achieve a global convergence, the iterative simulation algorithm is executed once for all perturbed datasets. This solution can be viewed as a sort of a SIMD (i.e. Single Instruction Multiple Data) parallel simulation: the \code{STOCHSIMULATE} function transforms time series into matrices and consequently can easily bind multiple datasets by column. At the same time, a single run ensures a fast code execution. Finally, each column in the output matrices represents a stochastic realization.\cr\cr
 By using the \code{StochStructure} argument of this function, users can define a stochastic structure for the disturbances. For each variable of the model, users can provide a distinct probability distribution for the disturbance, and a specific time range of application. Mean and standard deviation for each simulated endogenous time series will be stored in the \code{stochastic_simulation} element of the output model object; all the stochastic realizations will be stored in the \code{simulation_MM} element of the output model object as named matrices.
 
 In the following figure, the advanced Klein model (see code example), has been perturbed during the forecast operation by applying a normal disturbance to the endogenous \emph{Consumption} behavioral \code{cn} add-factor in year 1942, and a uniform disturbance to the exogenous \emph{Government Expenditure} time series \code{g} along all the simulation \code{TSRANGE}. The normal disturbance applied to the \code{cn} behavioral has a zero mean and a standard deviation equal to the behavioral regression standard error,\cr i.e. \code{advancedKleinModel$behaviorals$cn$statistics$StandardErrorRegression}, thus roughly replicating the \code{\link[=ESTIMATE]{ESTIMATE}} regression error during the current perturbation (not accounting for inter-equations cross-covariance).\cr \cr 
@@ -22,6 +22,7 @@ At the moment, all the disturbances are i.i.d. and are not transformed into a co
 } 
 \usage{
 STOCHSIMULATE(model=NULL,
+              simAlgo='GAUSS-SEIDEL',
               TSRANGE=NULL,
               simType='DYNAMIC',
               simConvergence=0.01,
@@ -37,6 +38,8 @@ STOCHSIMULATE(model=NULL,
               StochSeed=NULL,
               quietly=FALSE,
               RESCHECKeqList=NULL,
+              JACOBIAN_SHOCK=1e-4,
+              JacobianDrop=NULL,
               avoidCompliance=FALSE,
               ...)		   
 
@@ -44,6 +47,7 @@ STOCHSIMULATE(model=NULL,
 
 \arguments{
 \item{model}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{simAlgo}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{TSRANGE}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{simType}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{simConvergence}{see \code{\link[=SIMULATE]{SIMULATE}}}
@@ -70,6 +74,8 @@ See example in order to learn how to build a compliant stochastic structure.
   
 \item{quietly}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{RESCHECKeqList}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{JACOBIAN_SHOCK}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{JacobianDrop}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{avoidCompliance}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{...}{see \code{\link[=SIMULATE]{SIMULATE}}}
    
@@ -245,8 +251,7 @@ with(advancedKleinModel$stochastic_simulation,TABIT(y$mean, y$sd))
 with(advancedKleinModel$simulation_MM,print(y[,1:6]))
 
 ####################################################
-
-#example with TYPE='MATRIX'
+#EXAMPLE WITH TYPE='MATRIX'
 
 TSRANGE <- c(1935,1,1940,1)
 StochReplica <- 100
@@ -295,4 +300,127 @@ advancedKleinModel <- STOCHSIMULATE(advancedKleinModel
 #print GNP mean and sd
 with(advancedKleinModel$stochastic_simulation,TABIT(y$mean, y$sd))
 
-}
+#########################################################
+#EXAMPLE OF MODEL THAT REQUIRES THE FULL NEWTON ALGORITHM
+#see profit equation
+
+myFullNewtonDefinition<-
+"MODEL 
+
+COMMENT> Consumption
+BEHAVIORAL> cn
+TSRANGE 1922 1 1929 1
+EQ> cn =  a1 + a2*p + a3*LAG(p,1) + a4*(w1+w2+w3) 
+COEFF> a1 a2 a3 a4
+
+COMMENT> Investment
+BEHAVIORAL> i
+TSRANGE 1922 1 1929 1
+EQ> i = b1 + b2*p + b3*LAG(p,1) + b4*LAG(k,1)
+COEFF> b1 b2 b3 b4
+
+COMMENT> Demand for Labor
+BEHAVIORAL> w1 
+TSRANGE 1922 1 1929 1
+EQ> w1 = c1 + c2*(z+y+t-w2) + c3*LAG(z+y+t-w2,1) + c4*time
+COEFF> c1 c2 c3 c4
+
+COMMENT> Demand for Labor
+BEHAVIORAL> w3 
+TSRANGE 1922 1 1929 1
+EQ> w3 = c1 + c2*(z+y+t-w2) + c3*LAG(z+y+t-w2,1) + c4*time
+COEFF> c1 c2 c3 c4
+
+COMMENT> Gross National Product
+IDENTITY> y
+EQ> y = cn + i + g - t
+
+IDENTITY> z
+EQ> z = cn + i + g - t
+
+COMMENT> Profits with cubic dependence on cn
+IDENTITY> p
+EQ> p = cn^3/1000 + z + y - (w1+w2+w3)
+
+COMMENT> Capital Stock
+IDENTITY> k
+EQ> k = LAG(k,1) + i
+
+END
+"
+
+
+#define model data
+myModelData<-list(
+   cn
+   =TIMESERIES(39.8,41.9,45,49.2,50.6,52.6,55.1,56.2,57.3,57.8,55,50.9,
+               45.6,46.5,48.7,51.3,57.7,58.7,57.5,61.6,65,69.7,
+               START=c(1920,1),FREQ=1),
+   g
+   =TIMESERIES(4.6,6.6,6.1,5.7,6.6,6.5,6.6,7.6,7.9,8.1,9.4,10.7,10.2,9.3,10,
+               10.5,10.3,11,13,14.4,15.4,22.3,
+               START=c(1920,1),FREQ=1),
+   i
+   =TIMESERIES(2.7,-.2,1.9,5.2,3,5.1,5.6,4.2,3,5.1,1,-3.4,-6.2,-5.1,-3,-1.3,
+               2.1,2,-1.9,1.3,3.3,4.9,
+               START=c(1920,1),FREQ=1),
+   k
+   =TIMESERIES(182.8,182.6,184.5,189.7,192.7,197.8,203.4,207.6,210.6,215.7,
+               216.7,213.3,207.1,202,199,197.7,199.8,201.8,199.9,
+               201.2,204.5,209.4,
+               START=c(1920,1),FREQ=1),
+   p
+   =TIMESERIES(12.7,12.4,16.9,18.4,19.4,20.1,19.6,19.8,21.1,21.7,15.6,11.4,
+               7,11.2,12.3,14,17.6,17.3,15.3,19,21.1,23.5,
+               START=c(1920,1),FREQ=1),
+   w1
+   =TIMESERIES(28.8,25.5,29.3,34.1,33.9,35.4,37.4,37.9,39.2,41.3,37.9,34.5,
+               29,28.5,30.6,33.2,36.8,41,38.2,41.6,45,53.3,
+               START=c(1920,1),FREQ=1),
+   y
+   =TIMESERIES(43.7,40.6,49.1,55.4,56.4,58.7,60.3,61.3,64,67,57.7,50.7,41.3,
+               45.3,48.9,53.3,61.8,65,61.2,68.4,74.1,85.3,
+               START=c(1920,1),FREQ=1),
+   t
+   =TIMESERIES(3.4,7.7,3.9,4.7,3.8,5.5,7,6.7,4.2,4,7.7,7.5,8.3,5.4,6.8,7.2,
+               8.3,6.7,7.4,8.9,9.6,11.6,
+               START=c(1920,1),FREQ=1),
+   time 
+   =TIMESERIES(NA,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9,10,
+               START=c(1920,1),FREQ=1),
+   w2
+   =TIMESERIES(2.2,2.7,2.9,2.9,3.1,3.2,3.3,3.6,3.7,4,4.2,4.8,5.3,5.6,6,6.1,
+               7.4,6.7,7.7,7.8,8,8.5,
+               START=c(1920,1),FREQ=1)
+ )
+ 
+
+#add data to model
+myModelData$z <- myModelData$y
+myModelData$w3 <- (myModelData$w1)
+
+myFullNewtonModel <- LOAD_MODEL(modelText=myFullNewtonDefinition)
+myFullNewtonModel <- LOAD_MODEL_DATA(myFullNewtonModel,myModelData)
+
+myFullNewtonModel <- ESTIMATE(myFullNewtonModel)
+ 
+#simple Newton will fail, due to 
+#large variance in normal disturbances                       
+#...while full Newton will converge
+myFullNewtonModel <- STOCHSIMULATE(myFullNewtonModel,
+                       simAlgo='FULLNEWTON',
+                       TSRANGE = c(1921, 1, 1923, 1),
+                       simConvergence = 1e-5,
+                       simIterLimit = 250,
+                       StochReplica = 100,
+                       StochSeed=123,
+                       StochStructure = list(
+                         cn=list(
+                           TSRANGE=TRUE,
+                           TYPE='NORM',
+                           PARS=c(0,10)
+                         )
+                       )
+                       ,verbose=TRUE
+                       )
+					}

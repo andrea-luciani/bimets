@@ -16,18 +16,19 @@ BIMETS simulation capabilities support:\cr\cr
 - \emph{Stochastic Simulation}: see \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}};\cr\cr
 - \emph{Partial or total exogenization of endogenous variables}: in the provided time interval (i.e. partial exog.) or in whole simulation time range (i.e. total exog.), the values of the selected endogenous variables can be definitely set equal to their historical values, by excluding their equations from the iterative algorithm of simulation;\cr\cr
 - \emph{Constant adjustment of endogenous variables (add-factors)}: adds up a new exogenous time series - the "constant adjustment" - in the equation of the selected endogenous variables.\cr\cr
+- \emph{Gauss-Seidel} and \emph{Newton-Raphson} simulation algorithms: the Gauss-Seidel algorithm is simple, robust, and works well for many backward-looking macro-econometric models. Equations are evaluated as-is in a proper order until the convergence, if any, is verified on feedback variables. It is slower than Newton-Raphson algorithms for a very low convergence criterion, and fails to find a convergence for a small set of econometric models, even when a convergence exists. The Newton-Raphson algorithm allows users to solve a broader set of macro-econometric models than the Gauss-Seidel algorithm. Moreover, it is usually faster than the Gauss-Seidel algorithm (on modern computers, users must simulate an extensive econometric model with a low convergence criterion to appreciate the speedup). This type of algorithm requires the construction and the inversion of the Jacobian matrix for the feedback variables; thus, in some scenarios, numerical issues can arise, and users are required to manually exclude some feedback variables from the Jacobian matrix by using the \code{JacobianDrop} argument of the \code{\link[=SIMULATE]{SIMULATE}} procedure.\cr\cr
 In details, the generic model suitable for simulation in BIMETS can be written as: \cr
 
-\eqn{y_1=f_1(\bar{x},\bar{y}) + z_1} \cr
+\eqn{y_1=f_1(\bar{x},\bar{y}) } \cr
 \eqn{...} \cr
-\eqn{y_n=f_n(\bar{x},\bar{y}) + z_n} \cr
+\eqn{y_n=f_n(\bar{x},\bar{y}) } \cr
 
 being: \cr\cr
 \eqn{n} the number of equations in the model; \cr
 \eqn{\bar{y}=[y_1, ... , y_n]}{y=[y_1, ... , y_n]} the \code{n}-dimensional vector of the endogenous variables;\cr
 \eqn{\bar{x}=[x_1, ... , x_m]}{x=[x_1, ... , x_m]} the \code{m}-dimensional vector of the exogenous variables;\cr
 \eqn{f_i(...), i=1..n} any kind of functional expression able to be written by using the \code{MDL} syntax;\cr\cr
-As described later on, a modified Gauss-Seidel iterative algorithm can solve the system of equations. The convergence properties may vary depending on the model specifications. In some conditions, the algorithm may not converge for a specific model or a specific set of data.\cr\cr
+As described later on, in BIMETS a modified Gauss-Seidel iterative algorithm, or a Newton-Raphson algorithm, can solve the system of equations. The convergence properties may vary depending on the model specifications. In some conditions, the algorithm may not converge for a specific model or a specific set of data.\cr\cr
 A convergence criterion and a maximum number of iterations to be performed are provided by default. Users can change these criteria by using the \code{simConvergence} and \code{simIterLimit} arguments of the \code{SIMULATE} function.\cr\cr
 The general conceptual scheme of the simulation process (for each time period) is the following:\cr\cr
 1. initialize the solution for the current simulation period;\cr
@@ -60,7 +61,7 @@ the add-factors \eqn{\bar{z}=[z_1, ... ,z_n]}{z=[z_1, ... ,z_n]} can be interpre
 3. solve the model, with the \code{simType='RESCHECK'} option, in a time interval including some periods beyond the estimation sample;\cr
 4. compute the difference between the historical and the simulated values for each the endogenous variables;\cr
 5. average, or process in a suitable way, the difference arising from point 4 in the time periods beyond the estimation sample to compute the constant value to be used as an add-factor in the following forecasting exercises;\cr\cr
-Please note that in the case of equation that presents an LHS function the add-factor will be added before the application of the inverse function, i.e. during the simulation the following:\cr\cr
+Please note that, in the case of equation that presents an LHS function, the add-factor will be added before the application of the inverse function, i.e., during the simulation, the following:\cr\cr
 \eqn{g_1(y_1)=f_1(\bar{x},\bar{y}) + z_1}{g_1(y_1)=f_1(x,y) + z_1} \cr
 \eqn{...} \cr
 \eqn{g_n(y_n)=f_n(\bar{x},\bar{y}) + z_n}{g_n(y_n)=f_n(x,y) + z_n} \cr\cr
@@ -68,12 +69,12 @@ will be solved as:\cr\cr
 \eqn{y_1=g_{1}^{-1}(f_1(\bar{x},\bar{y}) + z_1)}{y_1=g_1^(-1)( f_1(x,y) + z_1 )} \cr
 \eqn{...} \cr
 \eqn{y_n=g_{n}^{-1}(f_n(\bar{x},\bar{y}) + z_n)}{y_n=g_n^(-1)( f_n(x,y) + z_n )} \cr\cr
-If a linear dependence from the simulated endogenous and the add-factor is preferred, users can manually insert an auxiliary equation \eqn{w_i} into the model definition, e.g. the following:\cr\cr
+If a linear dependence between the simulated endogenous and the add-factor is preferred, users can manually insert an auxiliary equation \eqn{w_i} into the model definition, e.g. the following:\cr\cr
 \eqn{g_i(y_i)=f_i(\bar{x},\bar{y})}{g_i(y_i)=f_i(x,y)} \cr\cr
 can be replaced by:\cr\cr
 \eqn{w_i=f_i(\bar{x},\bar{y})}{w_i=f_i(x,y)} \cr
 \eqn{y_i=g_{i}^{-1}(w_i)}{y_i=g_i^(-1)(w_i)} \cr\cr
-During the simulation, the add-factors will be applied as in the following:\cr\cr
+During the simulation, the add-factors (if requested by the user) will be applied as in the following:\cr\cr
 \eqn{w_i=f_i(\bar{x},\bar{y}) + v_i}{w_i=f_i(x,y) + v_i} \cr
 \eqn{y_i=g_{i}^{-1}(w_i) + z_i}{y_i=g_i^(-1)(w_i) + z_i} \cr\cr
 given \eqn{v_i, z_i} as add-factors and the linear dependence from \eqn{z_i} and \eqn{y_i}.\cr\cr
@@ -93,20 +94,31 @@ The final pattern of an incidence matrix after the equation reordering generally
 3. another recursive block (the post-recursive block);\cr\cr
 As said, the pre-recursive and the post-recursive blocks are lower triangular. Therefore the corresponding equations are solvable with a cascade substitution with no iteration. Just the simultaneous equations set needs an iterative algorithm to be solved. It is important to say that the convergence criterion may also be applied to these variables only: when the feedback variables converge, the rest of the simultaneous variables also do.\cr\cr BIMETS builds and analyzes the model's incidence matrix, and then it orders the equations in pre-recursive, post-recursive and simultaneous blocks. The simultaneous block is then analyzed in order to find a minimal set of feedback variables. This last problem is known to be NP-complete (Ref: Garey, Johnson - \emph{Computers and Intractability: a Guide to the Theory of NP-completeness} - San Francisco, Freeman 1979).\cr\cr
 The optimal reordering of the model equations is programmatically achieved through the use of an iterative algorithm applied to the incidence matrix that can produce 4 ordered lists of endogenous variables:\cr\cr
-1. \code{vpre} is the ordered list containing the names of the endogenous pre-recursive variables to be sequentially computed (by using their \code{EQ>} definition in the \code{MDL}) before the simulation iterative algorithm takes place;\cr
-2. \code{vsim} is the ordered list containing the names of the endogenous variables to be sequentially computed during each iteration of the simulation iterative algorithm; \cr
-3. \code{vfeed} is the list containing the names of the endogenous feedback variables; \cr
-4. \code{vpost} is the ordered list containing the names of the endogenous post-recursive variables to be sequentially computed once the simulation iterative algorithm has converged;\cr\cr
-If equations are reordered, the previous conceptual scheme is modified as follow:\cr\cr
+1. \code{vpre} is the ordered list containing the names of the endogenous pre-recursive variables to be sequentially computed (once per simulation period, by using their \code{EQ>} definition in the \code{MDL}) before the simulation iterative algorithm takes place;\cr
+2. \code{vsim} (the simultaneous block) is the ordered list containing the names of the endogenous variables to be sequentially computed during each iteration of the simulation iterative algorithm; \cr
+3. \code{vfeed} is the list containing the names of the endogenous feedback variables; generally \code{vfeed} are the last variables of the ordered \code{vsim} list; \cr
+4. \code{vpost} is the ordered list containing the names of the endogenous post-recursive variables to be sequentially computed (once per simulation period, by using their \code{EQ>} definition in the \code{MDL}) after the simulation iterative algorithm has found a solution in the simultaenous block;\cr\cr
+If equations are reordered, the previous conceptual scheme is modified as follows:\cr\cr
 - initialize the solution for the current simulation period;\cr
 - compute the pre-recursive equations (i.e. the equation of the endogenous variables in the \code{vpre} ordered list);\cr
-- iteratively compute the system of simultaneous equations (i.e. the equation of the endogenous variables in the \code{vsim} ordered list); for each iteration update the values of the current endogenous variables and verify that the convergence criterion is satisfied on the feedback variables or that the maximum number of iterations has been reached;\cr
+- iteratively compute the system of simultaneous equations (i.e. the equation of the endogenous variables in the \code{vsim} ordered list); for each iteration update the values of the current endogenous variables and verify that the convergence criterion is satisfied on the feedback variables \code{vfeed} or that the maximum number of iterations has been reached;\cr
 - compute the post-recursive equations (i.e. the equation of the endogenous variables in the \code{vpost} ordered list);\cr
 - save the solutions;\cr\cr
-Given \eqn{y_{i,k}}{y_(i,k)} the value of the \eqn{i}-endogenous variable in the simultaneous block at the iteration \eqn{k}, with \eqn{i} the position of the equation in a reordered model, the modified Gauss-Seidel method takes for the approximation of the endogenous variable \eqn{y_{i,k}}{y_(i,k)} the solution of the following:\cr\cr
+\tabular{c}{THE SIMULATION ALGORITHMS}
+Given \eqn{x_{j}}{x_(j)} the \eqn{j}-exogenous variable, \eqn{j=1..m}, and \eqn{y_{i,k}}{y_(i,k)}  the \eqn{i}-endogenous variable in the simultaneous block, at the iteration \eqn{k}, with \eqn{i=1..n} the position of the equation in a reordered model, the modified Gauss-Seidel method takes for the approximation of the endogenous variable \eqn{y_{i,k}}{y_(i,k)} the solution of the following:\cr\cr
 \eqn{y_{i,k}=f_i(x_1, ..., x_m, y_{1,k}, ..., y_{i-1,k}, y_{i,k-1},..., y_{n,k-1})}{y_(i,k)=f_i(x_1, ..., x_m, y_(1,k), ..., y_(i-1,k), y_(i,k-1),..., y_(n,k-1)}\cr\cr
-As said, the convergence is then tested at the end of each iteration on the feedback variables.\cr\cr
-Newton's methods on a reordered model require the calculation of the Jacobian matrix on the feedback endogenous variables, i.e. at least \eqn{f+2} iterations per simulation period, with \eqn{f} as the number of feedback variables. For large models (i.e. more than 30 feedback variables) if the overall required convergence is greater than \eqn{10^{-6} \%}{10^(-6) \%} the speedup over the Gauss-Siebel method is small or negative. Moreover, the Gauss-Siebel method does not require a matrix inversion, therefore it is more robust against algebraical and numerical issues. For small models both methods are fast on modern computers.\cr\cr The simulation of a non-trivial model, if computed by using the same data but on different hardware, software or numerical libraries, produces numerical differences. Therefore a convergence criterion smaller than \eqn{10^{-7} \%}{10^(-7)} frequently leads to a local solution.\cr\cr See \emph{Numerical methods for simulation and optimal control of large-scale macroeconomic models - Gabay, Nepomiastchy, Rachidi, Ravelli - 1980} for further information.
+Newton-Raphson's methods can be seen as an extension of the modified Gauss-Seidel algorithm, and a further step is required: in Newton-Raphson, feedback variables are updated not by using their model equations, but by using the inverse of the Jacobian matrix and the following assignment:\cr\cr
+\eqn{\bar{y}^F_{k} \leftarrow \bar{y}^F_{k-1}+(I-J)^{-1}[\bar{y}^F_{k}-\bar{y}^F_{k-1}]}\cr\cr
+given the vector of feedback variables values  \eqn{\bar{y}^F_{k}=[y_{n-F+1,k},...,y_{n,k}]} at iteration \eqn{k}, the identity matrix \eqn{I}, and the Jacobian matrix \eqn{J}, with \eqn{I,J \in R^{F,F}} and \eqn{F} equal to the number of feedback variables for the given model. Please note that the modified Gauss-Seidel algorithm can be seen as a reduced form of a Netwotn algorithm, given \eqn{J=0}.\cr\cr In Newton-Raphson methods, the Jacobian matrix \eqn{J} is calculated as follows:\cr
+1 - shock the feedback variables one at a time by a small amount;\cr
+2 - for each shocked feedback variable, evaluate the shocked solution of the simultaneous block;\cr
+3 - calculate the derivatives (i.e. the column in the Jacobian matrix related to the shocked feedback variable) using the difference quotients between the shocked and the base solution of the simultaneous block.
+\cr\cr
+As said, the convergence is always tested at each iteration's end on the feedback variables.\cr\cr
+Newton-Raphson methods on a reordered model require the calculation of the Jacobian matrix on the feedback endogenous variables, i.e. at least \eqn{F+2} iterations per simulation period, with \eqn{F} as the number of feedback variables. For large models (i.e. more than 30 feedback variables) if the overall required convergence is greater than \eqn{10^{-6} \%}{10^(-6) \%} the speedup over the Gauss-Seidel method is small or negative, if the Jacobian matrix is recalculated at each iteration. Moreover, the Gauss-Seidel method does not require a matrix inversion; therefore, it is more robust against algebraical and numerical issues. For small models, both methods are fast on modern computers. On the other hand, Gausse-Seidel fails to find a convergence for a small set of econometric models, even when a convergence exists. In general, given a system of equations \eqn{Ax=b}, with \eqn{x,b \in R^n, n>0} and \eqn{A \in R^{n, n}}, the Gauss-Seidel algorithm is known to converge if either:\cr
+- \eqn{A} is symmetric positive-definite;\cr
+- \eqn{A} is strictly or irreducibly diagonally dominant. \cr\cr
+To improve simulation speed, BIMETS evaluates the Newton-Raphson algorithm performance during simulation, and, at each iteration, a new Jacobian matrix is calculated \emph{only if} the convergence speed is slower than a predefined threshold. In a vectorized simulation (e.g., \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}},  \code{\link[=OPTIMIZE]{OPTIMIZE}},  \code{\link[=RENORM]{RENORM}}), the Jacobian matrix is calculated only on the unperturbed model, then applied to all realizations.\cr\cr The simulation of a non-trivial model, if computed by using the same data but on different hardware, software or numerical libraries, produces numerical differences. Therefore a convergence criterion smaller than \eqn{10^{-7} \%}{10^(-7)} frequently leads to a local solution.\cr\cr See \emph{Numerical methods for simulation and optimal control of large-scale macroeconomic models - Gabay, Nepomiastchy, Rachidi, Ravelli - 1980} for further information.
 
 
 
@@ -118,6 +130,7 @@ Newton's methods on a reordered model require the calculation of the Jacobian ma
 
 \usage{
 SIMULATE( model=NULL,
+          simAlgo='GAUSS-SEIDEL',
           TSRANGE=NULL,
           simType='DYNAMIC',
           simConvergence=0.01,
@@ -144,6 +157,8 @@ SIMULATE( model=NULL,
           OptimizeFunctions=NULL,
           quietly=FALSE,
           RESCHECKeqList=NULL,
+          JACOBIAN_SHOCK=1e-4,
+          JacobianDrop=NULL,
           avoidCompliance=FALSE,
           ...)
 
@@ -153,7 +168,16 @@ SIMULATE( model=NULL,
   \item{model}{
   The BIMETS model object to be simulated. The simulation requires that all the model behaviorals, if any, have been previously estimated: all the behavioral coefficients (i.e. the regression coefficients and the autoregression coefficients for the errors, if any) must be numerically defined in the model object. (see also \code{\link[=ESTIMATE]{ESTIMATE}})
   }
- 
+  \item{simAlgo}{
+  The simulation algorithm to be used to solve the system of model equations for each time period in the simulation \code{TSRANGE}.\cr
+The options are:\cr
+\bold{GAUSS-SEIDEL}: (default) the Gauss-Seidel algorithm is simple, robust, and works well for many backward-looking macro-econometric models. Equations are evaluated as-is in a proper order until the convergence, if any, is verified on feedback variables (see \emph{THE SIMULATION ALGORITHMS} section up here). It is slower than Newton-Raphson algorithms for a very low convergence criterion, and fails to find a convergence for a small set of econometric models, even when a convergence exists. In general, given a system of equations \eqn{Ax=b}, with \eqn{x,b \in R^n, n>0} and \eqn{A \in R^{n, n}}, the Gauss-Seidel algorithm is known to converge if either:\cr
+- \eqn{A} is symmetric positive-definite;\cr
+- \eqn{A} is strictly or irreducibly diagonally dominant. \cr
+\bold{NEWTON}: the Newton-Raphson algorithm allows users to solve a broader set of macro-econometric models than the Gauss-Seidel algorithm. Moreover, it is faster than the Gauss-Seidel algorithm in most cases (on modern computers, users must simulate an extensive econometric model with a low convergence criterion to appreciate the speedup). This type of algorithm requires the construction and the inversion of the Jacobian matrix for the feedback variables; thus, in some scenarios (e.g., equations with unverified \code{IF>} condition, implicit exogenizations, etc.), numerical issues can arise, and users are required to manually exclude some feedback variables from the Jacobian matrix by using the \code{JacobianDrop} argument.  To improve simulation speed, BIMETS evaluates the Newton-Raphson algorithm performance during simulation, and, at each iteration, a new Jacobian matrix is calculated \emph{only if} the convergence speed is slower than a predefined threshold. In a vectorized simulation (e.g., \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}},  \code{\link[=OPTIMIZE]{OPTIMIZE}},  \code{\link[=RENORM]{RENORM}}), the Jacobian matrix is calculated only on the unperturbed model, then applied to all realizations. As in the Gauss-Seidel algorithm, the convergence is evaluated on feedback variables\cr
+\bold{FULLNEWTON}: similar to the "base" Newton case, but when using this option, a different Jacobian matrix is calculated for each stochastic realization in a vectorized simulation (e.g., \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}},  \code{\link[=OPTIMIZE]{OPTIMIZE}},  \code{\link[=RENORM]{RENORM}}). All the Jacobian matrices are referred to as the Jacobian array. Generally, a "full" Newton simulation requires more computational time, mainly due to the increased number of Jacobian matrices to be calculated. However, the "base" Newton algorithm fails to converge when the model is highly non-linear and perturbances are significant (see examples in \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} help page). Therefore, a  "full" Newton algorithm is required in these cases. \cr
+
+}
   \item{TSRANGE}{
   The time range of the simulation, as a four dimensional numerical array, \cr i.e. \code{TSRANGE=c(start_year, start_period, end_year, end_period)} 
   }
@@ -208,6 +232,12 @@ SIMULATE( model=NULL,
   } 
 \item{RESCHECKeqList}{ If \code{simType=RESCHECK}, by using this argument users can select a subset of target endogenous variables: the simulation will be performed only for the selected variables. It must be provided as an array of endogenous names, e.g. \code{c('endo1','endo2',...)}
   } 
+  \item{JACOBIAN_SHOCK}{
+  The value of the shock added to feedback variables in the derivative calculation of the Jacobian matrix. The default value is \code{1e-4} times the value of the feedback variable
+  }
+  \item{JacobianDrop}{
+  The array built with feedback variables names to be excluded from the Jacobian matrix calulation
+  }
     \item{avoidCompliance}{
   If \code{TRUE}, compliance control check of model time series will be skipped. See \code{\link[=is.bimets]{is.bimets}}
   }
@@ -383,6 +413,8 @@ print(myModel$simulation$'__SIM_PARAMETERS__')
 #
 #...etc etc
  
+ 
+########################################################
 #RESCHECK SIMULATION
  
 #simulate model
@@ -410,6 +442,7 @@ TABIT(myModel$simulation$cn-myModel$modelData$cn)
 #      1941, 1   ,    2.17345
 #
  
+########################################################
 #FORECAST GNP in 1942 and 1943 
  
 #we need to extend exogenous variables in 1942 and 1943
@@ -440,40 +473,8 @@ TABIT(myModel$simulation$y)
 #      1942, 1   ,    133.969
 #      1943, 1   ,    199.913
 #
- 
-#STATIC SIMULATION WITH EXOGENIZATION AND CONSTANT ADJUSTMENTS
- 
-#define exogenization list
-#'cn' exogenized in 1923-1925
-#'i' exogenized in whole TSRANGE
-exogenizeList<-list(
-                cn = c(1923,1,1925,1),
-                i  = TRUE
-)
- 
-#define add factor list
-constantAdjList<-list(
-               cn = TIMESERIES(1,-1,START=c(1923,1),FREQ='A'),
-               y  = TIMESERIES(0.1,-0.1,-0.5,START=c(1926,1),FREQ='A')
-)
- 
-#simulate model
-myModel<-SIMULATE(myModel
-                  ,simType='STATIC'
-                  ,TSRANGE=c(1923,1,1941,1)
-                  ,simConvergence=0.00001
-                  ,simIterLimit=100
-                  ,Exogenize=exogenizeList
-                  ,ConstantAdjustment=constantAdjList 
- )
-#SIMULATE(): endogenous variable "cn" has been exogenized from year-period 1923-1 to 1925-1
-#SIMULATE(): endogenous variable "i" has been exogenized from year-period 1923-1 to 1941-1
-#SIMULATE(): endogenous variable "cn" has a constant adjustment from year-period 1923-1 to 1924-1
-#SIMULATE(): endogenous variable "y" has a constant adjustment from year-period 1926-1 to 1928-1
-#
-#Simulation:    100.00%
-#...SIMULATE OK
- 
+
+########################################################
 #VERBOSE SIMULATION
  
 myModel<-SIMULATE(myModel
@@ -515,6 +516,174 @@ myModel<-SIMULATE(myModel
 #Prd.   19 convergence reached in iter 40
 #
 #...SIMULATE OK
+
+
+########################################################
+#DYNAMIC NEWTON SIMULATION 
+#WITH EXOGENIZATION AND CONSTANT ADJUSTMENTS
  
+#define exogenization list
+#'cn' exogenized in 1923-1925
+#'i' exogenized in whole TSRANGE
+exogenizeList<-list(
+                cn = c(1923,1,1925,1),
+                i  = TRUE
+)
+ 
+#define add factor list
+constantAdjList<-list(
+               cn = TIMESERIES(1,-1,START=c(1923,1),FREQ='A'),
+               y  = TIMESERIES(0.1,-0.1,-0.5,START=c(1926,1),FREQ='A')
+)
+ 
+#simulate model
+myModel<-SIMULATE(myModel
+                  ,simAlgo='NEWTON'
+                  ,simType='DYNAMIC'
+                  ,TSRANGE=c(1923,1,1941,1)
+                  ,simConvergence=0.00001
+                  ,simIterLimit=100
+                  ,Exogenize=exogenizeList
+                  ,ConstantAdjustment=constantAdjList 
+ )
+#SIMULATE(): endogenous variable "cn" has been exogenized from year-period 1923-1 to 1925-1
+#SIMULATE(): endogenous variable "i" has been exogenized from year-period 1923-1 to 1941-1
+#SIMULATE(): endogenous variable "cn" has a constant adjustment from year-period 1923-1 to 1924-1
+#SIMULATE(): endogenous variable "y" has a constant adjustment from year-period 1926-1 to 1928-1
+#
+#Simulation:    100.00%
+#...SIMULATE OK
+
+########################################################
+#EXAMPLE OF MODEL THAT FAILS GAUSS CONVERGENCE
+
+#define model
+myNewtonModelDefinition<-
+"
+MODEL 
+ 
+COMMENT> Consumption
+BEHAVIORAL> cn
+TSRANGE 1922 1 1931 1
+EQ> cn =  a1 + a2*p + a3*LAG(p,1) + a4*(w1+w2) 
+COEFF> a1 a2 a3 a4 
+
+COMMENT> Investment
+BEHAVIORAL> i
+TSRANGE 1922 1 1931 1
+EQ> i = b1 + b2*p + b3*LAG(p,1) + b4*LAG(k,1)
+COEFF> b1 b2 b3 b4 
+
+COMMENT> Demand for Labor
+BEHAVIORAL> w1 
+TSRANGE 1922 1 1931 1
+EQ> w1 = c1 + c2*(z+y+t-w2) + c3*LAG(z+y+t-w2,1) + c4*time
+COEFF> c1 c2 c3 c4 
+
+COMMENT> Gross National Product
+IDENTITY> y
+EQ> y = cn + i + g - t 
+
+COMMENT> Simple copy of y in z
+IDENTITY> z
+EQ> z = cn + i + g - t 
+
+COMMENT> Profits
+IDENTITY> p
+EQ> p = z + y - (w1+w2)
+
+COMMENT> Capital Stock
+IDENTITY> k
+EQ> k = LAG(k,1) + i
+
+END
+"
+
+#add data to model
+myModelData$z <- myModelData$y
+myNewtonModel<-LOAD_MODEL(modelText=myNewtonModelDefinition)
+myNewtonModel<-LOAD_MODEL_DATA(myNewtonModel,myModelData)
+
+#estimate model
+myNewtonModel<-ESTIMATE(myNewtonModel)
+
+#GAUSS simulation fails to converge...
+myNewtonModel <- SIMULATE(myNewtonModel,
+                       TSRANGE = c(1921, 1, 1930, 1),
+                       simConvergence = 1e-7,
+                       verbose=TRUE)
+                       
+#...while NEWTON converge
+myNewtonModel <- SIMULATE(myNewtonModel,
+                       simAlgo='NEWTON',
+                       TSRANGE = c(1921, 1, 1930, 1),
+                       simConvergence = 1e-7,
+                       verbose=TRUE)
+                       
+########################################################
+#EXAMPLE OF MODEL THAT REQUIRES 
+#A VARIABLE EXCLUSION FROM JACOBIAN MATRIX
+
+#define model
+myNewtonWithDropModelDefinition<-
+"
+MODEL 
+ 
+COMMENT> Consumption
+BEHAVIORAL> cn
+TSRANGE 1922 1 1931 1
+EQ> cn =  a1 + a2*p + a3*LAG(p,1) + a4*(w1+w2) 
+COEFF> a1 a2 a3 a4 
+
+COMMENT> Investment
+BEHAVIORAL> i
+TSRANGE 1922 1 1931 1
+EQ> i = b1 + b2*p + b3*LAG(p,1) + b4*LAG(k,1)
+COEFF> b1 b2 b3 b4 
+
+COMMENT> Demand for Labor
+BEHAVIORAL> w1 
+TSRANGE 1922 1 1931 1
+EQ> w1 = c1 + c2*(z+y+t-w2) + c3*LAG(z+y+t-w2,1) + c4*time
+COEFF> c1 c2 c3 c4 
+
+COMMENT> Gross National Product
+IDENTITY> y
+EQ> y = cn + i + g - t 
+
+COMMENT> Simple copy of y in z
+IDENTITY> z
+EQ> z = cn + i + g - t 
+
+COMMENT> Profits
+IDENTITY> p
+EQ> p = z + y - (w1+w2)
+IF> y < 0
+
+COMMENT> Capital Stock
+IDENTITY> k
+EQ> k = LAG(k,1) + i
+
+END
+"
+
+#add data to model
+myModelData$z <- myModelData$y
+myNewtonModel <- LOAD_MODEL(modelText=myNewtonWithDropModelDefinition)
+myNewtonModel <- LOAD_MODEL_DATA(myNewtonModel,myModelData)
+
+#estimate model
+myNewtonModel <- ESTIMATE(myNewtonModel)
+
+#"p" variable must be removed from Jacobian beacuse of unverified IF>
+myNewtonModel <- SIMULATE(myNewtonModel,
+                       simAlgo='NEWTON',
+                       JacobianDrop='p',
+                       TSRANGE = c(1921, 1, 1930, 1),
+                       simConvergence = 1e-7,
+                       verbose=TRUE)
+    
+
+
 
 }

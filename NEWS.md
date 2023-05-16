@@ -1,23 +1,34 @@
+# bimets 3.0.1
+
+May. 2023
+
+* added `simAlgo` argument in `SIMULATE`
+* added `NEWTON` option in `simAlgo` argument in `SIMULATE`
+* added `FULLNEWTON` option in `simAlgo` argument in `SIMULATE`
+* added `JacobianDrop` argument in `SIMULATE`
+* added `JACOBIAN_SHOCK` argument in `SIMULATE`
+* optimized coefficients management in `SIMULATE` (in order to be compliant with this optimization, models created with previous `bimets` versions and stored in binary file format as `.RData` must be recreated via `LOAD_MODEL` procedure)
+
 # bimets 2.3.0 
 
 Dec. 2022
 
-* added a new `MATRIX` type of `StochStructure` in `STOCHSIMULATE`
+* added a new `MATRIX` option of `StochStructure` in `STOCHSIMULATE`
 
 # bimets 2.2.0 
 
 Aug. 2022
 
-* fixed iteration count in error message on `RENORM`
+* fixed iteration count in error message in `RENORM`
 * fixed `R-devel KaTeX` compliance in help pages html rendering
 
 # bimets 2.1.1
 
 Jun. 2022
 
-* extended report on `__RENORM_PARAMETERS__`
-* fixed vignette on `MDL EQ RHS` functions list
-* fixed unexpected warning on `STOCHSIMULATE`
+* extended report in `__RENORM_PARAMETERS__`
+* fixed vignette in `MDL EQ RHS` function list
+* fixed unexpected warning in `STOCHSIMULATE`
 
 # bimets 2.1.0
 
@@ -25,7 +36,7 @@ Apr. 2022
 
 * added `VERIFY_MAGNITUDE`
 * added `GETRANGE`
-* fixed bug on `ESTIMATE` if `CHOWTEST`, `tol` and `IV` enabled
+* fixed bug in `ESTIMATE` if `CHOWTEST`, `tol` and `IV` enabled
 * reduced tolerance in matrix inversion 
 * fixed `R-devel` compliance in class comparison
 
@@ -33,8 +44,8 @@ Apr. 2022
 
 Feb. 2022
 
-* added workaround on `stats::window` bug on daily series
-* fixed minor bug and typos on vignette
+* added workaround in `stats::window` bug in daily series
+* fixed minor bug and typos in vignette
 * added git support
 
 # bimets 2.0.1
@@ -48,7 +59,7 @@ Jan. 2022
 
 Mar. 2021
 
-* fixed information messages on `MULTMATRIX`
+* fixed information messages in `MULTMATRIX`
 * added missings check in lagged time series in `SIMULATE`
 * fixed error messages in `SIMULATE` and `RENORM`
 * fixed bug in `IF>` condition having `<-` (i.e. `R` assign operator)
@@ -67,19 +78,19 @@ Dec. 2020
 
 Jun. 2020
 
-* fixed typos on `MDL LHS` function examples
+* fixed typos in `MDL LHS` function examples
 * fixed bug `TSERIES()` with `character` input data
 
 # bimets 1.5.0
 
 May 2020
 
-* added `LHS` functions on `MDL EQ>` definition
+* added `LHS` functions in `MDL EQ>` definition
 * added `avoidCompliance` in `ESTIMATE`, `SIMULATE`, `RENORM`
 * added `residuals_no_error_correction` in `ESTIMATE`
 * added `TSDELTALOG` time series function
 * removed `stat:time` from code
-* fixed typos on `README.md`
+* fixed typos in `README.md`
 
 # bimets 1.4.3
 
@@ -89,10 +100,10 @@ Mar. 2020
 * added endogenous selection in `SIMULATE` of type `RESCHECK`
 * removed check of existence for all vendog and vexog in `CHECK_MODEL_DATA`
 * added `forceTSRANGE` in `ESTIMATE`
-* added frequency and more details on model object
-* added mode details on behaviorals and `ESTIMATE` statistics
+* added frequency and more details in model object
+* added mode details in behaviorals and `ESTIMATE` statistics
 * added compliance with `R-devel` (i.e. `R-4.0.0`)
-* fixed bugs on `ESTIMATE` stats reports
+* fixed bugs in `ESTIMATE` stats reports
 
 # bimets 1.4.2
 
@@ -104,7 +115,7 @@ Oct. 2019
 
 Jun. 2019
 
-* Fixed typos on `*.Rnw`
+* Fixed typos in `*.Rnw`
 * Added support to `xts()` ver. 0.12
 
 
@@ -215,7 +226,7 @@ Mar. 2014
 
 Jan. 2014
 
-* Bug fix in `xts()` daily in range 1970-1979 on daylight saving time change
+* Bug fix in `xts()` daily in range 1970-1979 in daylight saving time change
 
 # bimets 1.2.1
 

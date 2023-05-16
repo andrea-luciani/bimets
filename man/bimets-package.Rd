@@ -306,7 +306,7 @@ R> kleinModel$vpost
 }
 
 While simulating the Klein's model, BIMETS will iterate on the computation of, in order,\cr \code{w1 -> p -> cn -> i -> y} (the \code{vsim} variables), by looking for convergence on \code{y} (the \code{vfeed} variable, only one in this example) that is the feedback variable. If the convergence is achieved, it will calculate \code{k} (the \code{vpost} variable). The \code{vpre} array in this example is empty; therefore, no equation has to be evaluated before the iterative algorithm.\cr\cr
-More details on the equations reordering are available in \code{\link[=MDL]{MDL}} and \code{\link[=LOAD_MODEL]{LOAD_MODEL}} help pages.\cr\cr
+More details on the equations reordering are available in \code{\link[=SIMULATE]{SIMULATE}} and \code{\link[=LOAD_MODEL]{LOAD_MODEL}} help pages.\cr\cr
 Once the model has been parsed, users need to load the data of all the time series involved in the model, by using the \code{\link[=LOAD_MODEL_DATA]{LOAD_MODEL_DATA}} function. In the following example, the code defines a list of time series and loads this list into the Klein's model previously defined:
 \preformatted{
 R> kleinModelData <- list(  
@@ -823,9 +823,9 @@ BIMETS simulation capabilities support:\cr\cr
 - \emph{Residuals check}: a single period, single equation simulation; simulated time series in output are just the computation of the RHS (right-hand-side) of their equation, by using the historical values of the involved time series and by accounting for error autocorrelation and PDLs, if any;\cr\cr
 - \emph{Stochastic Simulation}: see \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}};\cr\cr
 - \emph{Partial or total exogenization of endogenous variables}: in the provided time interval (i.e. partial exog.) or in whole simulation time range (i.e. total exog.), the values of the selected endogenous variables can be definitely set to their historical values, by excluding their equations from the iterative algorithm of simulation;\cr\cr
-- \emph{Constant adjustment of endogenous variables (add-factors)}: adds up a new exogenous time series - the "constant adjustment" - in the equation of the selected endogenous variables.\cr\cr
+- \emph{Constant adjustment of endogenous variables (add-factors)}: adds up a new exogenous time series (i.e. the "constant adjustment") in the equation of the selected endogenous variables.\cr\cr
+- \emph{Gauss-Seidel} and \emph{Newton-Raphson} simulation algorithms: the Gauss-Seidel algorithm is simple, robust, and works well for many backward-looking macro-econometric models. Equations are evaluated as-is in a proper order until the convergence, if any, is verified on feedback variables. It is slower than Newton algorithms for a very low convergence criterion, and fails to find a convergence for a small set of econometric models, even when a convergence exists. The Newton-Raphson algorithm allows users to solve a broader set of macro-econometric models than the Gauss-Seidel algorithm. Moreover, it is usually faster than the Gauss-Seidel algorithm (on modern computers, users must simulate an extensive econometric model with a low convergence criterion to appreciate the speedup). This type of algorithm requires the construction and the inversion of the Jacobian matrix for the feedback variables; thus, in some scenarios, numerical issues can arise, and users are required to manually exclude some feedback variables from the Jacobian matrix by using the \code{JacobianDrop} argument of the \code{\link[=SIMULATE]{SIMULATE}} procedure.\cr\cr
 More details are available in the \code{\link[=SIMULATE]{SIMULATE}} help page. \cr \cr
-
 Back to Kelin's model example, let's forecast the \emph{GNP} (i.e. the "\code{y}" endogenous variable, originally referred as "Net national income, measured in billions of 1934 dollars", pag. 141 in "Economic Fluctuations in the United States" by L. R. Klein, Wiley and Sons Inc., New York, 1950) up to 1943: 
 \preformatted{
 R> #FORECAST GNP in 1942:1944
@@ -863,11 +863,12 @@ Date, Prd., kleinModel$simulation$y
 \figure{KleinGNP.png} \cr \cr
 
 
-Below is an example of advanced simulation:
+Below is an example of advanced simulation using the \code{NEWTON} algorithm:
 
 \preformatted{
 
-R> #STATIC SIMULATION EXAMPLE WITH EXOGENIZATION AND CONSTANT ADJUSTMENTS
+R> #DYNAMIC NEWTON SIMULATION EXAMPLE 
+R> #WITH EXOGENIZATION AND CONSTANT ADJUSTMENTS
  
 R> #define exogenization list
 R> #'cn' exogenized in 1923-1925
@@ -887,7 +888,8 @@ R> constantAdjList <- list(
  
 R> #simulate model
 R> kleinModel <- SIMULATE(kleinModel
-                  ,simType='STATIC'
+                  ,simAlgo='NEWTON'
+                  ,simType='DYNAMIC'
                   ,TSRANGE=c(1923,1,1941,1)
                   ,simConvergence=0.00001
                   ,simIterLimit=100
@@ -900,7 +902,7 @@ R> kleinModel <- SIMULATE(kleinModel
 Forecasts produced by structural econometric models are subject to several sources of error, such as random disturbance term of each stochastic equation, errors in estimated coefficients, errors in forecasts of exogenous variables, errors in preliminary data and mis-specification of the model.\cr\cr
 The forecast error depending on the structural disturbances can be analyzed by using the stochastic simulation procedure.\cr\cr
 The deterministic simulation is the simultaneous solution of an econometric model obtained by applying, for each stochastic (behavioral) equation, the expected values of the structural disturbances, which are all zero by assumption. In the BIMETS \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} stochastic simulation, the structural disturbances are given values that have specified stochastic properties. The error terms of the estimated behavioral equation of the model are appropriately perturbed. Identity equations and exogenous variables can be as well perturbed by disturbances that have specified stochastic properties. The model is then solved for each data set with different values of the disturbances. Finally, mean and standard deviation are computed for each simulated endogenous variable. \cr\cr
-In terms of computational efficiency, the procedure takes advantage of the fact that multiple datasets are bind together in matrices. Therefore, to achieve a global convergence, the iterative simulation algorithm is executed once for all perturbed datasets. This solution can be viewed as a sort of a SIMD (i.e. Single Instruction Multiple Data) parallel simulation: \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} function transforms time series into matrices; consequently, the procedure can easily bind multiple datasets by column. At the same time, a single run ensures a fast code execution. Finally, each column in the output matrices represents a stochastic realization.\cr\cr
+In terms of computational efficiency, the procedure takes advantage of the fact that multiple datasets are bound together in matrices. Therefore, to achieve a global convergence, the iterative simulation algorithm is executed once for all perturbed datasets. This solution can be viewed as a sort of a SIMD (i.e. Single Instruction Multiple Data) parallel simulation: \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} function transforms time series into matrices; consequently, the procedure can easily bind multiple datasets by column. At the same time, a single run ensures a fast code execution. Finally, each column in the output matrices represents a stochastic realization.\cr\cr
 By using the \code{StochStructure} argument of this function, users can define a stochastic structure for the disturbances. For each variable of the model, users can provide a distinct probability distribution for the disturbance, and a specific time range of application. Mean and standard deviation for each simulated endogenous time series will be stored in the \code{stochastic_simulation} element of the output model object; all the stochastic realizations will be stored in the \code{simulation_MM} element of the output model object as named matrices.
 
 In the following figure, the advanced Klein model (see code example), has been perturbed during the forecast operation by applying a normal disturbance to the endogenous \emph{Consumption} behavioral \code{cn} add-factor in year 1942, and a uniform disturbance to the exogenous \emph{Government Expenditure} time series \code{g} along all the simulation \code{TSRANGE}. The normal disturbance applied to the \code{cn} behavioral has a zero mean and a standard deviation equal to the behavioral regression standard error,\cr i.e. \code{advancedKleinModel$behaviorals$cn$statistics$StandardErrorRegression}, thus roughly replicating the \code{\link[=ESTIMATE]{ESTIMATE}} regression error during the current perturbation (not accounting for inter-equations cross-covariance).\cr \cr 

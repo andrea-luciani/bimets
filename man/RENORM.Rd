@@ -26,6 +26,7 @@ If the convergence condition is satisfied, the \code{RENORM} procedure will retu
 \usage{
 
 RENORM(model=NULL,
+       simAlgo='GAUSS-SEIDEL',
        TSRANGE=NULL,
        simType='DYNAMIC',
        simConvergence=0.01,
@@ -43,6 +44,8 @@ RENORM(model=NULL,
        MM_SHOCK=0.00001,
        quietly=FALSE,
        tol=1e-28,
+       JACOBIAN_SHOCK=1e-4,
+       JacobianDrop=NULL,
        avoidCompliance=FALSE,
        ...
        )
@@ -50,6 +53,7 @@ RENORM(model=NULL,
 
 \arguments{
 \item{model}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{simAlgo}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{TSRANGE}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{simType}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{simConvergence}{see \code{\link[=SIMULATE]{SIMULATE}}}
@@ -71,6 +75,8 @@ RENORM(model=NULL,
   the tolerance for detecting linear dependencies in the columns of a matrix while an inversion is requested. }
 \item{MM_SHOCK}{see \code{\link[=MULTMATRIX]{MULTMATRIX}}}
 \item{quietly}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{JACOBIAN_SHOCK}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{JacobianDrop}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{avoidCompliance}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{...}{see \code{\link[=SIMULATE]{SIMULATE}}}
 }
