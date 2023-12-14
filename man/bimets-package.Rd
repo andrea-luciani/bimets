@@ -1,6 +1,7 @@
 \name{bimets-package}
 
 \alias{bimets}
+\alias{bimets-package}
 
 \docType{package}
 \title{

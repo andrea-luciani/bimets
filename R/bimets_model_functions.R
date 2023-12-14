@@ -29,6 +29,85 @@
 
 # support FUNs -------------------------------------------
 
+#print verbose stuff during sim
+#do not use this fun outside main simulation cycle
+.printVerboseSim = function(ConstantAdjustment,
+                            verboseVars,
+                            frequency,
+                            TSRANGE,
+                            simIterLoopIdx,
+                            idxIter,
+                            model_max_lag_1,
+                            length_model_vexog,
+                            model_vexog,
+                            replica,
+                            localE,
+                            model_vpre,
+                            model_vsim,
+                            model_vpost)
+{
+  if (length(ConstantAdjustment)>0)
+  {
+    cat('CONSTANT ADJUSTMENTS:\n') 
+    for (tmpV in names(ConstantAdjustment)) 
+    {  
+      if (tmpV %in% verboseVars)
+      {
+        cat(paste0(
+          'Prd. ',
+          sprintf("%4i",simIterLoopIdx),', ',
+          paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' ',
+          'Iter. ',
+          sprintf("%4i",idxIter),' ',
+          sprintf("%12s CA",tmpV),' ='))
+        
+        for (idxR in 1:replica)
+          cat(sprintf("%20.15g",localE[[paste0(tmpV,'__ADDFACTOR')]][  model_max_lag_1,idxR])) 
+        cat('\n') 
+      }
+    }
+  }
+  if (length_model_vexog>0)
+  {
+    cat('VEXOGS:\n') 
+    for (tmpV in c(model_vexog)) 
+    {  
+      if ( tmpV %in% verboseVars)
+      {
+        cat(paste0(
+          'Prd. ',
+          sprintf("%4i",simIterLoopIdx),', ',
+          paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' ',
+          'Iter. ',
+          sprintf("%4i",idxIter),' ',
+          sprintf("%15s",tmpV),' ='))
+        
+        for (idxR in 1:replica)
+          cat(sprintf("%20.15g",localE[[(tmpV)]][  model_max_lag_1,idxR])) 
+        cat('\n') 
+      }
+    }
+  }
+  cat('VENDOGS:\n') 
+  for (tmpV in c(model_vpre,model_vsim,model_vpost)) 
+  { 
+    if ( tmpV %in% verboseVars)
+    {
+      cat(paste0(
+        'Prd. ',
+        sprintf("%4i",simIterLoopIdx),', ',
+        paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' ',
+        'Iter. ',
+        sprintf("%4i",idxIter),' ',
+        sprintf("%15s",tmpV),' ='))
+      
+      for (idxR in 1:replica)
+        cat(sprintf("%20.15g",localE[[(tmpV)]][  model_max_lag_1,idxR]))  
+      cat('\n') 
+    }
+  }
+}
+
 #combine list by names
 .combineList = function(list1=NULL,list2=NULL)
 {
@@ -1403,8 +1482,7 @@ LOAD_MODEL <- function(modelFile=NULL,
     rawData=strsplit(modelText,'\n')[[1]] 
   }
   
-  #.MODEL_outputText(outputText=!quietly,paste0('Loading model: "',modelName,'"...\n')) 
-  #check consistence
+ #check consistence
   if (length(rawData)==0) stop('LOAD_MODEL(): empty model file.')
   model$rawData=rawData 
   #trim leading/trailing spaces
@@ -1418,8 +1496,6 @@ LOAD_MODEL <- function(modelFile=NULL,
   {
     for (idxR in 1:length(cleanModel))
     {
-      
-      
       #if double dollar sign then it is a comment
       if (grepl('^\\s*\\$.*\\$\\s*$',cleanModel[idxR]))
         next 
@@ -1460,7 +1536,6 @@ LOAD_MODEL <- function(modelFile=NULL,
   ifIndexes=grep("^IF\\s*>",cleanModel, ignore.case = TRUE) 
   ivIndexes=grep("^IV\\s*>",cleanModel, ignore.case = TRUE) 
   
-  
   #sorted indexes of all keywords
   kwIdx=sort(c(length(cleanModel)+1,
                behavioralIndexes,
@@ -1474,14 +1549,13 @@ LOAD_MODEL <- function(modelFile=NULL,
                ifIndexes,
                ivIndexes)) 
   
-  #sorted indexes of eq/ident keywords
+  #sorted indexes of eq keywords
   eqIdenDefIdx=sort(c(length(cleanModel)+1,
                       behavioralIndexes,
                       identityIndexes)) 
   
   #coeff num
-  totNumCoeff=0 
-  
+  totNumCoeff=0
   
   # analyze code behaviorals -----------------------------------------------------------------------------
   
@@ -1490,16 +1564,14 @@ LOAD_MODEL <- function(modelFile=NULL,
   #cycle and extract all behaviorals
   if (length(behavioralIndexes)>0) for(idxBI in 1:length(behavioralIndexes))
   {
-    
-    
     #empty tmp behavioral to be added to model list
     behavioralTmp=list()     
     
-    #..we extract all code between an eq/id definition and the next one
+    #...we extract all code between two eqs definitions
     #get next keyword definition index
     nextKwIdx=min(kwIdx[which(kwIdx>behavioralIndexes[idxBI])])     
     
-    #get next eq/ident definition index, needed to check COEFF exists
+    #get next eq definition index, needed to check COEFF exists
     nextDefIdx=min(eqIdenDefIdx[which(eqIdenDefIdx>behavioralIndexes[idxBI])])     
     
     #read all lines of behavior definition
@@ -1520,15 +1592,15 @@ LOAD_MODEL <- function(modelFile=NULL,
     if (length(grep('TSRANGE',behavioralRaw))>0)
     { 
       tryCatch({
-        #get text after TSRANGE kw and then split with spaces
         
+        #get text after TSRANGE kw then split with spaces
         behavioralTsrange=suppressWarnings(as.numeric(strsplit(gsub("^\\s+|\\s+$", "",strsplit(behavioralRaw,'TSRANGE')[[1]][2]),'\\s+')[[1]]))  
         if (any(! is.finite(behavioralTsrange))) stop()  
         if (any(behavioralTsrange<=0)) stop()  
         if (any(behavioralTsrange %% 1 != 0)) stop()  
         if (length(behavioralTsrange)!=4) stop()  
       },error=function(e){
-        #stop('LOAD_MODEL(): invalid TSRANGE in line: "',cleanModel[behavioralIndexes[idxBI]],'".')
+        
         stop('LOAD_MODEL(): invalid TSRANGE in line: "',behavioralRaw,'".')})  
       
     } else behavioralTsrange=NA      
@@ -1559,29 +1631,22 @@ LOAD_MODEL <- function(modelFile=NULL,
     if (length(eqLocalIdx)==0) stop('LOAD_MODEL(): no EQ definition in behavioral "',behavioralName,'".')  
     if (length(eqLocalIdx)>1) stop('LOAD_MODEL(): multiple EQ definitions in behavioral "',behavioralName,'".')  
     
-    
     #read all lines of EQ definition
     nextKwIdx=min(kwIdx[which(kwIdx>eqIndexes[eqLocalIdx])])  
     eqRaw=paste(cleanModel[eqIndexes[eqLocalIdx]:(nextKwIdx-1)],collapse=' ')  
     eqRaw=gsub("^EQ\\s*>", "", eqRaw, ignore.case = TRUE)  
     eqRaw=gsub("\\s*", "", eqRaw)   
     
-    
     #check unknown funs names
     unknownFuns=.unknownFunsNames(eqRaw,reservedKeyw)
     if (length(unknownFuns)>0) stop('LOAD_MODEL(): unsupported functions in EQ definition: "',eqRaw,'" in behavioral "',behavioralName,'": ',
                                     paste0(paste0(unknownFuns,'()'),collapse=', '))  
-    
-    
     #trim and extract symbol names from EQ
     namesOnEq=strsplit(gsub("^\\s+|\\s+$", "",gsub(symOnEqCleaner,' ',eqRaw,ignore.case=TRUE)),'\\s+')[[1]]  
     
     #check EQ is non trivial
     if (nchar(eqRaw)==0 || length(namesOnEq)==0 || !grepl('=',eqRaw))
       stop('LOAD_MODEL(): syntax error in EQ definition: "',eqRaw,'" in behavioral "',behavioralName,'".')  
-    
-    
-    
     
     #remove numbers from names
     rmvNumOnEqIdx=c()  
@@ -1595,12 +1660,9 @@ LOAD_MODEL <- function(modelFile=NULL,
     if (length(rmvNumOnEqIdx)>0) namesOnEq=namesOnEq[-rmvNumOnEqIdx]  
     
     
-    
     eqRawSplitted=strsplit(eqRaw,'\\=')[[1]]  
     if (length(eqRawSplitted)!=2) stop('LOAD_MODEL(): syntax error in EQ definition: "',eqRaw,'".')
     
-    #convert RHS text to expression
-    #rhsExp=parse(text=.MODEL_MOD_FUNC_NAMES(eqRawSplitted[2]))  
     rhsExp=eqRawSplitted[2]  
     lhsExp=eqRawSplitted[1]  
     
@@ -1622,7 +1684,6 @@ LOAD_MODEL <- function(modelFile=NULL,
     if (lhsFun$funName=='I')
     {
       #check EQ contains behavioral name
-      #if (length(grep(paste0("^",behavioralName,"="),eqRaw))==0) 
       if (lhsFun$args!=behavioralName)
         stop('LOAD_MODEL(): LHS of EQ definition: "',eqRaw,'" must contain only the behavioral name "',behavioralName,'" or the allowed uppercase LHS functions: ',paste0(paste0(allowedLhsEQfunsPub,'()'),collapse=', '))  
       
@@ -1653,8 +1714,6 @@ LOAD_MODEL <- function(modelFile=NULL,
       
     }
     
-    
-    
     #check EQ contains COEFFs
     for(coeffTmp in coeff) if (length(grep(allowedCharOnName,coeffTmp))==0) 
       stop('LOAD_MODEL(): invalid coefficient name "',coeffTmp,'" in COEFF definition of behavioral: "',behavioralName,'".')      
@@ -1670,7 +1729,6 @@ LOAD_MODEL <- function(modelFile=NULL,
       }
     }
     
-    
     if (!(all(namesOnEq[rmvCoeffOnEqIdx]==coeff))) 
       stop('LOAD_MODEL(): coefficients in EQ definition: "',eqRaw,'" must appear in the same order as in the COEFF definition: "',paste(coeff,collapse=', '),'".')  
     
@@ -1685,50 +1743,42 @@ LOAD_MODEL <- function(modelFile=NULL,
       }
     }
     
-    
     #normalize regressors
     for(coeffTmp in coeff)
     {
       #isolated coeff
       if (!grepl(paste0(coeffTmp,'\\*'),rhsExp))
       {
-        #coeff+ -> coeff*1+
+        #convert intercept: coeff0+ -> coeff0*1+
         rhsExp=gsub(paste0(coeffTmp,'\\+'),paste0(coeffTmp,'*1+'),rhsExp)  
-        #+coeff at the end -> +coeff*1
+        #+coeff0 at the end -> +coeff0*1
         rhsExp=gsub(paste0(coeffTmp,'$'),paste0(coeffTmp,'*1'),rhsExp)  
-        #coeff at the start -> +coeff
+        #coeff0 at the start -> +coeff0
         rhsExp=gsub(paste0('^',coeffTmp),paste0('+',coeffTmp),rhsExp)  
       }
       
-      #rhs start with coeef without sign
+      #in case rhs start with coeff without sign
       rhsExp=gsub(paste0('^',coeffTmp),paste0('+',coeffTmp),rhsExp)  
       
     }
     
-    #for(coeffTmp in coeff) if (length(grep(paste0('(\\+|\\=)',coeffTmp,'[\\*]?'),eqRaw))==0 )
     for(coeffTmp in coeff) if (length(grep(paste0('(\\+)',coeffTmp,'\\*'),rhsExp))==0 ) 
       stop('LOAD_MODEL(): please provide EQ "',eqRaw,'" in form of a linear combination of coefficients: fix coeff. "',coeffTmp,'".')      
     
     
-    
-    
     #split using coeffs and get EQ regressors
-    #eqRegressorsNames=strsplit(eqRaw,paste0('(\\+|\\=)(',paste(coeff,collapse='|'),')[\\*]?'))[[1]]  
     eqRegressorsNames=strsplit(rhsExp,paste0('(\\+)(',paste(coeff,collapse='|'),')\\*'))[[1]]  
     if (length(eqRegressorsNames)<2) stop('LOAD_MODEL(): regressors count error in EQ definition: "',eqRaw,'"')  
     
     if (eqRegressorsNames[1]!='')
       stop('LOAD_MODEL(): please provide EQ "',eqRaw,'" in form of a linear combination of coefficients.')  
     
-    eqRegressorsNames=eqRegressorsNames[-1]   #remove first void
-    
+    eqRegressorsNames=eqRegressorsNames[-1]   #remove first void element
     
     for (idxR in 1:length(eqRegressorsNames))
       if (! .checkExpressionIsAtomic(eqRegressorsNames[idxR])) 
         stop('LOAD_MODEL(): please provide EQ "',eqRaw,'" in form of a linear combination of coefficients: fix regressor "',eqRegressorsNames[idxR],'".')  
     
-    
-    #if (length(eqRegressorsNames)!=length(coeff)+1)
     if (length(eqRegressorsNames)!=length(coeff)) 
       stop('LOAD_MODEL(): regressors count in EQ definition: "',eqRaw,'" is different from coefficients count in COEFF definition: "',paste(coeff,collapse=', '),'".')  
     
@@ -1747,7 +1797,6 @@ LOAD_MODEL <- function(modelFile=NULL,
       }
     }
     
-    
     #check behavioral has STORE definition
     storeLocalIdx=which(storeIndexes %in% behavioralIndexes[idxBI]:nextDefIdx)  
     storeVarName=NULL  
@@ -1762,7 +1811,6 @@ LOAD_MODEL <- function(modelFile=NULL,
       storeRaw=gsub("^STORE\\s*>", "", storeRaw, ignore.case = TRUE)  
       storeRaw=gsub("\\s*", "", storeRaw)  
       
-      
       #get store var name and position
       storeSplit=strsplit(storeRaw,'\\(')[[1]]  
       if (length(storeSplit)!=2) 
@@ -1772,15 +1820,12 @@ LOAD_MODEL <- function(modelFile=NULL,
       if (length(grep(allowedCharOnName,storeVarName))==0) 
         stop('LOAD_MODEL(): invalid var name on STORE definition: "',storeRaw,'" in behavioral "',behavioralName,'".')  
       
-      
       #STORE location must be positive integer
       if (length(grep("^\\s*[0]*[0-9]*\\s*\\)$",storeSplit[2]))==0) 
         stop('LOAD_MODEL(): syntax error in STORE definition: "',storeRaw,'" in behavioral "',behavioralName,'".')  
       storePosition=as.numeric(gsub('\\)','',storeSplit[2]))          
       if (storePosition<0) 
         stop('LOAD_MODEL(): unknown error on retrieving STORE position in "',storeRaw,'" in behavioral "',behavioralName,'".')  
-      
-      
     }
     
     #check behavioral has PDL definition
@@ -1799,22 +1844,20 @@ LOAD_MODEL <- function(modelFile=NULL,
     #...there are PDL definitions
     if (length(pdlLocalIdx)>0) 
     {
-      
       #analize all pdl definitions
       pdlRaw='' 
       for (pdlLLidx in 1:length(pdlLocalIdx))
       {
         #read all lines of pdl definition
         nextKwIdx=min(kwIdx[which(kwIdx>pdlIndexes[pdlLocalIdx[pdlLLidx]])]) 
-        #pdlRawSingle="PDL> C06 2 14 F"
+        #e.g. pdlRawSingle="PDL> C06 2 14 F"
         #clean...
         pdlRawSingle=paste(cleanModel[pdlIndexes[pdlLocalIdx[pdlLLidx]]:(nextKwIdx-1)],collapse=';') 
         pdlRawSingle=gsub("^PDL\\s*>", "", pdlRawSingle, ignore.case = TRUE) 
         pdlRawSingle=gsub("^\\s*|\\s*$", "", pdlRawSingle) 
-        #pdlRaw="C07 2 14 F;C06 2 14 F;"
+        #e.g. pdlRaw="C07 2 14 F;C06 2 14 F;"
         pdlRaw=paste0(pdlRawSingle,';',pdlRaw) 
       }
-      
       
       #analize pdlRaw
       pdlComponents=strsplit(pdlRaw,';')[[1]] 
@@ -1824,10 +1867,10 @@ LOAD_MODEL <- function(modelFile=NULL,
       #create empty list
       bm_pdl=list() 
       #following 'bm_pdlMatrix' matrix will have:
-      #in first row 1 if restricion applies to i-th coefficient
-      #in second and third row degree and lag values
-      #in 4 1 if N 
-      #in 5 1 if F 
+      #first row is 1 if restriction applies to i-th coefficient
+      #second row and third row have degree and lag values
+      #4th row is 1 if N 
+      #5th row is 1 if F 
       
       bm_pdlMatrix=matrix(rep(0,5*length(coeff)),nrow=5,ncol=length(coeff)) 
       for (idxPC in 1:length(pdlComponents ))
@@ -1897,14 +1940,12 @@ LOAD_MODEL <- function(modelFile=NULL,
           stop('LOAD_MODEL(): PDL with degree 0 and length 1 can be removed: coefficient "',pdlSingleElement[1],'" in behavioral "',behavioralName,'".') 
       }		
       
-      
       #add lagged coefficient to coefficient list 
       for (pdlMatrixIdx in 1:length(coeffOriginal)) 
       {				
         #coefficient has pdl
         if (bm_pdlMatrix[1,pdlMatrixIdx]==1)
         {
-          
           #insert required coefficient in list of coefficients
           coeffToBeInserted=c() 
           eqCompToBeInserted=c() 
@@ -1913,33 +1954,32 @@ LOAD_MODEL <- function(modelFile=NULL,
           {
             for (idxCoeffToBeIns in 1:(bm_pdlMatrix[3,pdlMatrixIdx]-1))
             {
-              #coeffToBeInserted=C06_PDL_6
+              #e.g. coeffToBeInserted=C06_PDL_6
               coeffToBeInserted=c(coeffToBeInserted,paste0(coeffOriginal[pdlMatrixIdx],'__PDL__',idxCoeffToBeIns)) 
-              #eqCompToBeInserted=LAG(  (LAG(LOG(KSTAR))-LAG(LOG(KSTAR),2))  ,9)
+              #e.g. eqCompToBeInserted=LAG(  (LAG(LOG(KSTAR))-LAG(LOG(KSTAR),2))  ,9)
               eqCompToBeInserted=c(eqCompToBeInserted,paste0('TSLAG(',eqRegressorsNamesOriginal[pdlMatrixIdx],',',idxCoeffToBeIns,')'))
             }					
-            
           }
           
-          #new coefficients and new regressors will be inserted after original ones...e.g. 
-          
+          #new coefficients and new regressors will be inserted after original ones
           idxIntoInsert=which(coeff==coeffOriginal[pdlMatrixIdx])
           
           if (idxIntoInsert<length(coeff)) coeff=c(coeff[1:idxIntoInsert],coeffToBeInserted,coeff[(idxIntoInsert+1):length(coeff)])
           else coeff=c(coeff[1:idxIntoInsert],coeffToBeInserted) 
           idxIntoInsert=which(eqRegressorsNames==eqRegressorsNamesOriginal[pdlMatrixIdx])
-          #adding LAGs can replicate regressors e.g. p and LAG(p,1) already on model so take last one 
-          #(regressor must be different in model definition so last one is ok)
+          #adding LAGs can replicate regressors 
+          #e.g. we have a MDL EQ with "p" and "LAG(p,1)" on a klein model
+          #if we have PDL on "p" and PDL on "LAG(p)", when dealing with PDL on "LAG(p)"
+          #we already have a expanded regressor LAG(p) produced by first PDL on "p",
+          #so take the last one (regressor must be different in model definition so last one is ok)
           idxIntoInsert=idxIntoInsert[length(idxIntoInsert)]
           
           if (idxIntoInsert<length(eqRegressorsNames)) eqRegressorsNames=c(eqRegressorsNames[1:idxIntoInsert],eqCompToBeInserted,eqRegressorsNames[(idxIntoInsert+1):length(eqRegressorsNames)])
           else eqRegressorsNames=c(eqRegressorsNames[1:idxIntoInsert],eqCompToBeInserted) 
-        }           
-        
+        }      
       }		
       
-      
-      #create pdl restriction matrix and vector (using tartaglia)
+      #create pdl restriction matrix and vector (using Tartaglia)
       for (pdlMatrixIdx in 1:length(coeffOriginal)) 
       {
         #coefficient has pdl
@@ -1958,12 +1998,10 @@ LOAD_MODEL <- function(modelFile=NULL,
               #insert tartaglia coeff starting from correct index
               temp_row[(idxCoeff-1+tartagliaIdx):(idxCoeff+length(tmpTartagliaRow)-2+tartagliaIdx)]=tmpTartagliaRow
               
-              
               #bm_pdlRestrictionMatrix=(0 0 1 -2 1 0 0; 0 0 0 1 -2 1 0 )
               bm_pdlRestrictionMatrix=rbind(bm_pdlRestrictionMatrix,temp_row) 
               bm_pdlRestrictionVector=c(bm_pdlRestrictionVector,0) 
             }					
-            
           }
           
           #check N
@@ -1994,13 +2032,8 @@ LOAD_MODEL <- function(modelFile=NULL,
           {
             stop('LOAD_MODEL(): redundant options "N" and "F" set in coefficient "',coeffOriginal[pdlMatrixIdx],'" with PDL length 2 in behavioral "',behavioralName,'".')
           }
-          
         }
-        
-        
-      }    
-      
-      
+      }  
     }#endif pdl
     
     if (! is.null(bm_pdlRestrictionMatrix)) 
@@ -2015,15 +2048,14 @@ LOAD_MODEL <- function(modelFile=NULL,
       colnames(bm_pdlRestrictionVector)=c() 
     }
     
-    #check behavioral has RESTRIC def
-    #... WARNING! RESTRICT CAN SPAN ON SEVERAL LINES WITH A SINGLE TAG RESTRICT>
+    #check behavioral has RESTRICT def
+    #RESTRICT> definition can span on several lines 
+    #or have multiple defs separated by ";"
     restrictLocalIdx=which(restrictIndexes %in% behavioralIndexes[idxBI]:nextDefIdx) 
     restrictRaw=NULL 
     if (length(restrictLocalIdx)>0) 
     {
-      
       #analize all restrict definitions
-      
       restrictRaw='' 
       for (restrictLLidx in 1:length(restrictLocalIdx))
       {
@@ -2032,10 +2064,9 @@ LOAD_MODEL <- function(modelFile=NULL,
         restrictRawSingle=paste(cleanModel[restrictIndexes[restrictLocalIdx[restrictLLidx]]:(nextKwIdx-1)],collapse=';') 
         restrictRawSingle=gsub("^RESTRICT\\s*>", "", restrictRawSingle, ignore.case = TRUE) 
         restrictRawSingle=gsub("\\s*", "", restrictRawSingle) 
-        #restrictRaw="C01+C02=0;C01+C03=0"
+        #e.g. restrictRaw="C01+C02=0;C01+C03=0"
         restrictRaw=paste0(restrictRawSingle,';',restrictRaw) 
       }
-      
       
       #analize restrictRaw
       restrictComponents=strsplit(restrictRaw,';')[[1]] 
@@ -2058,10 +2089,8 @@ LOAD_MODEL <- function(modelFile=NULL,
         #here we replace LAG(COEFF,X) with COEFF_PDL_X in RESTRICT
         if (! is.null(bm_pdlMatrix))
         {
-          
           #find coeff with pdl
           idxCoeffInPdlMatrix=which(bm_pdlMatrix[1,]==1)
-          
           
           #cycle coeff in pdl
           for (idxLoopInPdlMatrix in idxCoeffInPdlMatrix)
@@ -2071,23 +2100,19 @@ LOAD_MODEL <- function(modelFile=NULL,
                                   paste0(coeffOriginal[idxLoopInPdlMatrix],'__PDL__',idxReplaceLagInRestriction),
                                   restrictionLHS)
             }
-          
         }
         
         #check RHS constant is a number
         if (length(grep(strongCharOnNumbsWithSign,restrictionRHS))==0) 
           stop('LOAD_MODEL(): syntax error on restriction "',restrictComponents[[idxRestricComp]],'" in behavioral "',behavioralName,'".\nUsage: "RESTRICT> alpha0 * coeff0 + ... + alphaN * coeffN = const".')
         
-        
         #check LHS is linear comb of coeff
         regExprRes=paste0('^((',
                           charsOnNumWithSign,paste0('\\*|\\+|-)?(',
                                                     paste0(coeff,collapse='|')  ,')'),')+$')
         
-        
         if (length(grep(regExprRes,restrictionLHS))==0) 
           stop('LOAD_MODEL(): syntax error on restriction "',restrictComponents[[idxRestricComp]],'" in behavioral "',behavioralName,'".\nUsage: "RESTRICT> alpha0 * coeff0 + ... + alphaN * coeffN = const".')
-        
         
         bm_tmpRrow=c() 
         #exctract coeff multiplier in restriction
@@ -2096,7 +2121,7 @@ LOAD_MODEL <- function(modelFile=NULL,
           
           tmpRegExp=regexpr(paste0('(',charsOnNumWithSign,'\\*|\\+|-)?(',
                                    coeff[idxCoeff],')(\\+|-|$)'),restrictionLHS) 
-          #localMultiplier="+C02"
+          #e.g. localMultiplier="+C02"
           localMultiplier=regmatches(restrictionLHS,tmpRegExp)
           if (length(localMultiplier)>0)
           {
@@ -2124,14 +2149,11 @@ LOAD_MODEL <- function(modelFile=NULL,
           
         }
         
-        #C01+C02=0;C01+C03=0
+        #e.g. C01+C02=0;C01+C03=0
         #bm_vectorR=(0;0)
         bm_vectorR=c(bm_vectorR,as.numeric(restrictionRHS))
-        #bm_matrixR=(0 1 1 0 ...; 0 1 0 1 0 0 ...)
+        #e.g. bm_matrixR=(0 1 1 0 0...; 0 1 0 1 0 ...)
         bm_matrixR=rbind(bm_matrixR,bm_tmpRrow)
-        
-        
-        
         
       }#end cycle component of restriction
       
@@ -2160,9 +2182,7 @@ LOAD_MODEL <- function(modelFile=NULL,
     if (length(errorLocalIdx)>0) 
     {
       if (length(errorLocalIdx)>1) stop('LOAD_MODEL(): multiple ERROR definitions in behavioral "',behavioralName,'".') 
-      #analize all restrict definitions
       errorRaw='' 
-      #read all lines of pdl definition
       nextKwIdx=min(kwIdx[which(kwIdx>errorIndexes[errorLocalIdx])]) 
       errorRaw=paste(cleanModel[errorIndexes[errorLocalIdx]:(nextKwIdx-1)],collapse=' ') 
       errorRaw=gsub("^ERROR\\s*>", "", errorRaw, ignore.case = TRUE) 
@@ -2173,41 +2193,33 @@ LOAD_MODEL <- function(modelFile=NULL,
         errorDim=gsub("AUTO\\(", "", errorRaw) 
         errorDim=as.numeric(gsub("\\)", "", errorDim)) 
         if ((length(errorDim)==0) || ! is.finite(errorDim) || (errorDim<1 )  || (errorDim>9 )) 
-          stop('LOAD_MODEL(): syntax error in ERROR definition "',errorRaw,'" in behavioral "',behavioralName,'". Usage: ERROR> AUTO(n)') 
+          stop('LOAD_MODEL(): syntax error in ERROR definition "',errorRaw,'" in behavioral "',behavioralName,'". Usage: ERROR> AUTO(n), n=1..9') 
       } else {
-        stop('LOAD_MODEL(): syntax error in ERROR definition "',errorRaw,'" in behavioral "',behavioralName,'". Usage: ERROR> AUTO(n)')
+        stop('LOAD_MODEL(): syntax error in ERROR definition "',errorRaw,'" in behavioral "',behavioralName,'". Usage: ERROR> AUTO(n), n=1..9')
       }
-      
     }
     
-    
-    
     #check behavioral has IV def
-    #... WARNING! IV CAN SPAN ON SEVERAL LINES WITH A SINGLE TAG IV>
+    #IV> can span on several lines or have several definitions separated by ";"
     ivLocalIdx=which(ivIndexes %in% behavioralIndexes[idxBI]:nextDefIdx) 
     ivRaw=NULL 
     namesOnIV=c() 
     if (length(ivLocalIdx)>0) 
     {
       #analize all iv definitions
-      
       ivRaw='' 
       for (ivLLidx in 1:length(ivLocalIdx))
       {
-        #read all lines of restrict definition
         nextKwIdx=min(kwIdx[which(kwIdx>ivIndexes[ivLocalIdx[ivLLidx]])]) 
         ivRawSingle=paste(cleanModel[ivIndexes[ivLocalIdx[ivLLidx]]:(nextKwIdx-1)],collapse='') 
         ivRawSingle=gsub("^IV\\s*>", "", ivRawSingle, ignore.case = TRUE) 
         ivRawSingle=gsub("\\s*", "", ivRawSingle) 
-        #restrictRaw="C01+C02=0;C01+C03=0"
         ivRaw=paste0(ivRawSingle,';',ivRaw) 
       }
-      
       
       #analize ivRaw
       ivComponents=strsplit(ivRaw,';')[[1]] 
       if (length(ivComponents)<1) stop('LOAD_MODEL(): NULL length on IV definition "',ivRaw,' in behavioral "',behavioralName,'".')
-      
       
       for (idxIVComp in 1:length(ivComponents))
       {
@@ -2222,7 +2234,6 @@ LOAD_MODEL <- function(modelFile=NULL,
           stop('LOAD_MODEL(): syntax error in IV definition: "',ivComponents[idxIVComp],'" in behavioral "',behavioralName,'".') 
       }
       
-      
       #remove numbers from names
       rmvNumOnIVIdx=c() 
       for (idxNamesOnIV in 1:length(namesOnIV)) {
@@ -2232,14 +2243,17 @@ LOAD_MODEL <- function(modelFile=NULL,
         }
       }
       if (length(rmvNumOnIVIdx)>0) namesOnIV=namesOnIV[-rmvNumOnIVIdx] 
-      #check components name
+      #check names
       for (idxNOEQ in 1:length(namesOnIV)) {
         if (length(grep(allowedCharOnName,namesOnIV[idxNOEQ]))==0) 
         {
-          stop('LOAD_MODEL(): syntax error in IV definition: "',ivRaw,'". The following symbol cannot be a variable name: "',namesOnIV[idxNOEQ],'".') 
+          stop('LOAD_MODEL(): syntax error in instrumental variable definition: "',ivRaw,'". The following symbol cannot be a variable name: "',namesOnIV[idxNOEQ],'" (behavioral "',behavioralName,'").') 
         }
+        
+        if ((grepl('__',namesOnIV[idxNOEQ])))
+          stop(paste0('LOAD_MODEL(): instrumental variable definition "',namesOnIV[idxNOEQ],'" cannot contain double underscore "__" (behavioral "',behavioralName,'").'))
+        
       }
-      
     }
     
     behavioralTmp$eq=eqRaw 
@@ -2267,12 +2281,16 @@ LOAD_MODEL <- function(modelFile=NULL,
     if (! is.null(model$behaviorals[[behavioralName]])) 
       stop('LOAD_MODEL(): duplicated behavioral name "',behavioralName,'".') 
     model$behaviorals[[behavioralName]]=behavioralTmp 
+    
     #add name to vendog in related position (required for ordering algo)
+    #we want the same order in vendog as the one in MDL
     model$vendog[behavioralIndexes[idxBI]]=behavioralName 
+    
   }# end behavioral loop
   
   
   #analize code identities ----------------------------------------------------------------------
+  
   model$identities=list() 
   if (length(identityIndexes)>0) for(idxII in 1:length(identityIndexes))
   {
@@ -2287,9 +2305,9 @@ LOAD_MODEL <- function(modelFile=NULL,
     #get identity name
     identityName=gsub("^\\s+|\\s+$", "",identitylRaw) 
     if (nchar(identityName)==0) stop('LOAD_MODEL(): unknown identity name in line: "',cleanModel[identityIndexes[idxII]],'".') 
-    #if (length(grep(allowedCharOnName,identityName))==0) stop('LOAD_MODEL(): invalid identity name in line: "',cleanModel[identityIndexes[idxII]],'"') 
+    
     if (length(grep(allowedCharOnName,identityName))==0) stop('LOAD_MODEL(): invalid identity name: "',identityName,'"') 
-    #get next eq/ident definition index
+    #get next eq definition index
     nextDefIdx=min(eqIdenDefIdx[which(eqIdenDefIdx>identityIndexes[idxII])]) 
     #check identity has eq def
     eqLocalIdx=which(eqIndexes %in% identityIndexes[idxII]:nextDefIdx) 
@@ -2311,7 +2329,7 @@ LOAD_MODEL <- function(modelFile=NULL,
     if (length(eqRawSplitted)!=2) stop('LOAD_MODEL(): syntax error in EQ definition: "',eqRaw,'".')
     
     #convert RHS text to expression
-    #rhsExp=parse(text=.MODEL_MOD_FUNC_NAMES(eqRawSplitted[2])) 
+    
     rhsExp=eqRawSplitted[2] 
     lhsExp=eqRawSplitted[1] 
     if (lhsExp=='') stop('LOAD_MODEL(): syntax error in EQ definition: "',eqRaw,'" in identity "',identityName,'".')
@@ -2321,16 +2339,14 @@ LOAD_MODEL <- function(modelFile=NULL,
       lhsFun=.parseLhsEQ(lhsExp,allowedLhsEQfuns) 
     },error=function(err){
       stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" in identity "',identityName,'".')
-    }
-    )
+    })
     
     # lhs identity -------------------------------------------------------------------
     
     #check lhs fun syntax
     if (lhsFun$funName=='I')
     {
-      #check EQ contains behavioral name
-      #if (length(grep(paste0("^",behavioralName,"="),eqRaw))==0) 
+      #check EQ contains identity name
       if (lhsFun$args!=identityName)
         stop('LOAD_MODEL(): LHS of EQ definition: "',eqRaw,'" must contain only the idenity name "',identityName,'" or the allowed uppercase LHS functions: ',paste0(paste0(allowedLhsEQfunsPub,'()'),collapse=', ')) 
     } else if (lhsFun$funName=='LOG')
@@ -2355,15 +2371,10 @@ LOAD_MODEL <- function(modelFile=NULL,
         stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" of the identity "',identityName,'". If the TSDELTALOG of the endogenous variable is requested please try the following: "TSDELTALOG(',identityName,')" or "TSDELTALOG(',behavioralName,',n)"') 
     }
     
-    
-    #check EQ contains identity name
-    #if (length(grep(paste0("^",identityName,"="),eqRaw))==0) 
-    #  stop('LOAD_MODEL(): LHS of EQ definition: "',eqRaw,'" must contain only the identity name "',identityName,'".') 
     #check EQ contains other names
     if (length(namesOnEq[-which(namesOnEq==identityName)])==0) 
       stop('LOAD_MODEL(): singular equation in EQ "',eqRaw,'" in identity "',identityName,'"') 
     if (! .checkExpression(rhsExp)) stop('LOAD_MODEL(): syntax error in RHS of EQ definition: "',eqRaw,'".')
-    
     
     #remove numbers
     rmvNumOnEqIdx=c() 
@@ -2389,9 +2400,7 @@ LOAD_MODEL <- function(modelFile=NULL,
     if (length(ifLocalIdx)>0) 
     {
       if (length(ifLocalIdx)>1) stop('LOAD_MODEL(): multiple IF definitions in identity "',identityName,'".') 
-      #analize all restrict definitions
       ifRaw='' 
-      #read all lines of pdl definition
       nextKwIdx=min(kwIdx[which(kwIdx>ifIndexes[ifLocalIdx])]) 
       ifRaw=paste(cleanModel[ifIndexes[ifLocalIdx]:(nextKwIdx-1)],collapse=' ') 
       ifRaw=gsub("^IF\\s*>", "", ifRaw, ignore.case = TRUE) 
@@ -2403,9 +2412,9 @@ LOAD_MODEL <- function(modelFile=NULL,
       #check double logical operator
       if (grepl('&&',ifRaw)) stop('LOAD_MODEL(): IF definition: "',ifRaw,'" in identity "',identityName,'" cannot contain "&&". Please consider using the single operator "&"') 
       if (grepl('\\|\\|',ifRaw)) stop('LOAD_MODEL(): IF definition: "',ifRaw,'" in identity "',identityName,'" cannot contain "||". Please consider using the single operator "|"') 
-      #extract components names from if
+      #extract components names from IF
       namesOnIf=strsplit(gsub("^\\s+|\\s+$", "",gsub(symOnIfCleaner,' ',ifRaw,ignore.case=TRUE)),'\\s+')[[1]] 
-      #namesOnIf=gsub("^\\s+|\\s+$", "", namesOnIf) 
+      
       #remove numbers
       rmvNumOnIfIdx=c() 
       for (idxNamesOnIf in 1:length(namesOnIf)) {
@@ -2428,16 +2437,16 @@ LOAD_MODEL <- function(modelFile=NULL,
       namesOnEq=c(namesOnEq,namesOnIf) 
     }	
     
-    #store stuff
+    #store stuff with trailing ";"
     identityTmp$eqRaw=paste0(eqRaw,';') 
-    #identityTmp$lhsFun=lhsFun 
+    
     #we must deal with multiple lhsFun due to IF conditions
+    #e.g. __IF__ (x<0) __THEN__ EXP(y)=x; __IF__(x>=0) __THEN__ DELTAP(y)=x
     identityTmp$multipleLhsFun=list(lhsFun) 
-    #build identity eq as IF (condition) THEN eq
+    
+    #build identity eq as __IF__ (condition) __THEN__ EQ
     if (! is.null(ifRaw)) 
     {
-      
-      
       tmpIfRaw=ifRaw 
       tmpIfRaw=gsub('\\.EQ\\.',' == ',tmpIfRaw) 
       tmpIfRaw=gsub('\\.NE\\.',' != ',tmpIfRaw) 
@@ -2446,9 +2455,9 @@ LOAD_MODEL <- function(modelFile=NULL,
       tmpIfRaw=gsub('\\.GT\\.',' > ',tmpIfRaw) 
       tmpIfRaw=gsub('\\.LT\\.',' < ',tmpIfRaw) 
       tmpIfRaw=gsub('<-','< -',tmpIfRaw) 
-      if (! grepl('(==|<|>|>=|<=|!=|&|\\|)',tmpIfRaw))
+     
+       if (! grepl('(==|<|>|>=|<=|!=|&|\\|)',tmpIfRaw))
         stop(paste0('LOAD_MODEL(): syntax error in IF condition "',ifRaw,'" in identity "',identityName,'". No logical operators found.'))
-      
       
       if (! .checkExpression(tmpIfRaw)) stop('LOAD_MODEL(): syntax error in IF definition: "',tmpIfRaw,'" in identity "',identityName,'".')
       
@@ -2465,7 +2474,7 @@ LOAD_MODEL <- function(modelFile=NULL,
     identityTmp$eqComponentsNames=sort(unique(namesOnEq)) 
     #RAW must be refined
     if (! is.null(ifRaw)) identityTmp$ifRaw=paste0(ifRaw,';') 
-    #append to model list of identities. if double exclusive IF only the first one will be stored in identity
+    #append to model list of identities. if double exclusive IF only the first one will be stored in identity (?)
     if (! is.null(model$identities[[identityName]])) 
     { 
       
@@ -2484,28 +2493,31 @@ LOAD_MODEL <- function(modelFile=NULL,
     } else
     {
       model$identities[[identityName]]=identityTmp 
+      
       #add name to vendog in related position (required for ordering algo)
+      #we want the same order in vendog as the one in MDL
       model$vendog[identityIndexes[idxII]]=identityName 
     }
     
   }# end identities loop
   
+  #store stuff
   model$cleanModel=cleanModel 
   model$rawData=rawData 
+  
   totNumEqs=length(behavioralIndexes) 
   totNumIds=length(model$identities) #can have more indexes than identities due to IF
-  
   model$totNumEqs=totNumEqs 
   model$totNumIds=totNumIds 
   model$eqCoeffNum=totNumCoeff 
+  
   #set max lag to default
   model$max_lag=0 
   if (totNumEqs+totNumIds==0) stop('LOAD_MODEL(): empty model.') 
-  #create field for endogenous variables. do not sort 'cause ordering algo
   
   #remove NAs from vendog
   model$vendog=model$vendog[! is.na(model$vendog)] 
-  #model$vendog=sort(model$vendog) 
+  
   #create sublists for vendog behaviorals and vendog identities
   vendogBehaviorals=base::intersect(model$vendog,names(model$behaviorals)) 
   if (length(vendogBehaviorals)>0)
@@ -2515,37 +2527,37 @@ LOAD_MODEL <- function(modelFile=NULL,
   if (length(vendogIdentities)>0)
     if (all(nchar(vendogIdentities)>0))
       model$vendogIdentities=vendogIdentities 
+  
   #create field for exogenous variables
   vexog=c() 
-  #IV_fullComponentList=c() 
+  
   if (length(model$behaviorals)>0) for (i in 1:length(model$behaviorals))
   {
     vexog=c(vexog,model$behaviorals[[i]]$eqComponentsNames)
-    #IV_fullComponentList=c(IV_fullComponentList,model$behaviorals[[i]]$IVComponentsNames)
   }
   
   if (length(model$identities)>0) for (i in 1:length(model$identities))
   {
     vexog=c(vexog,model$identities[[i]]$eqComponentsNames)
   }
+  
   vexog=unique(vexog) 
+  
   #remove enogenous
   rmvIdx=which(vexog %in% model$vendog)
   if (length(rmvIdx)>0) vexog=vexog[-rmvIdx] 
   model$vexog=vexog 
+  
   #build incidence matrix
   incidence_matrix=matrix(0,nrow = length(model$vendog), ncol = length(model$vendog)) 
   colnames(incidence_matrix)=model$vendog 
   rownames(incidence_matrix)=model$vendog 
-  #not used
-  #model_fullComponentList=c(model$vendog,model$vexog) 
-  #model_IV_fullComponentList=unique(IV_fullComponentList) 
+  
   # behavioral expr and max_lag  ----------------------------------
   
   .MODEL_outputText(outputText=!quietly,'Analyzing behaviorals...\n') 
-  #build RHS expressions of behaviorals and identities (we need to speedup simulation...)
+  #build RHS expressions of behaviorals and identities (needed to speedup simulation...)
   #cycle in behaviorals
-  
   
   if (length(model$behaviorals)>0) for(idxB in 1:length(model$behaviorals))
   {#cycle in components
@@ -2554,8 +2566,6 @@ LOAD_MODEL <- function(modelFile=NULL,
     currentBehavioral=model$behaviorals[[idxB]] 
     for (idxC in 1:length(currentBehavioral$eqCoefficientsNames))
     {
-      
-      
       #build "+COEF*REGR"
       outRHS=paste0(outRHS, '+' ,
                     paste0(currentVendog,'__COEFF__',currentBehavioral$eqCoefficientsNames[idxC]),
@@ -2563,27 +2573,22 @@ LOAD_MODEL <- function(modelFile=NULL,
                     (currentBehavioral$eqRegressorsNames[idxC])) 
     }
     
-    
     #replace fun names
     outRHS=.MODEL_MOD_FUNC_NAMES(outRHS) 
-    #add constant adjustment (outRHS already starts with +)
+    #add constant adjustment (outRHS already starts with "+")
     outRHS=paste0(currentVendog,'__ADDFACTOR',outRHS) 
     #adapt eqRHS to autocorrelation if required
     if (! is.null(currentBehavioral$errorType) && currentBehavioral$errorType=='AUTO')
     {
-      
-      #add lagged errors to eqRHS
-      
-      #errorEqRaw=paste0(currentVendog,'-(',outRHS,')') 
+      #add lagged errors to eqRHS, e.g. TSDELTAP(y)-EQ
       errorEqRaw=paste0(.MODEL_MOD_FUNC_NAMES(currentBehavioral$lhsFun$raw),'-(',outRHS,')') 
       for (idxED in 1:currentBehavioral$errorDim)
       {
-        #final RHS eq is orginal plus lagged errors, i.e. historical endog less fitted
+        #final RHS EQ is original one plus lagged errors, i.e. historical/simulated endog minus fitted
+        #warning: in DYNAMIC simulation RHO*LAG(y-f(x)) is always 0
         outRHS=paste0(outRHS,'+',currentVendog,'__RHO__',idxED,'*.MODEL_TSLAG(',errorEqRaw,',',idxED,')') 
       }
-      
     }
-    
     
     localComponentsNames=currentBehavioral$eqComponentsNames 
     #create local sublist for behaviorals and identities components
@@ -2600,7 +2605,6 @@ LOAD_MODEL <- function(modelFile=NULL,
       if (all(nchar(localComponentsNamesExogenous)>0))
         currentBehavioral$eqComponentsNamesExogenous=localComponentsNamesExogenous 
     tryCatch({
-      
       
       outSim='' 
       if(currentBehavioral$lhsFun$funName=='I')
@@ -2639,26 +2643,26 @@ LOAD_MODEL <- function(modelFile=NULL,
         
       }
       
-      
-      
       #add indexes to vars
       outSim=.appendIndexToVars(outSim,c(localComponentsNames,
                                          paste0(currentVendog,'__ADDFACTOR'))
                                 ,'0') 
       #explode model funs
-      s=.explodeTSLAG(outSim)
-      s=.explodeTSDELTA(s$output)
-      s=.explodeTSDELTAP(s$output)
-      s=.explodeTSDELTALOG(s$output)
-      s=.explodeMTOT(s$output)
-      s=.explodeMAVE(s$output)
+      tempS=.explodeTSLAG(outSim)
+      tempS=.explodeTSDELTA(tempS$output)
+      tempS=.explodeTSDELTAP(tempS$output)
+      tempS=.explodeTSDELTALOG(tempS$output)
+      tempS=.explodeMTOT(tempS$output)
+      tempS=.explodeMAVE(tempS$output)
       
-      outSim=s$output
+      outSim=tempS$output
       
       #get max lag
       model$max_lag=max(model$max_lag,-.getLowerLag(outSim)) 
+      
       #save sim expression
       currentBehavioral$eqSimExp=outSim 
+      
     },error=function(e){stop(paste0('LOAD_MODEL(): error while parsing EQ expression "',currentBehavioral$eq,'" of behavioral "',
                                     currentVendog,'". ',e$message))}) 
     tryCatch({
@@ -2669,7 +2673,7 @@ LOAD_MODEL <- function(modelFile=NULL,
                                        model$vendog)
       
       
-      #remove "currentVendog[indexN,]" and ".MODEL_VIF(currentVendog[indexN,]"
+      #remove "currentVendog[indexN,]=" 
       indexN='0' 
       inputS=gsub(paste0('\\b',currentVendog,'\\[\\s*',indexN,'\\s*,\\s*\\]\\s*\\='),'',outSim) 
       incidenceVendogs=.getIncidenceVendogs(inputS,
@@ -2690,16 +2694,18 @@ LOAD_MODEL <- function(modelFile=NULL,
   # identity expr and max lag  ----------------------------------
   
   .MODEL_outputText(outputText=!quietly,'Analyzing identities...\n') 
+  
   #cycle in identities
   length_model_identities=length(model$identities) 
   names_model_identities=names(model$identities) 
+  
   if (length_model_identities>0) for(idxI in 1:length_model_identities)
   {
-    
     
     currentIdentity=model$identities[[idxI]] 
     currentVendog=names_model_identities[idxI] 
     localComponentsNames=currentIdentity$eqComponentsNames 
+    
     #create local sublist for behaviorals and identities components
     localComponentsNamesBehaviorals=base::intersect(model$vendogBehaviorals,localComponentsNames) 
     if (length(localComponentsNamesBehaviorals)>0)
@@ -2713,13 +2719,16 @@ LOAD_MODEL <- function(modelFile=NULL,
     if (length(localComponentsNamesExogenous)>0)
       if (all(nchar(localComponentsNamesExogenous)>0))
         currentIdentity$eqComponentsNamesExogenous=localComponentsNamesExogenous 
+    
     #get identities multiple eqs and conditions
     eqRawSplitted=strsplit(currentIdentity$eqRaw,';')[[1]] 
     ifConditionSplitted=strsplit(currentIdentity$ifCondition,';')[[1]] 
+    
     if (length(eqRawSplitted)!=length(ifConditionSplitted))
       stop(paste0('LOAD_MODEL(): equations EQ count differs from logical IF condition count in identity "',currentVendog,'".')) 
     if (length(eqRawSplitted)!=length(currentIdentity$multipleLhsFun))
       stop(paste0('LOAD_MODEL(): equations EQ count differs from LHS functions count in identity "',currentVendog,'".')) 
+    
     outSim='' 
     #cycle in eq
     for (eqIdx in 1:length(eqRawSplitted))
@@ -2729,23 +2738,27 @@ LOAD_MODEL <- function(modelFile=NULL,
         #get single eq and if condition in identity
         eqRaw=eqRawSplitted[eqIdx] 
         ifConditionRaw=ifConditionSplitted[eqIdx] 
+        
         RHSRawComponent=strsplit(eqRaw,'=')[[1]][2] 
+        
         if (ifConditionRaw=='__TRUE__') 
         {
           ifRawComponent='TRUE' 
         } else 
         {
-          #ifRawComponent=paste0('which(',ifConditionRaw,')') 
           ifRawComponent=ifConditionRaw 
         }
         
         #parse expression
         ifModText=.MODEL_MOD_FUNC_NAMES(ifRawComponent) 
         RHSmodeText=.MODEL_MOD_FUNC_NAMES(RHSRawComponent) 
+        
+        #add add-factor
         RHSmodeText=paste0(currentVendog,'__ADDFACTOR+',RHSmodeText) 
+        
         if (currentIdentity$multipleLhsFun[[eqIdx]]$funName == 'I')
         {
-          
+          #nop
         } else if (currentIdentity$multipleLhsFun[[eqIdx]]$funName == 'LOG')
         {
           RHSmodeText=paste0('exp(',RHSmodeText,')') 
@@ -2764,6 +2777,7 @@ LOAD_MODEL <- function(modelFile=NULL,
           
           if (currentIdentity$multipleLhsFun[[eqIdx]]$argsCount>1 && ! is.finite(as.numeric(currentIdentity$multipleLhsFun[[eqIdx]]$args[2])))
             stop('Non-numeric lag in LHS function: TSDELTAP()') 
+          
           RHSmodeText=paste0('(',RHSmodeText,
                              ')*.MODEL_TSLAG(',currentVendog,',',ifelse(currentIdentity$multipleLhsFun[[eqIdx]]$argsCount>1,currentIdentity$multipleLhsFun[[eqIdx]]$args[2],'1'),')/100',
                              '+.MODEL_TSLAG(',currentVendog,',',ifelse(currentIdentity$multipleLhsFun[[eqIdx]]$argsCount>1,currentIdentity$multipleLhsFun[[eqIdx]]$args[2],'1'),')')
@@ -2774,13 +2788,10 @@ LOAD_MODEL <- function(modelFile=NULL,
           
           if (currentIdentity$multipleLhsFun[[eqIdx]]$argsCount>1 && ! is.finite(as.numeric(currentIdentity$multipleLhsFun[[eqIdx]]$args[2])))
             stop('Non-numeric lag in LHS function: TSDELTALOG()') 
+          
           RHSmodeText=paste0('exp(',RHSmodeText,
                              ')*.MODEL_TSLAG(',currentVendog,',',ifelse(currentIdentity$multipleLhsFun[[eqIdx]]$argsCount>1,currentIdentity$multipleLhsFun[[eqIdx]]$args[2],'1'),')')
-          
-          
         }
-        
-        
         
         #build sim expresion w. constant adjustmnet
         outSim=paste0(outSim,
@@ -2796,7 +2807,6 @@ LOAD_MODEL <- function(modelFile=NULL,
       }) 
     }
     
-    
     tryCatch({
       
       
@@ -2805,13 +2815,13 @@ LOAD_MODEL <- function(modelFile=NULL,
                                          paste0(currentVendog,'__ADDFACTOR'))
                                 ,'0') 
       #explode model funs
-      s=.explodeTSLAG(outSim)
-      s=.explodeTSDELTA(s$output)
-      s=.explodeTSDELTAP(s$output)
-      s=.explodeTSDELTALOG(s$output)
-      s=.explodeMTOT(s$output)
-      s=.explodeMAVE(s$output)
-      outSim=s$output
+      tempS=.explodeTSLAG(outSim)
+      tempS=.explodeTSDELTA(tempS$output)
+      tempS=.explodeTSDELTAP(tempS$output)
+      tempS=.explodeTSDELTALOG(tempS$output)
+      tempS=.explodeMTOT(tempS$output)
+      tempS=.explodeMAVE(tempS$output)
+      outSim=tempS$output
       
       currentIdentity$eqSimExp=outSim
       
@@ -2824,7 +2834,8 @@ LOAD_MODEL <- function(modelFile=NULL,
       #get incidence matrix
       vendogComponents=base::intersect(localComponentsNames,
                                        model$vendog) 
-      #remove "currentVendog=[indexN,]" and ".MODEL_VIF(currentVendog[indexN,]"
+     
+       #remove "currentVendog=[indexN,]" and ".MODEL_VIF(currentVendog[indexN,]"
       indexN='0' 
       inputS=gsub(paste0('\\b',currentVendog,'\\[\\s*',indexN,'\\s*,\\s*\\]\\s*\\='),'',outSim) 
       if (currentIdentity$hasIF) inputS=gsub(paste0('.MODEL_VIF\\(\\s*',currentVendog,'\\[\\s*',indexN,'\\s*,\\s*\\]\\s*\\,'),'\\(',inputS) 
@@ -2846,13 +2857,17 @@ LOAD_MODEL <- function(modelFile=NULL,
   # reordering incidence ------------------------
   
   .MODEL_outputText(outputText=!quietly,'Optimizing...\n') 
-  #analize incident matrix
+  
+  #analize incidence matrix
   temp_incidence_matrix=incidence_matrix 
+  
   #speed-up variables
-  total_im_rows=dim(incidence_matrix)[1]
+  total_im_rows=dim(temp_incidence_matrix)[1]
   full_im_rows=1:total_im_rows 
+  
   #list of dynamic removed vendog
   inactive_vendog_index=vector('integer',length=total_im_rows) 
+  
   #get VPRE endogenous
   VPRE=c() 
   #we need to iterate till no changes to incidence_matrix
@@ -2878,9 +2893,7 @@ LOAD_MODEL <- function(modelFile=NULL,
       #reset flag
       flag=0 
     }
-    
   }
-  
   
   #get VPOST endogenous
   VPOST=c() 
@@ -2907,9 +2920,7 @@ LOAD_MODEL <- function(modelFile=NULL,
       #reset flag
       flag=0 
     }
-    
   }
-  
   
   #get VFEED endogenous
   VFEED=c() 
@@ -2918,7 +2929,7 @@ LOAD_MODEL <- function(modelFile=NULL,
   flag=0 
   #index of looping into vendog set
   localIdx=0 
-  #flag_4 is set if step4 remove some vendog
+  #flag4 is set if RULE #4 removes some vendog
   flag4=0 
   while(flag4==0)
   {
@@ -2933,6 +2944,7 @@ LOAD_MODEL <- function(modelFile=NULL,
       if (localIdx>total_im_rows) localIdx=1 
       #skip if current vendog has already been removed
       if (inactive_vendog_index[localIdx]==1) next 
+      
       #RULE #1
       #if self-feedback i.e. im[i,i]==1 add to VFEED
       if (temp_incidence_matrix[localIdx,localIdx]==1)
@@ -2966,7 +2978,6 @@ LOAD_MODEL <- function(modelFile=NULL,
       #if sum column is 1 merge and remove it
       if (sum(temp_incidence_matrix[which_inactive_vendog_index,localIdx])==1)  
       {
-        
         #get vendog to be merged
         destinationVendogIndex=which(temp_incidence_matrix[which_inactive_vendog_index,localIdx]==1) 
         #get rows
@@ -3006,12 +3017,10 @@ LOAD_MODEL <- function(modelFile=NULL,
         flag=0 
         next 
       }
-      
-      
     }
     
-    #RULE4
-    #remove most populated (row+col)
+    #RULE #4
+    #remove most populated (#1 in rows * #1 in cols)
     targetIdxIM=0 
     tempSum=0 
     #check for all removed
@@ -3040,7 +3049,7 @@ LOAD_MODEL <- function(modelFile=NULL,
     flag=0 
   }
   
-  #reset incative vendogs
+  #reset inactive vendogs
   inactive_vendog_index[T]=0 
   #get VSIM 
   VSIM=c() 
@@ -3077,11 +3086,10 @@ LOAD_MODEL <- function(modelFile=NULL,
       #index to be removed
       inactive_vendog_index[which(rownames(temp_incidence_matrix)==VFEED[idxVF])]=1 
     }
-    
   }
   
-  
   #we need to iterate till no empty or changes to incidence_matrix
+  #actually, we are building up the ordering for SIM vars
   flag=0 
   while (flag==0 ) 
   {
@@ -3091,7 +3099,6 @@ LOAD_MODEL <- function(modelFile=NULL,
     for (idxIM in which_inactive_vendog_index)
       if (all(temp_incidence_matrix[idxIM,which_inactive_vendog_index]==0)) 
       {      
-        
         #add vendog to VSIM
         VSIM=c(VSIM,row.names(temp_incidence_matrix)[idxIM]) 
         #remove vendog from analysis
@@ -3104,34 +3111,34 @@ LOAD_MODEL <- function(modelFile=NULL,
         flag=0 
       }
     
-    
   }
   
   #...hope never happen
   if (any(inactive_vendog_index==0)) stop(paste0('LOAD_MODEL(): cannot reduce incidence matrix.'))
   
-  
-  
-  #reorder as model definition
+  #reorder VFEED as shown in MDL model definition
   if (length(VFEED)>0) VFEED=model$vendog[which(model$vendog %in% VFEED)]
   
   #append VFEED to VSIM
   VSIM=c(VSIM,VFEED) 
+  
   #assign to model
   model$vpre=VPRE 
   model$vpost=VPOST 
   model$vfeed=VFEED 
   model$vsim=VSIM 
+  
   if (length(c(model$vpre,model$vsim,model$vpost)) != length(model$vendog)) 
     stop('LOAD_MODEL(): unknown error while optimizing model. Countings do not match.') 
+  
   # build sim expressions ----------------------------------------------
   
-  #we need at least 2 rows in sim matrices due to forecast
-  max_lag_sim=max(model$max_lag,1)  													  
+  #we need at least 2 rows in sim matrices in case of simType='FORECAST'
+  max_lag_sim=max(model$max_lag,1)  
+  
   tryCatch({
     if (length(model$behaviorals)>0) for(idxB in 1:length(model$behaviorals))
     {
-      
       model$behaviorals[[idxB]]$eqSimExp=parse(text=.addToIndexInString(model$behaviorals[[idxB]]$eqSimExp,
                                                                         max_lag_sim+1
       ))
@@ -3140,19 +3147,16 @@ LOAD_MODEL <- function(modelFile=NULL,
   tryCatch({
     if (length(model$identities)>0) for(idxI in 1:length(model$identities))
     {
-      #if (names(model$identities)[idxI]=='CRIMPN')  
-      
       model$identities[[idxI]]$eqSimExp=parse(text=.addToIndexInString(model$identities[[idxI]]$eqSimExp,
                                                                        max_lag_sim+1
       ))
     }
   },error=function(err){stop(paste0('LOAD_MODEL(): error while building sim expression on identity "',names(model$identities)[idxI],'". ',err$message))}) 
+  
   #deal with reserved words
   allNames=c(model$vendog,model$vexog) 
   if (any(grepl('__',allNames)))
     stop(paste0('LOAD_MODEL(): variable names cannot contain double underscore "__". Please change the following variable names: ',paste0(allNames[which(grepl('__',allNames))],collapse=', ')))
-  
-  
   
   .MODEL_outputText(outputText=!quietly,'Loaded model "',modelName,'":\n',
                     sprintf("%5i",model$totNumEqs),' behaviorals\n',
@@ -3269,7 +3273,6 @@ ESTIMATE <- function(model=NULL,
   if (is.null(model$frequency) ) stop('ESTIMATE(): model has no frequency. Please reload model data.') 
   if (CHOWTEST==TRUE)
   {
-    #if (is.null(CHOWPAR) ) stop('ESTIMATE(): please provide a "CHOWPAR" parameter.') 
     if (! is.null(CHOWPAR) )
       tryCatch({
         
@@ -3281,6 +3284,7 @@ ESTIMATE <- function(model=NULL,
   
   #flag for messages vertbosity
   outputText=!quietly 
+  
   #get regex definitions
   regExDefs=.RegExGlobalDefinition() 
   reservedKeyw=regExDefs$reservedKeyw 
@@ -3291,7 +3295,7 @@ ESTIMATE <- function(model=NULL,
   strongCharOnNumbs=regExDefs$strongCharOnNumbs 
   strongCharOnNumbsWithSign=regExDefs$strongCharOnNumbsWithSign 
   
-  #a new local environment is create in order to improve performance
+  #a new local environment is created in order to improve performance
   #it will contains model time series, coefficients, parameters, etc.
   #model equations is faster if executed in a isolated environment
   #in localE parameters, coefficient, etc. names must contains
@@ -3306,10 +3310,7 @@ ESTIMATE <- function(model=NULL,
     },error=function(e){stop('ESTIMATE(): ',e$message)}) 
   }
   
-  #avoid compliance on ts
-  #tempNOC=getBIMETSconf('BIMETS_CONF_NOC') 
-  #setBIMETSconf('BIMETS_CONF_NOC',TRUE,suppressOutput=TRUE) 
-  #check eq names requested are in model behavioral names
+  #check requested eq names are in model behavioral names
   if (! is.null(eqList)) 
   {
     for ( eqReqName in eqList) 
@@ -3334,29 +3335,32 @@ ESTIMATE <- function(model=NULL,
   totCoeff=0 
   for (eqIdx in 1:length(eqList))
   {
-    
     totCoeff=totCoeff+length(model$behaviorals[[eqList[eqIdx]]]$eqCoefficientsNames) 
   }
   
   .MODEL_outputText(outputText=!quietly,'The total number of coefficients is ',totCoeff,'.\n',sep='') 
+  
   #model data frequecy
   frequency=model$frequency 
+  
   # main loop -----------------------------------------------
   
   for (eqIdx in 1:length(eqList))
   { 
-    #save current behavioral
+    #proxy current behavioral
     currentBehavioral=model$behaviorals[[eqList[eqIdx]]] 
+    
     #deal with IV
     IVlist=list() 
+    
     #check args
     if (estTech=='IV' && is.null(IV) && is.null(currentBehavioral$iv)) stop('ESTIMATE(): please provide instrumental variables IV.')
     if (estTech=='IV' && is.null(IV) && forceIV==TRUE) stop('ESTIMATE(): please provide instrumental variables IV. "forceIV" is TRUE.')
-    #if (estTech=='IV' && is.null(currentBehavioral$iv) && forceIV==FALSE) stop('ESTIMATE(): please provide instrumental variables IV. "forceIV" is FALSE.')
+  
     
     if (!forceIV && !is.null(currentBehavioral$iv))
     {
-      #split iv from mdl
+      #split iv from MDL
       IV=strsplit(currentBehavioral$iv,';')[[1]] 
     }
     
@@ -3371,7 +3375,13 @@ ESTIMATE <- function(model=NULL,
       {
         #trim leading/trailing spaces
         IV[idxIV]=gsub("\\s*", "", IV[idxIV])
-        if (min(nchar(IV[idxIV]))==0) stop(paste0('ESTIMATE(): misspecified IV element #'),idxIV) 
+        
+        #check unknown funs names
+        unknownFuns=.unknownFunsNames(IV[idxIV],reservedKeyw)
+        if (length(unknownFuns)>0) stop('ESTIAMTE(): unsupported functions in IV definition: "',IV[idxIV],'" in behavioral "',eqList[eqIdx],'": ',
+                                        paste0(paste0(unknownFuns,'()'),collapse=', '))
+        
+        if (min(nchar(IV[idxIV]))==0) stop(paste0('ESTIMATE(): misspecified IV element #'),idxIV,' in behavioral "',eqList[eqIdx],'"') 
         namesOnIV=c(namesOnIV,strsplit(gsub("^\\s+|\\s+$", "",gsub(symOnEqCleaner,' ',IV[idxIV],ignore.case=TRUE)),'\\s+')[[1]]) 
       }
       
@@ -3385,11 +3395,10 @@ ESTIMATE <- function(model=NULL,
       }
       if (length(rmvNumOnIVIdx)>0) namesOnIV=namesOnIV[-rmvNumOnIVIdx] 
       namesOnIV=sort(unique(namesOnIV)) 
+      
       #create local proxies for all references (components names used in eq) in IV
       for (idxName in 1:length(namesOnIV))
       {
-        
-        
         tryCatch(
           {
             tempName=namesOnIV[idxName] 
@@ -3398,41 +3407,31 @@ ESTIMATE <- function(model=NULL,
             localE[[tempName]]=model$modelData[[tempName]]
             
           },error=function(e){
-            stop('ESTIMATE(): modelData must contain instrumental variable time series "',tempName,'".') 
+            stop('ESTIMATE(): modelData must contain instrumental variable time series "',tempName,'".',' (behavioral "',eqList[eqIdx],'")') 
           })
-        
       }
       
       #eval expression IV[idx]
       for (idxIV in 1:length(IV))
       {
-        
         tryCatch(
           {
             #fix funs names
             tempName=.MODEL_MOD_FUNC_NAMES(IV[idxIV]) 
+            
             #eval IV expr
             tmpIV=eval(parse(text=tempName)
                        ,envir=localE
-            ) 
+            )
+            
             #assign to output list
             IVlist[[idxIV]]=tmpIV 
+            
           },error=function(e){
             stop(paste0('ESTIMATE(): cannot evaluate instrumental variable expression "',IV[idxIV],'": ',e$message)) 
           })
       }
-      
-      #check compliance expression IV[idx]
-      for (idxIV in 1:length(IV))
-      {
-        
-        if ( (! is.bimets(IVlist[[idxIV]])) && (! is.finite(IVlist[[idxIV]])) )
-        {
-          
-          stop(paste0('ESTIMATE(): instrumental variable "',IV[[idxIV]],'" is not a compliant time series.')) 
-        }
-        
-      }
+     
       
     }# IV exists
     
@@ -3485,7 +3484,7 @@ ESTIMATE <- function(model=NULL,
     
     #current behavioral TSRANGE
     localTSRANGE=NULL 
-    localTSRANGE_bk=NULL #this is needed if error autocorrelation is rewquired
+    localTSRANGE_bk=NULL #this is needed if error autocorrelation is required
     
     bm_vectorY_bk = NULL 
     bm_matrixX_bk = NULL 
@@ -3513,8 +3512,6 @@ ESTIMATE <- function(model=NULL,
       }
     }		
     
-    
-    
     #build main X matrix: y = X * b + u
     bm_matrixX=c() 
     localTSRANGE_bk=localTSRANGE 
@@ -3527,9 +3524,6 @@ ESTIMATE <- function(model=NULL,
       localTSRANGE[2]=tmpTSR[2] 
     }
     
-    
-    
-    
     #check tsrange consistence
     tryCatch({
       if (NUMPERIOD(c(localTSRANGE[1],localTSRANGE[2]),c(localTSRANGE[3],localTSRANGE[4]),frequency)<0) stop() 
@@ -3537,7 +3531,6 @@ ESTIMATE <- function(model=NULL,
     #create local proxies for all references (components names used in eq) in current behavior
     for (idxName in 1:length(currentBehavioral$eqComponentsNames))
     {
-      
       tryCatch(
         {
           tempName=currentBehavioral$eqComponentsNames[idxName]
@@ -3565,11 +3558,11 @@ ESTIMATE <- function(model=NULL,
     
     #cycle in regressors (#1 is eq name)
     regressorLengthTest=1+NUMPERIOD(c(localTSRANGE[1],localTSRANGE[2]),c(localTSRANGE[3],localTSRANGE[4]),frequency) 
+    
     #build matrix Z if IV
     bm_matrixZ=matrix(ncol=length(IVlist),nrow=regressorLengthTest) 
     if (! is.null(IV))
     {
-      
       #check IV count is non singular
       if (length(IVlist) < length(currentBehavioral$eqCoefficientsNames))
         .MODEL_outputText(outputText=!quietly,paste0('\nESTIMATE(): warning, instrumental variables count is less than total regressors count. System may become singular.',
@@ -3580,8 +3573,7 @@ ESTIMATE <- function(model=NULL,
         
         for (idxIV in 1:length(IVlist))
         {
-          
-          if ((! is.bimets(IVlist[[idxIV]])) && is.finite(IVlist[[idxIV]]))
+          if ((! is.bimets(IVlist[[idxIV]])) )
           {
             tempRegressor=rep(IVlist[[idxIV]],regressorLengthTest) 
           } else  tempRegressor=(TSPROJECT(IVlist[[idxIV]],ARRAY=TRUE,TSRANGE=localTSRANGE,avoidCompliance=TRUE)) 
@@ -3601,17 +3593,13 @@ ESTIMATE <- function(model=NULL,
       ) 
     }  #now we have Z matrix
     
-    
-    
     for (idxRegrs in 1:length(currentBehavioral$eqRegressorsNames))
     {
-      
-      
-      #replace numerical eq component with columns of numbers (constant term)
-      #if (currentBehavioral$eqRegressorsNames[idxRegrs]=='') 
+      #replace numerical component with columns of numbers (constant term)
       if(grepl(strongCharOnNumbs,currentBehavioral$eqRegressorsNames[idxRegrs]))
       {
         tempRegressorExpr=currentBehavioral$eqRegressorsNames[idxRegrs] 
+        
         #evaluate expression (regressors definition e.g. 1)
         tryCatch({
           
@@ -3627,14 +3615,12 @@ ESTIMATE <- function(model=NULL,
         ) 
         tempRegressor=rep(tempRegressor,regressorLengthTest)
         bm_ConstTermExist=TRUE 
-        #if (is.null(regressorLengthTest)) regressorLengthTest=length(tempRegressor)
-        
+       
       } else {
-        
-        
         
         #fix functions names (e.g. LAG -> TSLAG)
         tempRegressorExpr=.MODEL_MOD_FUNC_NAMES(currentBehavioral$eqRegressorsNames[idxRegrs]) 
+        
         #evaluate expression (regressors definition e.g. LAG(GDP,3))
         tryCatch({
           
@@ -3647,13 +3633,16 @@ ESTIMATE <- function(model=NULL,
                '"\n(regressor #',idxRegrs,ifelse(thereArePDL,' with PDL expansion',''),') in behavioral "',
                eqList[eqIdx],'": ',e$message) 
         }
-        ) 
+        )
+        
         #project regressor on tsrange
         tryCatch({
           
           tempRegressor=(TSPROJECT(tempRegressor,TSRANGE=localTSRANGE,ARRAY=TRUE,avoidCompliance=TRUE)) 
+          
           #check regressor size 
           if (length(tempRegressor)!=regressorLengthTest) stop() 
+          
         },error=function(e)
         {
           stop('ESTIMATE(): expression "',currentBehavioral$eqRegressorsNames[idxRegrs],
@@ -3673,12 +3662,11 @@ ESTIMATE <- function(model=NULL,
              '" (regressor #',idxRegrs,ifelse(thereArePDL,' with PDL expansion',''),
              ')\n inside the TSRANGE of behavioral "',eqList[eqIdx],'"\n',sep='')
       
-      
       #adde evaluated regressor to X matrix
       bm_matrixX=cbind(bm_matrixX,tempRegressor) 
+      
     }#end regressor generating cycle
     #now we have X matrix
-    
     
     #project y
     bm_vectorY=localE[[eqList[eqIdx]]]
@@ -3695,19 +3683,17 @@ ESTIMATE <- function(model=NULL,
           bm_vectorY=exp(bm_vectorY) 
         } else if (currentBehavioral$lhsFun$funName=='TSDELTA' || currentBehavioral$lhsFun$funName=='DEL')
         {
-          
           if (currentBehavioral$lhsFun$argsCount>1 && ! is.finite(as.numeric(currentBehavioral$lhsFun$args[2])))
             stop('Non-numeric lag in TSDELTA()') 
           bm_vectorY=TSDELTA(bm_vectorY,ifelse(currentBehavioral$lhsFun$argsCount>1,as.numeric(currentBehavioral$lhsFun$args[2]),1)) 
+          
         } else if (currentBehavioral$lhsFun$funName=='TSDELTAP' )
         {
-          
           if (currentBehavioral$lhsFun$argsCount>1 && ! is.finite(as.numeric(currentBehavioral$lhsFun$args[2])))
             stop('Non-numeric lag in TSDELTAP()') 
           bm_vectorY=TSDELTAP(bm_vectorY,ifelse(currentBehavioral$lhsFun$argsCount>1,as.numeric(currentBehavioral$lhsFun$args[2]),1)) 
         } else if (currentBehavioral$lhsFun$funName=='TSDELTALOG' )
         {
-          
           if (currentBehavioral$lhsFun$argsCount>1 && ! is.finite(as.numeric(currentBehavioral$lhsFun$args[2])))
             stop('Non-numeric lag in TSDELTALOG()') 
           bm_vectorY=TSDELTALOG(bm_vectorY,ifelse(currentBehavioral$lhsFun$argsCount>1,as.numeric(currentBehavioral$lhsFun$args[2]),1)) 
@@ -3722,6 +3708,7 @@ ESTIMATE <- function(model=NULL,
     tryCatch({
       
       bm_vectorY=(TSPROJECT(bm_vectorY,TSRANGE=localTSRANGE,ARRAY=TRUE,avoidCompliance=TRUE)) 
+      
       #check vector Y size
       if (length(bm_vectorY)!=regressorLengthTest) stop()
       
@@ -3737,20 +3724,16 @@ ESTIMATE <- function(model=NULL,
       stop('\n ESTIMATE(): there are undefined values in LHS expression "',
            currentBehavioral$lhsFun$raw, '" inside the TSRANGE of behavioral "',eqList[eqIdx],'"\n',sep='')
     
-    
     #now we have vector Y
-    #here we have X and Y
-    
     
     thereAreRestrictions=FALSE 
     bm_restrictionsNum=0 
+    
     #deal with restrictions
     if (!(is.null(currentBehavioral$restrictRaw) || 
           is.null(currentBehavioral$vectorR) ||
           is.null(currentBehavioral$matrixR) ))
     {
-      
-      
       thereAreRestrictions=TRUE 
     }  
     
@@ -3782,53 +3765,48 @@ ESTIMATE <- function(model=NULL,
     #obs count
     bm_numObs=1+NUMPERIOD(c(localTSRANGE_bk[1],localTSRANGE_bk[2]),c(localTSRANGE_bk[3],localTSRANGE_bk[4]),frequency)
     
-    
     #degree of freedom
     bm_DoF=bm_numObs-bm_coeffNum+bm_restrictionsNum-bm_errorDim 
     statsOut$DegreesOfFreedom=bm_DoF 
+    
     #check consistence of regression
     if (bm_DoF<0) stop('ESTIMATE(): negative count of degrees of freedom in behavioral "',eqList[eqIdx],'".') 
     if (bm_DoF==0) .MODEL_outputText(outputText=!quietly,paste0('ESTIMATE(): warning, zero degrees of freedom in behavioral "',eqList[eqIdx],'". Other warnings and errors may arise.\n')) 
+    
     # CO start --------------------------------------------------------
     
     #used in CO error autocorrelation
     bm_COlastIter=FALSE 
+    
     #cycle multiple time if error correlation required, else just 1 time
     for (bm_COcurrentIter in 1:bm_COmaxIters)
     {     
-      
-      
-      
-      #this is skipped anyway on firts iteration
+      #this is skipped anyway on first iteration
       if ((thereAreErrorCorr==TRUE) && (bm_COcurrentIter>1))
       {
         #CO transformation
-        
-        
         
         #backup original vector and matrix
         bm_vectorY_bk = bm_vectorY 
         bm_matrixX_bk = bm_matrixX 
         if (estTech=='IV') bm_matrixZ_bk = bm_matrixZ 
+        
         #CO transform
         bm_vectorY = bm_resP %*% bm_vectorY 
         bm_matrixX = bm_resP %*% bm_matrixX 
+        
         #in CO betaHat is calculated on original tsrange
         bm_vectorY = bm_vectorY[(1+bm_errorDim):length(bm_vectorY)] 
         bm_matrixX = bm_matrixX[(1+bm_errorDim):nrow(bm_matrixX),] 
         if (estTech=='IV') bm_matrixZ = bm_matrixZ[(1+bm_errorDim):nrow(bm_matrixZ),] 
       }
       
-      
-      bm_betaHat=c()        
-      
+      bm_betaHat=c()   
       
       #if restriction or pdl with length>degree+1 else OLS
       if (thereAreRestrictions == TRUE || 
           (thereArePDL == TRUE && (! is.null(currentBehavioral$pdlRestrictionMatrix))))
       {
-        
-        
         if (estTech=='OLS') 
         {
           bm_WpX=t(bm_matrixX) %*% bm_matrixX 
@@ -3837,7 +3815,6 @@ ESTIMATE <- function(model=NULL,
         if (estTech=='IV') 
         {
           tryCatch({
-            
             
             bm_matrixXZ=bm_matrixZ %*% solve( crossprod( bm_matrixZ ),
                                               crossprod( bm_matrixZ, bm_matrixX ),
@@ -3881,9 +3858,10 @@ ESTIMATE <- function(model=NULL,
         },error=function(e)
         {
           stop('ESTIMATE(): in restriction ',currentBehavioral$restrictRaw,
-               ' given betaHat = (W\'X)^(-1) * (W\'Y), W\'X is not invertible.  Behavioral: "',eqList[eqIdx],'". Check regressors or try to reduce tolerance "tol" value. ',e$message) 
+               ' given betaHat = (W\'X)^(-1) * (W\'Y), W\'X is not invertible. Behavioral: "',eqList[eqIdx],'". Check regressors or try to reduce tolerance "tol" value. ',e$message) 
         }
         ) 
+        
         #get f-statistics for restrictions
         #unrestricted beta OLS
         if (estTech=='OLS') {
@@ -3898,11 +3876,13 @@ ESTIMATE <- function(model=NULL,
             stop('ESTIMATE(): given y = X * b + u, X\'*X is not invertible (un-restricted case in F-test). Behavioral: "',eqList[eqIdx],'". Check regressors or try to reduce tolerance "tol" value. ',e$message) 
           }
           ) 
+          
           #OLS unrestricted :)
           bm_betaHat_unrestricted=bm_matrixXpXinv %*% t(bm_matrixX) %*% bm_vectorY 
         }
         
         #get f-statistics for restrictions
+        
         #unrestricted beta IV
         if (estTech=='IV') {
           
@@ -3919,11 +3899,8 @@ ESTIMATE <- function(model=NULL,
           ) 
         }
         
-        
-        
       } else 
       {  
-        
         #no restriction           
         #default OLS
         
@@ -3938,18 +3915,16 @@ ESTIMATE <- function(model=NULL,
             stop('ESTIMATE(): given y = X * b + u, X\'*X is not invertible. Behavioral: "',eqList[eqIdx],'". Check regressors or try to reduce tolerance "tol" value. ',e$message) 
           }
           ) 
+          
           #OLS :)
           bm_betaHat=bm_matrixXpXinv %*% t(bm_matrixX) %*% bm_vectorY 
         }
-        
-        
         
         if (estTech=='IV') {
           
           #check inverse exist
           bm_matrixXpXinv=NULL 
           tryCatch({
-            
             
             bm_matrixXZ=bm_matrixZ %*% solve( crossprod( bm_matrixZ ),
                                               crossprod( bm_matrixZ, bm_matrixX ),
@@ -3971,8 +3946,6 @@ ESTIMATE <- function(model=NULL,
           ) 
         }
         
-        
-        
       } # end if no restriction
       
       if (thereAreRestrictions == TRUE || 
@@ -3981,11 +3954,11 @@ ESTIMATE <- function(model=NULL,
         statsOut$matrixXaug=bm_AAWpX 
         statsOut$vectorYaug=bm_AvectorY 
       }
+      
       #deal with error correlations
       if ((thereAreErrorCorr==TRUE) && (bm_COcurrentIter>1))
       {         
-        
-        #restore original Y and X (the long ones...): we need extended regressor in order to have coherent errors lags         
+        #restore original Y and X (the longer ones...): we need extended regressor in order to have coherent errors lags         
         bm_vectorY = bm_vectorY_bk 
         bm_matrixX = bm_matrixX_bk 
         if (estTech=='IV') bm_matrixZ = bm_matrixZ_bk 
@@ -3993,13 +3966,16 @@ ESTIMATE <- function(model=NULL,
       
       #exit from loop if convergence reached (variable set later...)
       if (bm_COlastIter==TRUE) break 
+      
       #these are residuals
       bm_unSquare=bm_vectorY - bm_matrixX %*% bm_betaHat 
+      
       #f-statistics for restrictions
       if (thereAreRestrictions == TRUE || 
           (thereArePDL == TRUE && (! is.null(currentBehavioral$pdlRestrictionMatrix))))
         bm_unSquare_unrestricted=bm_vectorY - bm_matrixX %*% bm_betaHat_unrestricted 
-      #OLS on errors: u=LAG(u)*rho + z
+      
+      #perform OLS on errors: u=LAG(u)*rho + z
       if (thereAreErrorCorr==TRUE)
       {
         #cochrane orcutt evaluation
@@ -4012,15 +3988,16 @@ ESTIMATE <- function(model=NULL,
         if (length(bm_unSquare)<(bm_errorDim+1)) 
           stop('ESTIMATE(): order of error autocorrelation greater than either available observations or TSRANGE specifications (Cochrane-Orcutt). Behavioral: "',eqList[eqIdx],'".') 
         bm_resY=bm_unSquare[(1+bm_errorDim):length(bm_unSquare)] 
+        
         #create lagged residuals
         for(idxRS in 1:bm_errorDim)
         {
-          
           bm_resX=cbind(bm_resX,bm_unSquare[(1+bm_errorDim-idxRS):(length(bm_unSquare)-idxRS)]) 
         }
         
         #check inverse exist
         bm_matrixresXpresXinv=NULL 
+        
         tryCatch({
           bm_matrixresXpresXinv=solve(t(bm_resX) %*% bm_resX,
                                       tol=tol) 
@@ -4030,14 +4007,17 @@ ESTIMATE <- function(model=NULL,
                eqList[eqIdx],'". Check residuals or try to reduce tolerance "tol" value. ',e$message) 
         }
         ) 
+        
         #there are error autocorrelation coefficients
         bm_rhoHat=bm_matrixresXpresXinv %*% t(bm_resX) %*% bm_resY 
+        
         #deal with regression standard errors...
         bm_COunSquare=bm_resY-bm_resX %*% bm_rhoHat 
         bm_COuSquare=bm_COunSquare * bm_COunSquare 
         bm_COssr=sum(bm_COuSquare) 
         bm_COcoeffNum=bm_errorDim 
         bm_COnumObs=1+NUMPERIOD(c(localTSRANGE_bk[1],localTSRANGE_bk[2]),c(localTSRANGE_bk[3],localTSRANGE_bk[4]),frequency) 
+        
         #bm_COser=sqrt(bm_COssr/(bm_COnumObs-bm_COcoeffNum))
         bm_COser=ifelse(bm_COnumObs - bm_COcoeffNum - bm_coeffNum +bm_restrictionsNum==0,0,sqrt((bm_COssr-(sum(bm_COunSquare)^2)/bm_COnumObs)/
                                                                                                   (bm_COnumObs - bm_COcoeffNum - bm_coeffNum +bm_restrictionsNum)) #...dont know why bm_COcoeffNum and bm_restrictionsNum
@@ -4051,9 +4031,11 @@ ESTIMATE <- function(model=NULL,
         statsOut$RhosCovariance=bm_COvcov 
         rownames(statsOut$RhosCovariance)=paste0("RHO_",1:(bm_COcoeffNum)) 
         colnames(statsOut$RhosCovariance)=paste0("RHO_",1:(bm_COcoeffNum)) 
+        
         #create CO transf matrix (P matrix in user guide)
         bm_realTSRANGEobs=1+NUMPERIOD(c(localTSRANGE[1],localTSRANGE[2]),c(localTSRANGE[3],localTSRANGE[4]),frequency) 
         bm_resP=matrix(rep(0,bm_realTSRANGEobs^2),nrow=bm_realTSRANGEobs) 
+        
         #bm_repP is modifier for original Y and X
         for (idxP in 1:bm_realTSRANGEobs)
         {
@@ -4063,18 +4045,13 @@ ESTIMATE <- function(model=NULL,
             if (idxP>idxRS) bm_resP[idxP,idxP-idxRS]=-bm_rhoHat[idxRS] 
           }
         }
-        
-        
       }
       
-      #set flag if convergence (we need another cycle in order to get betahat with that rho)
+      #set flag if convergence (we need another cycle in order to get betahat with current rho)
       if (thereAreErrorCorr==TRUE)
       {
         if (bm_COcurrentIter>1)
         {
-          
-          
-          #if (any(100*abs((bm_rhoHat/bm_COprevRho)-1)<bm_COconvergence)) break 
           #convergence check
           if (all(abs(bm_rhoHat-bm_COprevRho)<bm_COconvergence)) bm_COlastIter=TRUE 
           #if (sqrt(sum((bm_rhoHat-bm_COprevRho)^2))/sqrt(sum(bm_COprevRho^2)) < bm_COconvergence) bm_COlastIter=TRUE 
@@ -4085,7 +4062,7 @@ ESTIMATE <- function(model=NULL,
       }
       
       #take stop between iterations
-      #readline('k0>') 
+      
     }#end CO iteration
     
     # CO end --------------------------------------------------
@@ -4098,30 +4075,32 @@ ESTIMATE <- function(model=NULL,
       .MODEL_outputText(outputText=outputText,'\nConvergence was reached in ',bm_COcurrentIter,' / ',bm_COmaxIters,' iterations.\n\n')
     }
     
-    
     bm_unSquare_no_error_correction=NULL 
-    #if error correlation u must be calculated with tranformed y and x
+    #in error correlation cases, u must be calculated by using tranformed y and x
     if ((thereAreErrorCorr==TRUE) )
     {
       #transorm with matrix P
       bm_vectorY = bm_resP %*% bm_vectorY 
       bm_matrixX = bm_resP %*% bm_matrixX 
+      
       #project on localTSRANGE
       bm_vectorY = bm_vectorY[(1+bm_errorDim):length(bm_vectorY)] 
       bm_matrixX = bm_matrixX[(1+bm_errorDim):nrow(bm_matrixX),] 
-      #save regressors and y (with ERROR> we save the modified ones)
       
+      #save regressors and y (with ERROR> we save the modified ones)
       statsOut$matrixX_error_corrected=as.matrix(bm_matrixX) 
       statsOut$vectorY_error_corrected=as.matrix(bm_vectorY) 
       colnames(statsOut$matrixX_error_corrected)=currentBehavioral$eqRegressorsNames 
-      #colnames(statsOut$vectorY_error_corrected)=eqList[eqIdx] 
       colnames(statsOut$vectorY_error_corrected)=currentBehavioral$lhsFun$raw 
+      
       #calc error
       bm_unSquare= bm_vectorY - bm_matrixX %*% bm_betaHat 
+      
       #f-statistics for restrictions
       if (thereAreRestrictions == TRUE || 
           (thereArePDL == TRUE && (! is.null(currentBehavioral$pdlRestrictionMatrix))))
         bm_unSquare_unrestricted=bm_vectorY - bm_matrixX %*% bm_betaHat_unrestricted 
+      
       #restore vectors
       bm_vectorY = bm_vectorY_bk 
       bm_matrixX = bm_matrixX_bk 
@@ -4132,16 +4111,15 @@ ESTIMATE <- function(model=NULL,
     }
     
     bm_uSquare=bm_unSquare * bm_unSquare 
+    
     #save regressors and y
     statsOut$matrixX=as.matrix(bm_matrixX) 
     statsOut$vectorY=as.matrix(bm_vectorY) 
     colnames(statsOut$matrixX)=currentBehavioral$eqRegressorsNames 
-    #colnames(statsOut$vectorY)=eqList[eqIdx] 
     colnames(statsOut$vectorY)=currentBehavioral$lhsFun$raw 
+    
     #sum squared residuals
     bm_ssr=sum(bm_uSquare)
-    
-    
     
     #check residuals length
     if (NUMPERIOD(localTSRANGE[1:2],localTSRANGE[3:4],frequency)  +1 != length(bm_unSquare))
@@ -4158,6 +4136,7 @@ ESTIMATE <- function(model=NULL,
     statsOut$tol=tol 
     statsOut$digits=digits 
     statsOut$centerCOV=centerCOV 
+    
     #standard error regression    
     #bm_ser=sqrt(bm_ssr/(bm_numObs-bm_coeffNum+bm_restrictionsNum)) 
     #here below is centered
@@ -4166,6 +4145,7 @@ ESTIMATE <- function(model=NULL,
     if (!centerCOV) bm_serAdj=ifelse(bm_DoF==0,0,sqrt((bm_ssr)/(bm_DoF))) 
     statsOut$StandardErrorRegression=bm_ser 
     statsOut$StandardErrorRegressionNotCentered=ifelse(bm_DoF==0,0,sqrt((bm_ssr)/(bm_DoF))) 
+    
     #var-covar coeff
     if ( ! thereAreRestrictions)
     {
@@ -4175,14 +4155,13 @@ ESTIMATE <- function(model=NULL,
       bm_vcov=(bm_serAdj*bm_serAdj) * bm_AAWpXi 
     }
     
-    
-    
-    #if restrictions diag cov elements can be very small but negatives... so abs(diag()) here below
+    #in model with restrictions, diagonal cov elements can be very small but negatives... so abs(diag()) here below
     #coeff of variation betaHat
     #if restrictions size vcov != size betaHat
     bm_vcov=bm_vcov[1:length(bm_betaHat),1:length(bm_betaHat),drop=FALSE] 
     suppressWarnings({bm_betaHatStdErr=sqrt(abs(diag(bm_vcov)))}) #warnings if restrictions due to NAs
     #bm_betaHatStdErr=bm_betaHatStdErr[1:length(bm_betaHat)] 
+    
     #remove 0/0 cases
     bm_betaHatCoV=ifelse(bm_betaHatStdErr==0,Inf,bm_betaHat/bm_betaHatStdErr) 
     names(bm_betaHatCoV)=currentBehavioral$eqCoefficientsNames 
@@ -4191,36 +4170,9 @@ ESTIMATE <- function(model=NULL,
     colnames(bm_vcov)=currentBehavioral$eqCoefficientsNames 
     statsOut$CoeffCovariance=bm_vcov 
     statsOut$CoeffTstatistic=bm_betaHatCoV 
-    # R & SPK differs in Rsquared! we choosed R 
     
+    # R & SPK differs in Rsquared, we choosed R 
     bm_rSquared=1-(bm_ssr)/(sum((bm_vectorY-ifelse(bm_ConstTermExist,ave(bm_vectorY),0))^2))
-    
-    # #r-squared
-    # if (thereAreErrorCorr==TRUE  )
-    # {
-    #   #this is ok even without error correlation - DEFAULT R lm formula
-    #   bm_rSquared=1-(bm_ssr)/(sum((bm_vectorY - ave(bm_vectorY)  )^2)) #eq by wiki works fine with error autocorrelation
-    #   
-    # }   
-    # 
-    # if ((thereAreRestrictions == TRUE || 
-    #      (thereArePDL == TRUE && (! is.null(currentBehavioral$pdlRestrictionMatrix)))))
-    # { 
-    #     # DEFAULT SPK 
-    # 
-    #     #eq by user guide
-    #     bm_rSquared_tempY=bm_matrixX %*% bm_betaHat 
-    #    
-    #     bm_rSquared=(sum((bm_vectorY-base::mean(bm_vectorY))*(((bm_rSquared_tempY)-base::mean(bm_rSquared_tempY))))^2)/
-    #          ((sum((((bm_rSquared_tempY)-base::mean(bm_rSquared_tempY))^2)))*(sum((bm_vectorY-base::mean(bm_vectorY))^2))) 
-    #   
-    
-    
-    
-    # }
-    
-    
-    
     
     statsOut$RSquared=bm_rSquared 
     #adj r-squared
@@ -4233,6 +4185,7 @@ ESTIMATE <- function(model=NULL,
     
     
     statsOut$AdjustedRSquared=bm_adjrSquared 
+    
     #assign beta hat to coefficients
     currentBehavioral$coefficients=bm_betaHat 
     if (thereAreErrorCorr==TRUE) rownames(bm_rhoHat)=paste0("RHO_",1:(bm_COcoeffNum)) 
@@ -4240,13 +4193,15 @@ ESTIMATE <- function(model=NULL,
     if (length(currentBehavioral$coefficients) !=
         length(currentBehavioral$eqCoefficientsNames))
     {
-      stop('ESTIMATE(): coefficients count differs from the length of the coefficients names.') 
+      stop('ESTIMATE(): coefficients count differs from coefficients names length.') 
     }
     
     rownames(currentBehavioral$coefficients)=currentBehavioral$eqCoefficientsNames 
+    
     #save residuals
     currentBehavioral$residuals=bm_unSquareTS 
     if (thereAreErrorCorr==TRUE) currentBehavioral$residuals_no_error_correction=bm_unSquare_no_error_correctionTS 
+    
     #f-statistics for restrictions
     if (thereAreRestrictions == TRUE || 
         (thereArePDL == TRUE && (! is.null(currentBehavioral$pdlRestrictionMatrix))))
@@ -4257,21 +4212,18 @@ ESTIMATE <- function(model=NULL,
       #f-test for restrictions
       if( thereAreRestrictions==TRUE ) 
       {
-        
         bm_Ftest_restriction=ifelse(bm_numObs-bm_coeffNum-bm_errorDim<=0,NA,((bm_ssr-bm_ssr_unrestricted )/bm_restrictionsNum)/((bm_ssr_unrestricted)/(bm_numObs-bm_coeffNum-bm_errorDim))) 
         bm_Ftest_probability=ifelse(bm_numObs-bm_coeffNum-bm_errorDim<=0,NA,((1-pf(bm_Ftest_restriction,bm_restrictionsNum,bm_numObs-bm_coeffNum)))) 
       }
-      
     }
-    
     
     #calc p-values
     pValues=bm_betaHat*0 
     if (bm_DoF>0) pValues=2*pt(-abs(bm_betaHatCoV),df=bm_DoF) 
     statsOut$CoeffPvalues=pValues 
+    
     #print stuff in screen
     #print estimated eq data
-    
     stdFormat=paste0("%-",digits+5,".",digits,'g') 
     stdFormatS=paste0("%-",digits+5,'s') 
     for (idxCoeff in 1:length(bm_betaHat))
@@ -4286,25 +4238,23 @@ ESTIMATE <- function(model=NULL,
         } else {
           tmpPrefix=paste0(sprintf("%-20s",currentBehavioral$lhsFun$raw),'=   ') 
         }
-        
       }      
       
       suffix=''
       if (grepl(strongCharOnNumbs,currentBehavioral$eqRegressorsNames[idxCoeff])) 
       {
-        #suffix=paste0('\U00B7 ',currentBehavioral$eqRegressorsNames[idxCoeff+1]) 
         if(currentBehavioral$eqRegressorsNames[idxCoeff]!='1')
           suffix=paste0('CONST*',currentBehavioral$eqRegressorsNames[idxCoeff]) 
       } else {
         suffix=paste0(currentBehavioral$eqRegressorsNames[idxCoeff]) 
       }
       
-      
       if (thereArePDL==FALSE)
       { 
         #if modify these lines also modify below
         #print tmpPrefix (+ or -) then coeff value then regressor eq
         .MODEL_outputText(outputText=outputText,'\n',tmpPrefix,sprintf(stdFormat,abs(bm_betaHat[idxCoeff])),suffix,'\n',sep='') 
+        
         #if restricted print string else CoV
         tmpCoV=bm_betaHatCoV[idxCoeff] 
         if (! is.finite(tmpCoV) || abs(tmpCoV)>1e9) 
@@ -4320,7 +4270,6 @@ ESTIMATE <- function(model=NULL,
           tmpCoV=sprintf(stdFormat,tmpCoV) 
           tmpCoV=paste0('T-stat. ',tmpCoV,localPvalueS) 
         }
-        #.MODEL_outputText(outputText=outputText,sprintf("%-22s",''),'( ',tmpCoV,' )\n',sep='') 
         .MODEL_outputText(outputText=outputText,sprintf("%-24s",''),tmpCoV,'\n',sep='') 
       } else {                
         
@@ -4330,13 +4279,11 @@ ESTIMATE <- function(model=NULL,
         tmpOrigCoeff=currentBehavioral$eqCoefficientsNamesOriginal
         tmpIdxinOriginal=which(tmpOrigCoeff==tmpCoeff)
         
-        
         #if coefficient has pdl
         if (tmpMatrix[1,tmpIdxinOriginal]==1)
         {
           #print coeff name if pdl instead of value
           .MODEL_outputText(outputText=outputText,'\n',gsub('-','+',tmpPrefix),sprintf(stdFormatS,currentBehavioral$eqCoefficientsNames[idxCoeff]),suffix,'\n',sep='') 
-          #.MODEL_outputText(outputText=outputText,sprintf("%-22s",''),'( PDL )\n',sep='') 
           .MODEL_outputText(outputText=outputText,sprintf("%-24s",''),'PDL\n',sep='') 
         } else {
           #print tmpPrefix (+ or -) then coeff value then regressor eq
@@ -4356,14 +4303,10 @@ ESTIMATE <- function(model=NULL,
             tmpCoV=sprintf(stdFormat,tmpCoV) 
             tmpCoV=paste0('T-stat. ',tmpCoV,localPvalueS) 
           }
-          
-          #.MODEL_outputText(outputText=outputText,sprintf("%-22s",''),'( ',tmpCoV,' )\n',sep='') 
           .MODEL_outputText(outputText=outputText,sprintf("%-24s",''),tmpCoV,'\n',sep='') 
         }
       }
     }
-    
-    
     
     #durbin watson
     bm_dw=NA 
@@ -4395,10 +4338,7 @@ ESTIMATE <- function(model=NULL,
         bm_vectorY = bm_vectorY[(1+bm_errorDim):length(bm_vectorY)]
         bm_matrixX = bm_matrixX[(1+bm_errorDim):nrow(bm_matrixX),]  
       }
-      
     }
-    
-    
     
     #log likelihood
     bm_loglike=-(bm_numObs/2)*(1+log(2*pi)+log(bm_ssr/bm_numObs))
@@ -4412,11 +4352,9 @@ ESTIMATE <- function(model=NULL,
       .MODEL_outputText(outputText=outputText,'\nERROR STRUCTURE: ',bm_errorRaw,'\n') 
     }
     
-    
     bm_fStat=ifelse(bm_DoF==0,+Inf,(bm_rSquared/(bm_coeffNum-ifelse(bm_ConstTermExist,1,0)+bm_errorDim-bm_restrictionsNum))*
                       ((bm_DoF)/(1-bm_rSquared))) 
     bm_fProb=ifelse(is.finite(bm_fStat) && bm_DoF>0,1-pf(bm_fStat,bm_coeffNum-ifelse(bm_ConstTermExist,1,0)+bm_errorDim-bm_restrictionsNum,bm_DoF),1)
-    
     
     if (thereAreRestrictions && (! is.null(currentBehavioral$restrictRaw)))
     {
@@ -4465,8 +4403,6 @@ ESTIMATE <- function(model=NULL,
                               sprintf(paste0("%-",digits+8,"s"),'RESTRICT'),
                               sprintf(paste0("%-",digits+8,"s"),'RESTRICT'),'\n',sep='') 
           } else {
-            
-            
             localErr=bm_betaHatStdErr[posCoeffInCoeffArray+idxPrintSinglePDL] 
             tStat=ifelse(localErr==0,Inf,(tmpValue)/localErr) 
             pValue=ifelse(bm_DoF==0,0,2*pt(-abs(tStat),bm_DoF)) 
@@ -4482,7 +4418,6 @@ ESTIMATE <- function(model=NULL,
               tmpSD=sprintf(paste0("%-",digits+8,"s"),' RESTRICT') 
               tmpTstat=sprintf(paste0("%-",digits+8,"s"),' RESTRICT') 
             }
-            
             
             .MODEL_outputText(outputText=outputText,
                               sprintf(paste0("%-",8,"d"),idxPrintSinglePDL),
@@ -4548,7 +4483,6 @@ ESTIMATE <- function(model=NULL,
       }
     }
     
-    
     .MODEL_outputText(outputText=outputText,'\n\nSTATs:') 
     .MODEL_outputText(outputText=outputText,'\nR-Squared                      : ',sprintf(stdFormat,bm_rSquared),sep='')
     .MODEL_outputText(outputText=outputText,'\nAdjusted R-Squared             : ',sprintf(stdFormat,bm_adjrSquared),sep='')
@@ -4582,23 +4516,27 @@ ESTIMATE <- function(model=NULL,
     #save stsuff
     model$behaviorals[[eqList[eqIdx]]]=currentBehavioral 
     CP_provided=FALSE 
+    
     # CHOW test code ---------------------------------------
     if (CHOWTEST==TRUE)
     {
-      
       #get estimation tsrange
       first_estimation_tsrange=currentBehavioral$statistics$TSRANGE
+      
       if (is.null(first_estimation_tsrange)) stop('ESTIMATE(): cannot get base estimation TSRANGE of "',eqList[eqIdx],'" during the CHOW test.') 
+      
       #check if we have a CHOWPAR
       if (! is.null(CHOWPAR))
       {
         CP_provided=TRUE 
+        
         #check chowpar is beyond end of estimation range
         if (NUMPERIOD(c(first_estimation_tsrange[3],first_estimation_tsrange[4]),CHOWPAR,model$frequency)<1) 
           stop('ESTIMATE(): CHOWPAR ',paste(CHOWPAR,collapse='-'),
                ' must be beyond the estimation TSRANGE of "',eqList[eqIdx],'" ',
                paste(first_estimation_tsrange[1:2],collapse='-'),
                ' / ',paste(first_estimation_tsrange[3:4],collapse='-'),'.') 
+        
         # perform second estimation on extended tsrange
         tryCatch({
           
@@ -4624,6 +4562,7 @@ ESTIMATE <- function(model=NULL,
         
         #set CHOWPAR to first year-period outsite TSRANGE
         CHOWPAR=normalizeYP(c(first_estimation_tsrange[3],first_estimation_tsrange[4]+1),f=frequency) 
+        
         #perform second estimation on extended tsrange
         tryCatch({
           
@@ -4647,8 +4586,7 @@ ESTIMATE <- function(model=NULL,
         tryCatch({
           
           #cycle until error in extended range
-          while(TRUE)
-          {
+          while(TRUE)          {
             
             #try incremental chow pars.
             CHOWPAR_tmp=normalizeYP(c(CHOWPAR[1],CHOWPAR[2]+1),f=frequency) 
@@ -4673,19 +4611,23 @@ ESTIMATE <- function(model=NULL,
       
       baseBehavioral=currentBehavioral 
       extendedBehavioral=second_model$behaviorals[[eqList[eqIdx]]] 
+      
       #get first SSR and df
       SSR = baseBehavioral$statistics$SumSquaresResiduals 
       df  = baseBehavioral$statistics$DegreesOfFreedom 
       if (!is.finite(SSR)) .MODEL_outputText(outputText=!quietly,paste0('ESTIMATE(): warning, SSR in first estimation of ',eqList[eqIdx],' is not finite.\n')) 
       if (!quietly && !is.finite(df)) .MODEL_outputText(outputText=!quietly,paste0('ESTIMATE(): warning, degrees of freedom in first estimation of ',eqList[eqIdx],' are not finite.\n')) 
-      #get first SSR and df
+      
+      #get second SSR and df
       chow_SSR = extendedBehavioral$statistics$SumSquaresResiduals 
       chow_df  = extendedBehavioral$statistics$DegreesOfFreedom 
       if ( !is.finite(SSR)) .MODEL_outputText(outputText=!quietly,paste0('ESTIMATE(): warning, SSR in second estimation of ',eqList[eqIdx],' is not finite.\n')) 
       if ( !is.finite(df)) .MODEL_outputText(outputText=!quietly,paste0('ESTIMATE(): warning, degrees of freedom in second estimation of ',eqList[eqIdx],' are not finite.\n')) 
       if (chow_df==df) .MODEL_outputText(outputText=!quietly,paste0('ESTIMATE(): warning, base and extended estimations of ',eqList[eqIdx],' have the same degrees of freedom\n')) 
+      
       #out stats
       chowOut=list() 
+      
       #calc stats.
       Fchow = (chow_SSR/SSR-1)*chow_df/(chow_df-df) 
       chowOut$Fvalue=Fchow
@@ -4696,6 +4638,7 @@ ESTIMATE <- function(model=NULL,
       chowOut$FtestDegreesOfFreedom=DoFchow 
       ProbFchow=pf(Fchow,DoFchow[1],DoFchow[2],lower.tail=FALSE) 
       chowOut$Fprob=ProbFchow 
+      
       #out of sample simulation RESCHECK
       outOfSampleTSRANGE=c(normalizeYP(c(first_estimation_tsrange[3],first_estimation_tsrange[4]+1),f = model$frequency),CHOWPAR) 
       predOutSample=NULL 
@@ -4713,6 +4656,7 @@ ESTIMATE <- function(model=NULL,
       PREDICT =predOutSample$simulation[[eqList[eqIdx]]] 
       ACTUAL  =predOutSample$modelData[[eqList[eqIdx]]] 
       ERROR   =ACTUAL-PREDICT 
+      
       #fitted standard error calc
       fit_se = vector(mode="numeric", length=length(PREDICT))
       
@@ -4724,21 +4668,23 @@ ESTIMATE <- function(model=NULL,
       base_nobs      =baseBehavioral$statistics$ObservationsCount
       base_matrixXaug=baseBehavioral$statistics$matrixXaug 
       ext_matrixXaug =extendedBehavioral$statistics$matrixXaug 
+      
       tryCatch({
         #no restrictions on model
         if (is.null(currentBehavioral$matrixR) && is.null(currentBehavioral$pdlRestrictionMatrix))
         {
-          #THIS IS CODE DERIVED FROM FORMULA
+          #THIS IS CODE DERIVED FROM STANDARD FORMULA
           for (k in 1:(length(PREDICT))) 
             fit_se[k] = base_ser*sqrt(1+ext_matrixX[base_nobs+k,]%*%solve(t(base_matrixX)%*%base_matrixX)%*%ext_matrixX[base_nobs+k,])
           
-          #THIS IS CODE DERIVED FROM SPK RESULTS
+          #THIS IS CODE DERIVED FROM SPK RESULTS (probably wrong)
           #for (k in 1:(length(PREDICT))) 
           #  fit_se[k] = ext_ser*sqrt(1+ext_matrixX[base_nobs+k,]%*%solve(t(ext_matrixX)%*%ext_matrixX)%*%ext_matrixX[base_nobs+k,])
           
         } else
         {
           coeffCount=baseBehavioral$eqCoefficientsCount 
+          
           #THIS IS CODE DERIVED FROM FORMULA
           for (k in 1:(length(PREDICT))) 
             fit_se[k] = base_ser*sqrt(1+ext_matrixX[base_nobs+k,]%*%(solve(base_matrixXaug)[1:coeffCount,1:coeffCount])%*%ext_matrixX[base_nobs+k,])
@@ -4752,8 +4698,10 @@ ESTIMATE <- function(model=NULL,
         stop('ESTIMATE(): cannot calculate the standard error of "',eqList[eqIdx],'" in year-period ',
              paste(normalizeYP(c(outOfSampleTSRANGE[1],outOfSampleTSRANGE[2]+k-1),f = model$frequency),collapse = '-'),' during CHOW test: ',e$message) 
       }) 
+      
       STDERR=TSERIES(fit_se,START=outOfSampleTSRANGE[1:2],FREQ=model$frequency,avoidCompliance = TRUE) 
       TSTAT=ERROR/STDERR 
+      
       #project on tsrange
       ACTUAL=TSPROJECT(ACTUAL,TSRANGE=outOfSampleTSRANGE,avoidCompliance = TRUE)
       PREDICT=TSPROJECT(PREDICT,TSRANGE=outOfSampleTSRANGE,avoidCompliance = TRUE)
@@ -4780,10 +4728,7 @@ ESTIMATE <- function(model=NULL,
       .MODEL_outputText(outputText = !quietly,
                         sprintf(paste0("%-",16+2,"s"),paste0('F-prob(',DoFchow[1],',',DoFchow[2],')')),
                         sprintf(paste0(":% -",digits+8,".",digits,"g"),(ProbFchow)),'\n') 
-      #print(Fchow)
-      #print(DoFchow)
-      #print(ProbFchow) 
-      #print(outOfSampleTSRANGE) 
+      
       .MODEL_outputText(outputText = !quietly,"\nPredictive Power:\n") 
       if (!quietly) 
       {
@@ -4793,19 +4738,19 @@ ESTIMATE <- function(model=NULL,
         Error=ERROR 
         `Std. Error`=STDERR 
         `T-stat`=TSTAT 
-        #TABIT(ACTUAL, PREDICT, ERROR, STDERR, TSTAT, digits = digits)
         TABIT(Actual, Predict, Error, `Std. Error`, `T-stat`, digits = digits)
       }
       
       #store results
       model$behaviorals[[eqList[eqIdx]]]$ChowTest=chowOut 
+      
     }#end CHOW test
     
   }#end requested eqs cycle
   
-  
   .MODEL_outputText(outputText=!quietly,'...ESTIMATE OK\n') 
   return(model) 
+  
 }
 
 
@@ -4829,6 +4774,7 @@ RENORM <- function(model=NULL,
                    INSTRUMENT=NULL,
                    MM_SHOCK=0.00001,
                    quietly=FALSE,
+                   quietlyMULTMATRIX=FALSE,
                    tol=1e-28,
                    JACOBIAN_SHOCK=1e-4,
                    JacobianDrop=NULL,
@@ -4849,6 +4795,10 @@ RENORM <- function(model=NULL,
   if (! is.finite(tol) || tol<=0) stop('RENORM(): please provide a valid tolerance value.')
   
   if (!(is.logical(quietly)) || is.na(quietly)) stop('RENORM(): "quietly" must be TRUE or FALSE.')
+  if (!(is.logical(quietlyMULTMATRIX)) || is.na(quietlyMULTMATRIX)) stop('RENORM(): "quietlyMULTMATRIX" must be TRUE or FALSE.')
+  
+  if (quietly) quietlyMULTMATRIX=quietly
+  
   if (!(is.logical(verbose))) stop('RENORM(): "verbose" must be TRUE or FALSE.')
   
   if (! avoidCompliance)
@@ -4938,7 +4888,6 @@ RENORM <- function(model=NULL,
       }
   }
   
-  
   #store original INSTRUMENT, in case we need to restore after error
   INSTRUMENT_ORIGINAL=list() 
   INSTRUMENT_CURRENT=list() 
@@ -4957,7 +4906,7 @@ RENORM <- function(model=NULL,
         #CA does not exist so it is zero... 
         ConstantAdjustment[[tmpI]]=TSERIES(rep(0,TSRANGEextension),START=TSRANGE[1:2],FREQ=frequency) 
         INSTRUMENT_ORIGINAL[[tmpI]]=ConstantAdjustment[[tmpI]] 
-        #stop(paste0('RENORM(): request of endogenous variable "',tmpI,'" as INSTRUMENT but it is not in the ConstantAdjustment list')) 
+        
       } else 
       {
         INSTRUMENT_ORIGINAL[[tmpI]]=ConstantAdjustment[[tmpI]] 
@@ -4973,10 +4922,7 @@ RENORM <- function(model=NULL,
   model$renorm[['__RENORM_PARAMETERS__']]$renormIterLimit=renormIterLimit
   model$renorm[['__RENORM_PARAMETERS__']]$renormConvergence=renormConvergence
   
-  #this is required otherwise R store only values and no ts... ??
   if (! is.list(model$simulation)) model$simulation=list()
-  
-  
   
   #init simulated TARGET with historical values
   for (idxN in names(TARGET))
@@ -4985,12 +4931,13 @@ RENORM <- function(model=NULL,
     model$simulation[[idxN]]=TSPROJECT(model$modelData[[idxN]],TSRANGE = TSRANGE,EXTEND = TRUE,avoidCompliance = TRUE) 
     
     #stop if missings
-    if (any(! is.finite(model$simulation[[idxN]]))) 
-      stop(paste0('RENORM(): there are undefined values in TARGET "',idxN,'".')) 
+    #if (any(! is.finite(model$simulation[[idxN]]))) 
+    #  stop(paste0('RENORM(): there are undefined values in TARGET "',idxN,'".')) 
   }
   
   #main cycle index
   renormNIter=0 
+  
   #get actual TARGETs in TARG_
   xxx_=matrix(nrow=length(TARGET),ncol=TSRANGEextension) 
   for (idxR in 1:length(TARGET))
@@ -5000,8 +4947,10 @@ RENORM <- function(model=NULL,
   }
   TARG_=vector('double',length(xxx_)) 
   TARG_=c(xxx_) 
+  
   #used in convergence
   DIFF_=list() 
+  
   #main cycle
   for (renormNIter in 0:renormIterLimit)
   {
@@ -5009,8 +4958,9 @@ RENORM <- function(model=NULL,
     #names on unconverged TARGETs
     unConvergedTARGET=c() 
     convergenceRenorm=TRUE 
+    
     #check differences in TARGETs
-    for (tmpN in names(TARGET))
+    if (renormNIter>0) for (tmpN in names(TARGET))
     {
       DIFF_[[tmpN]]=(TARGET[[tmpN]]-coredata(model$simulation[[tmpN]]))/ifelse(TARGET[[tmpN]]==0,1,TARGET[[tmpN]])
       
@@ -5027,20 +4977,17 @@ RENORM <- function(model=NULL,
     {
       
       .MODEL_outputText(outputText=!quietly,paste0('\nRENORM(): warning, no convergence in ',renormNIter,' iterations.\n')) 
-      #export uncenverged symbols
+      
+      #export unconverged symbols
       model$renorm$unConvergedTARGET=unConvergedTARGET 
       break 
     }
     
-    if (convergenceRenorm==TRUE && renormNIter==0)
-    {
-      .MODEL_outputText(outputText=!quietly,paste0('\nRENORM(): all TARGET are equal to model data. This procedure will exit.\n')) 
-      break 
-    }											  
     #convergence
-    if (convergenceRenorm==TRUE)
+    if (convergenceRenorm==TRUE && renormNIter>0)
     {
       .MODEL_outputText(outputText=!quietly,paste0('\nConvergence reached in ',renormNIter,' iterations.\n...RENORM OK\n')) 
+      
       #export results
       tmpL=list() 
       for (idxI in 1:length(INSTRUMENT))
@@ -5048,6 +4995,7 @@ RENORM <- function(model=NULL,
         tmpL[[INSTRUMENT[idxI]]]=TSERIES(SINSTR_[idxI,],START=c(TSRANGE[1],TSRANGE[2]),FREQ=frequency,avoidCompliance = TRUE) 
       }
       model$renorm$INSTRUMENT=tmpL 
+      
       #export data used in convergence (before restore)
       model$renorm$modelData=model$modelData 
       model$renorm$ConstantAdjustment=ConstantAdjustment 
@@ -5055,6 +5003,7 @@ RENORM <- function(model=NULL,
     }
     
     .MODEL_outputText(outputText=!quietly,paste0('\nRENORM(): iteration #',renormNIter+1,'\n')) 
+    
     #get current INSTRUMENT
     for (idxI in 1:length(INSTRUMENT))
     {
@@ -5065,7 +5014,6 @@ RENORM <- function(model=NULL,
         INSTRUMENT_CURRENT[[tmpI]]=model$modelData[[tmpI]] 
       } else if (tmpI %in% model$vendog)
       {
-        
         INSTRUMENT_CURRENT[[tmpI]]=ConstantAdjustment[[tmpI]] 
       }
       
@@ -5093,7 +5041,7 @@ RENORM <- function(model=NULL,
                        TARGET=names(TARGET),
                        INSTRUMENT=INSTRUMENT,
                        MM_SHOCK=MM_SHOCK,
-                       quietly=quietly,
+                       quietly=quietlyMULTMATRIX,
                        JACOBIAN_SHOCK=JACOBIAN_SHOCK,
                        JacobianDrop=JacobianDrop,
                        avoidCompliance=TRUE,
@@ -5104,8 +5052,6 @@ RENORM <- function(model=NULL,
       stop(paste0('\nRENORM(): error in iteration #',renormNIter+1,': ',err$message)) 
     })
     
-    
-    
     #get simulated TARGETs
     for (idxT in 1:length(TARGET))
     {
@@ -5113,18 +5059,19 @@ RENORM <- function(model=NULL,
       xxx_[idxT,]=coredata(model$simulation[[names(TARGET)[idxT]]]) 
     }
     TARG0_=c((xxx_)) 
+    
     #calc delta in TARGET
     NTARG_ =TARG_-TARG0_ 
+    
     #get adjusted INSTRUMENTs
     tryCatch({
-      #INSTR=INSTR+(MULTMAT**(-1))*NTARG
+      
       INSTR_=as.vector(INSTR_+solve(model$MultiplierMatrix,
                                     tol=tol) %*% NTARG_) 
     }, error=function(err){
       
       stop(paste0('RENORM(): cannot invert multipliers matrix in iteration #',renormNIter+1,': ',err$message)) 
     })  
-    
     
     SINSTR_=matrix(INSTR_,nrow=length(INSTRUMENT),ncol=TSRANGEextension)
     
@@ -5138,12 +5085,9 @@ RENORM <- function(model=NULL,
         model$modelData[[tmpI]][[TSRANGE[1],TSRANGE[2]]]=SINSTR_[idxI,] 
       } else if (tmpI %in% model$vendog)
       {
-        
         ConstantAdjustment[[tmpI]][[TSRANGE[1],TSRANGE[2]]]=SINSTR_[idxI,] 
       }
-      
     }
-    
   }#end main cycle
   
   #restore model data
@@ -5159,15 +5103,13 @@ RENORM <- function(model=NULL,
       #instrument is vendog so restore data to CA
       ConstantAdjustment[[tmpI]]=INSTRUMENT_ORIGINAL[[tmpI]] 
     }
-    
   }
-  
   
   #export achieved TARGET
   tmpL=list() 
   for (idxN in names(TARGET))
   {
-    #probably TSPROJECT not required								
+    #...probably TSPROJECT not required								
     tmpL[[idxN]]=TSPROJECT(model$simulation[[idxN]],TSRANGE = TSRANGE,EXTEND = TRUE,avoidCompliance = TRUE) 
   }
   model$renorm$TARGET=tmpL 
@@ -5175,6 +5117,7 @@ RENORM <- function(model=NULL,
   model$renorm[['__RENORM_PARAMETERS__']]$TSRANGE=TSRANGE 
   model$renorm[['__RENORM_PARAMETERS__']]$TARGET=TARGET 
   model$renorm[['__RENORM_PARAMETERS__']]$INSTRUMENT=INSTRUMENT 
+  
   return(model)
 }
 
@@ -5386,8 +5329,6 @@ SIMULATE <- function(model=NULL,
                      avoidCompliance=FALSE,
                      ...)
 { 
-  
-  
   #get regex definitions
   regExDefs=.RegExGlobalDefinition() 
   reservedKeyw=regExDefs$reservedKeyw 
@@ -5400,29 +5341,30 @@ SIMULATE <- function(model=NULL,
   strongCharOnNumbsWithSign=regExDefs$strongCharOnNumbsWithSign 
   allowedLhsEQfuns=regExDefs$allowedLhsEQfuns 
   allowedLhsEQfunsPub=regExDefs$allowedLhsEQfunsPub 
+  
   #parent function call name
-  callerName='SIMULATE(): '
+  callerName='SIMULATE'
   
   if (! is.logical(MULTMATRIX) || is.na(MULTMATRIX)) stop('SIMULATE(): "MULTMATRIX" must be logical.') 
   if (! is.logical(RENORM) || is.na(RENORM)) stop('SIMULATE(): "RENORM" must be logical.') 
   if (! is.logical(STOCHSIMULATE) || is.na(STOCHSIMULATE)) stop('SIMULATE(): "STOCHSIMULATE" must be logical.') 
   if (! is.logical(OPTIMIZE) || is.na(OPTIMIZE)) stop('SIMULATE(): "OPTIMIZE" must be logical.') 
+  
   if (MULTMATRIX)
   {
     if (RENORM)
     { 
-      callerName='RENORM(): '
-      
+      callerName='RENORM'
     } else 
     {
-      callerName='MULTMATRIX(): '
+      callerName='MULTMATRIX'
     }
   }
   
-  if (STOCHSIMULATE) callerName='STOCHSIMULATE(): '
-  if (OPTIMIZE) callerName='OPTIMIZE(): '
+  if (STOCHSIMULATE) callerName='STOCHSIMULATE'
+  if (OPTIMIZE) callerName='OPTIMIZE'
   
-  
+  callerName=paste0(callerName,'(): ')
   
   #check arguments
   if (is.null(model) ) stop(callerName,'NULL model.') 
@@ -5464,6 +5406,7 @@ SIMULATE <- function(model=NULL,
   if (OPTIMIZE && STOCHSIMULATE) stop(callerName,'if "STOCHSIMULATE" is TRUE then "OPTIMIZE" must be FALSE.') 
   if (MULTMATRIX && OPTIMIZE) stop(callerName,'if "OPTIMIZE" is TRUE then "MULTMATRIX" must be FALSE.') 
   if (verbose) quietly=FALSE 
+  
   if (! avoidCompliance)
   {
     #check model data
@@ -5475,6 +5418,7 @@ SIMULATE <- function(model=NULL,
   
   #get data frequency
   frequency=frequency(model$modelData[[1]]) 
+  
   #check TSRANGE is consistent
   if (! is.null(TSRANGE)) {
     tryCatch({
@@ -5493,13 +5437,11 @@ SIMULATE <- function(model=NULL,
     if (! is.list(Exogenize) ) 
       stop(callerName,'"Exogenize" must be a list built of endogenous variables as names and related TSRANGE as items.')
     
-    
     if (length(names(Exogenize)) != length(unique(names(Exogenize)))) stop(callerName,'there are duplicated names in "Exogenize".') 
     if (length(base::setdiff(names(Exogenize),model$vendog)) >0) 
       stop(callerName,'request to exogenize "',
            paste0(base::setdiff(names(Exogenize),model$vendog),collapse=', '),
            '", not endogenous variable(s) of the model.')
-    
   }
   
   #check CA vendog exists in model
@@ -5508,14 +5450,11 @@ SIMULATE <- function(model=NULL,
     if (! is.list(ConstantAdjustment) ) 
       stop(callerName,'"ConstantAdjustment" must be a list built of endogenous variables as names and related time series as items.')
     
-    
     if (length(base::setdiff(names(ConstantAdjustment),model$vendog)) >0) 
       stop(callerName,'request to add a constant adjustment to "',
            paste0(base::setdiff(names(ConstantAdjustment),model$vendog),collapse=', '),
            '", not endogenous variable(s) of the model.')
-    
   }
-  
   
   #check RESCHECKeqList vendog exists in model 
   if (! is.null(RESCHECKeqList))
@@ -5573,11 +5512,11 @@ SIMULATE <- function(model=NULL,
   
   #sim steps count
   simSteps=NUMPERIOD(TSRANGE[1:2],TSRANGE[3:4],frequency)+1 
+  
   #check (ConstantAdjustment) is consistent
   if (length(ConstantAdjustment)>0) 
     for (idxCA in 1:length(ConstantAdjustment))
     {
-      
       if (! is.bimets(ConstantAdjustment[[idxCA]])) 
         stop(callerName,'"ConstantAdjustment" must be a list of BIMETS time series: "',names(ConstantAdjustment)[idxCA],'" time series is not compliant.') 
       if (frequency(ConstantAdjustment[[idxCA]])!=frequency(model$modelData[[1]])) 
@@ -5605,11 +5544,9 @@ SIMULATE <- function(model=NULL,
   
   if (MULTMATRIX==TRUE && length(INSTRUMENT)>0) 
   { 
-    
     instrumentVendogs=base::intersect(INSTRUMENT,model$vendog) 
     for (idxT in 1:length(INSTRUMENT))
     {
-      
       #if instrument is endogenous then we use related add-factor
       if (INSTRUMENT[idxT] %in% model$vendog) 
       {
@@ -5628,6 +5565,7 @@ SIMULATE <- function(model=NULL,
   {
     replica=length(INSTRUMENT)*simSteps+1 
   } else replica=1 
+  
   #check intersection between Simulation TSRANGE and Exogenize TSRANGE
   #remove items whose exogination TSRANGE is outside Simulation TSRANGE
   idxToBeRemoved=c() 
@@ -5639,20 +5577,17 @@ SIMULATE <- function(model=NULL,
       if (NUMPERIOD(c(tmpTSRANGE[1],tmpTSRANGE[2]),
                     c(TSRANGE[1],TSRANGE[2]),frequency)>0)
       {
-        
         if (NUMPERIOD(c(tmpTSRANGE[3],tmpTSRANGE[4]),
                       c(TSRANGE[1],TSRANGE[2]),frequency)>0)
         {
           idxToBeRemoved=c(idxToBeRemoved,idxEL) 
           .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, exogenize TSRANGE of "',names(Exogenize)[idxEL],'" does not intersect with simulation TSRANGE.\n')) 
         } 
-        
       }
       
       if (NUMPERIOD(c(tmpTSRANGE[3],tmpTSRANGE[4]),
                     c(TSRANGE[3],TSRANGE[4]),frequency)<0) 
       {
-        
         if (NUMPERIOD(c(tmpTSRANGE[1],tmpTSRANGE[2]),
                       c(TSRANGE[3],TSRANGE[4]),frequency)<0)
         {
@@ -5690,8 +5625,9 @@ SIMULATE <- function(model=NULL,
   # local var localE speedup -----------------------------------------------
   
   #a local env will contains model time series in assign(), get() and eval()
-  #that speeds up calc
+  #it will speed up calc
   localE = new.env() 
+  
   #we need at least 1 lag in order to start simulation in case simTYPE=FORECAST 
   model_max_lag=max(model$max_lag,1) 
   model_max_lag_1=model_max_lag+1
@@ -5711,16 +5647,16 @@ SIMULATE <- function(model=NULL,
   length_model_vsim=length(model$vsim)
   length_model_vpost=length(model$vpost)
   length_model_vfeed=length(model$vfeed)
+  
   if (length(ConstantAdjustment)>0) 
     CA_names=paste0(names(ConstantAdjustment),'__ADDFACTOR')
   if (length(instrumentVendogs)>0) 
     instrum_names=paste0(instrumentVendogs,'__ADDFACTOR')
   
-  
   # check STOCHSIMULATE ------------------------------------------------------------
+  
   if (STOCHSIMULATE)
   {
-    
     #check arguments
     if (!is.list(StochStructure) || is.null(names(StochStructure))) stop(callerName,'"StochStructure" must be a named list.') 
     if (length(names(StochStructure)) != length(unique(names(StochStructure)))) stop(callerName,'there are duplicated names in "StochStructure"') 
@@ -5742,8 +5678,10 @@ SIMULATE <- function(model=NULL,
         
         #set full TSRANGE if StochStructure$idxN$TSRANGE is TRUE
         StochStructure[[idxN]]$TSRANGE=TSRANGE 
+        
       } else
-      { #check TSRANGE
+      { 
+        #check TSRANGE
         tryCatch({
           tmpTSRANGE=StochStructure[[idxN]]$TSRANGE
           if (! ( is.numeric(tmpTSRANGE) && length(tmpTSRANGE)==4 && 
@@ -5769,20 +5707,17 @@ SIMULATE <- function(model=NULL,
       if (NUMPERIOD(c(tmpTSRANGE[1],tmpTSRANGE[2]),
                     c(TSRANGE[1],TSRANGE[2]),frequency)>0)
       {
-        
         if (NUMPERIOD(c(tmpTSRANGE[3],tmpTSRANGE[4]),
                       c(TSRANGE[1],TSRANGE[2]),frequency)>0)
         {
           idxToBeRemoved=c(idxToBeRemoved,idxN) 
           .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, "StochStructure$',elemName,'$TSRANGE" does not intersect with simulation TSRANGE.\n')) 
-        } 
-        
+        }
       }
       
       if (NUMPERIOD(c(tmpTSRANGE[3],tmpTSRANGE[4]),
                     c(TSRANGE[3],TSRANGE[4]),frequency)<0) 
       {
-        
         if (NUMPERIOD(c(tmpTSRANGE[1],tmpTSRANGE[2]),
                       c(TSRANGE[3],TSRANGE[4]),frequency)<0)
         {
@@ -5790,7 +5725,6 @@ SIMULATE <- function(model=NULL,
           .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, "StochStructure$',elemName,'$TSRANGE" does not intersect with simulation TSRANGE.\n')) 
         }
       }
-      
     }
     
     #remove unused stoch perturbation
@@ -5839,10 +5773,7 @@ SIMULATE <- function(model=NULL,
           if (! is.matrix(StochStructure[[idxN]]$PARS) || !(all(is.finite(StochStructure[[idxN]]$PARS)))) 
             stop(callerName,'"StochStructure$',idxN,'$PARS" must be a finite matrix.')
         }
-        
-        
       }
-      
     }
     
     if (is.null(StochReplica) 
@@ -5863,13 +5794,13 @@ SIMULATE <- function(model=NULL,
     #set replica if STOCHSIMULATE selected
     #(first column is unperturbed model so we add one)
     replica=StochReplica+1 
+    
   }#end if STOCHSIMULATE
   
   # check OPTIMIZE ------------------------------------------------------------
   
   if (OPTIMIZE)
   {
-    
     if (is.null(StochReplica) 
         || ! is.finite(StochReplica)
         || StochReplica < 1
@@ -5888,6 +5819,7 @@ SIMULATE <- function(model=NULL,
     #set replica if OPTIMIZE selected
     #(first column id unperturbed model so we add plus one)
     replica=StochReplica+1 
+    
     #check argument OptimizeBounds
     if (!is.list(OptimizeBounds) || is.null(names(OptimizeBounds))) stop(callerName,'"OptimizeBounds" must be a named list.') 
     if (length(names(OptimizeBounds)) != length(unique(names(OptimizeBounds)))) stop(callerName,'there are duplicated names in "OptimizeBounds".') 
@@ -5902,7 +5834,6 @@ SIMULATE <- function(model=NULL,
           || all(sort(names(OptimizeBounds[[idxN]])) != c('BOUNDS','TSRANGE')))
         stop(callerName,'"OptimizeBounds$',idxN,'" must be a named list built of the following 2 components: TSRANGE, BOUNDS')
       
-      
       if (is.logical(OptimizeBounds[[idxN]]$TSRANGE) && ! is.na(OptimizeBounds[[idxN]]$TSRANGE)) 
       {
         if (OptimizeBounds[[idxN]]$TSRANGE!=TRUE) 
@@ -5910,8 +5841,10 @@ SIMULATE <- function(model=NULL,
         
         #set full TSRANGE if OptimizeBounds$idxN$TSRANGE is TRUE
         OptimizeBounds[[idxN]]$TSRANGE=TSRANGE 
+        
       } else
-      { #check TSRANGE
+      { 
+        #check TSRANGE
         tryCatch({
           tmpTSRANGE=OptimizeBounds[[idxN]]$TSRANGE
           if (! ( is.numeric(tmpTSRANGE) && length(tmpTSRANGE)==4 && 
@@ -5937,20 +5870,17 @@ SIMULATE <- function(model=NULL,
       if (NUMPERIOD(c(tmpTSRANGE[1],tmpTSRANGE[2]),
                     c(TSRANGE[1],TSRANGE[2]),frequency)>0)
       {
-        
         if (NUMPERIOD(c(tmpTSRANGE[3],tmpTSRANGE[4]),
                       c(TSRANGE[1],TSRANGE[2]),frequency)>0)
         {
           idxToBeRemoved=c(idxToBeRemoved,idxN) 
           .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, "OptimizeBounds$',elemName,'$TSRANGE" does not intersect with simulation TSRANGE.\n')) 
         } 
-        
       }
       
       if (NUMPERIOD(c(tmpTSRANGE[3],tmpTSRANGE[4]),
                     c(TSRANGE[3],TSRANGE[4]),frequency)<0) 
       {
-        
         if (NUMPERIOD(c(tmpTSRANGE[1],tmpTSRANGE[2]),
                       c(TSRANGE[3],TSRANGE[4]),frequency)<0)
         {
@@ -5958,7 +5888,6 @@ SIMULATE <- function(model=NULL,
           .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, "OptimizeBounds$',elemName,'$TSRANGE" does not intersect with simulation TSRANGE.\n')) 
         }
       }
-      
     }
     
     if (length(idxToBeRemoved)>0) OptimizeBounds=OptimizeBounds[-idxToBeRemoved]
@@ -5990,7 +5919,6 @@ SIMULATE <- function(model=NULL,
       
       for (idxN in names(OptimizeBounds))
       {
-        
         if (any(is.null(OptimizeBounds[[idxN]]$BOUNDS)) 
             || any(! is.finite(OptimizeBounds[[idxN]]$BOUNDS))
             || length(OptimizeBounds[[idxN]]$BOUNDS) !=2) 
@@ -5998,16 +5926,12 @@ SIMULATE <- function(model=NULL,
         
         if (OptimizeBounds[[idxN]]$BOUNDS[1] >= OptimizeBounds[[idxN]]$BOUNDS[2]) 
           stop(callerName,'"OptimizeBounds$',idxN,'$BOUNDS[2]" must be greater than "OptimizeBounds$',idxN,'$BOUNDS[1]".')
-        
-        
       }
       
     } else {
       stop(callerName,'"OptimizeBounds" are null in the simulation TSRANGE.')
     }
-    
     # end check OptimizeBounds
-    
     
     #check argument OptimizeRestrictions
     if (! is.null(OptimizeRestrictions))
@@ -6016,14 +5940,12 @@ SIMULATE <- function(model=NULL,
       if (length(names(OptimizeRestrictions)) != length(unique(names(OptimizeRestrictions)))) stop(callerName,'there are duplicated names in "OptimizeRestrictions".') 
       for (idxN in names(OptimizeRestrictions))
       {
-        
         if (! is.list(OptimizeRestrictions[[idxN]]) 
             || is.null(names(OptimizeRestrictions[[idxN]])) 
             || length(OptimizeRestrictions[[idxN]])!=2
             || all(sort(names(OptimizeRestrictions[[idxN]])) != c('INEQUALITY','TSRANGE')))
           stop(callerName,'"OptimizeRestrictions$',idxN,'" must be a named list built of the following 2 components: TSRANGE, INEQUALITY.')
-        
-        
+       
         if (is.logical(OptimizeRestrictions[[idxN]]$TSRANGE) && ! is.na(OptimizeRestrictions[[idxN]]$TSRANGE)) 
         {
           if (OptimizeRestrictions[[idxN]]$TSRANGE!=TRUE) 
@@ -6032,7 +5954,8 @@ SIMULATE <- function(model=NULL,
           #set full TSRANGE if OptimizeRestrictions$idxN$TSRANGE is TRUE
           OptimizeRestrictions[[idxN]]$TSRANGE=TSRANGE 
         } else
-        { #check TSRANGE
+        { 
+          #check TSRANGE
           tryCatch({
             tmpTSRANGE=OptimizeRestrictions[[idxN]]$TSRANGE
             if (! ( is.numeric(tmpTSRANGE) && length(tmpTSRANGE)==4 && 
@@ -6052,25 +5975,23 @@ SIMULATE <- function(model=NULL,
       {
         elemName=names(OptimizeRestrictions)[idxN] 
         tmpTSRANGE=OptimizeRestrictions[[idxN]]$TSRANGE
+        
         #check intersection between OptimizeRestrictions TSRANGE and Simulation TSRANGE
         #remove items whose TSRANGE is outside Simulation TSRANGE
         if (NUMPERIOD(c(tmpTSRANGE[1],tmpTSRANGE[2]),
                       c(TSRANGE[1],TSRANGE[2]),frequency)>0)
         {
-          
           if (NUMPERIOD(c(tmpTSRANGE[3],tmpTSRANGE[4]),
                         c(TSRANGE[1],TSRANGE[2]),frequency)>0)
           {
             idxToBeRemoved=c(idxToBeRemoved,idxN) 
             .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, "OptimizeRestrictions$',elemName,'$TSRANGE" does not intersect with simulation TSRANGE.\n')) 
           } 
-          
         }
         
         if (NUMPERIOD(c(tmpTSRANGE[3],tmpTSRANGE[4]),
                       c(TSRANGE[3],TSRANGE[4]),frequency)<0) 
         {
-          
           if (NUMPERIOD(c(tmpTSRANGE[1],tmpTSRANGE[2]),
                         c(TSRANGE[3],TSRANGE[4]),frequency)<0)
           {
@@ -6078,7 +5999,6 @@ SIMULATE <- function(model=NULL,
             .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, "OptimizeRestrictions$',elemName,'$TSRANGE" does not intersect with simulation TSRANGE.\n')) 
           }
         }
-        
       }
       
       if (length(idxToBeRemoved)>0) OptimizeRestrictions=OptimizeRestrictions[-idxToBeRemoved]
@@ -6111,7 +6031,6 @@ SIMULATE <- function(model=NULL,
         #check there's no overlapping in Restrictions TSRANGEs
         if (length(OptimizeRestrictions)>1)
         {
-          
           for (idxN in 1:(length(OptimizeRestrictions)-1))
           {
             for (idxM in (idxN+1):length(OptimizeRestrictions))
@@ -6143,7 +6062,6 @@ SIMULATE <- function(model=NULL,
         
         for (idxN in names(OptimizeRestrictions))
         {
-          
           if (any(is.null(OptimizeRestrictions[[idxN]]$INEQUALITY)) 
               || any(! is.character(OptimizeRestrictions[[idxN]]$INEQUALITY))
               || length(OptimizeRestrictions[[idxN]]$INEQUALITY) !=1) 
@@ -6155,12 +6073,16 @@ SIMULATE <- function(model=NULL,
           #check double logical operator
           if (grepl('&&',outIE)) stop(callerName,'INEQUALITY definition "',outIE,'" in "OptimizeRestrictions$',idxN,'" cannot contain "&&". Please consider using the single operator "&".') 
           if (grepl('\\|\\|',outIE)) stop(callerName,'INEQUALITY definition "',outIE,'" in "OptimizeRestrictions$',idxN,'" cannot contain "||". Please consider using the single operator "|".') 
+          
           #check unknown funs names
           unknownFuns=.unknownFunsNames(outIE,reservedKeyw)
+          
           if (length(unknownFuns)>0) stop(callerName,'unsupported functions in "OptimizeRestrictions$',idxN,'": ',
                                           paste0(paste0(unknownFuns,'()'),collapse=', ')) 
+          
           #extract components names from restriction
           namesOnRestr=strsplit(gsub("^\\s+|\\s+$", "",gsub(symOnIfCleaner,' ',outIE,ignore.case=TRUE)),'\\s+')[[1]] 
+          
           #remove numbers
           rmvNumOnRSIdx=c() 
           for (idxNamesOnR in 1:length(namesOnRestr)) {
@@ -6169,40 +6091,35 @@ SIMULATE <- function(model=NULL,
               rmvNumOnRSIdx=c(rmvNumOnRSIdx,idxNamesOnR) 
             }
           }
+          
           if (length(rmvNumOnRSIdx)>0) namesOnRestr=namesOnRestr[-rmvNumOnRSIdx] 
+          
           #check restriction condition is time series
           if (length(namesOnRestr)==0) stop(callerName,'syntax error in INEQUALITY definition "',outIE,'" in "OptimizeRestrictions$',idxN,'". Logical condition must contain time series.')
-          
           
           #check components name
           for (idxNOR in 1:length(namesOnRestr)) {
             if (length(grep(allowedCharOnName,namesOnRestr[idxNOR]))==0) 
             {
               stop(callerName,'syntax error in INEQUALITY definition "',outIE,'" in "OptimizeRestrictions$',idxN,'". The following symbol cannot be a variable name: "',namesOnRestr[idxNOR],'".')
-              
             }
           }
           
           if (any(grepl('__',namesOnRestr)))
             stop(callerName,'variable names in INEQUALITY definition "',outIE,'" in "OptimizeRestrictions$',idxN,'" cannot contain double underscore "__". Please change the following variable names: ',paste0(namesOnRestr[which(grepl('__',namesOnRestr))],collapse=', '))
-          
-          
-          
+         
           for (idxNOR in 1:length(namesOnRestr)) {
             if (! namesOnRestr[idxNOR] %in% model_fullComponentList) 
             {
               stop(callerName,'unknown symbol in INEQUALITY definition "',outIE,'" in "OptimizeRestrictions$',idxN,'". The variable "',namesOnRestr[idxNOR],'" is not a model variable.',
                    ifelse(! is.null(RESCHECKeqList),paste0(' Please note that RESCHECKeqList="',paste(RESCHECKeqList,collapse=', '),'"'),'')
               )
-              
             }
           }
-          
           
           outIE=gsub('<-','< -',outIE) 
           if (! grepl('(==|<|>|>=|<=|!=|&|\\|)',outIE))
             stop(callerName,'syntax error in INEQUALITY definition "',outIE,'" in "OptimizeRestrictions$',idxN,'". No logical operators found.')
-          
           
           outIE=.MODEL_MOD_FUNC_NAMES(outIE)
           outIE=.appendAFtoEndVars(outIE,model_vendog)
@@ -6210,14 +6127,14 @@ SIMULATE <- function(model=NULL,
                                            paste0(model_vendog,'__ADDFACTOR'))
                                    ,'0') 
           #explode model funs
-          s=.explodeTSLAG(outIE)
-          s=.explodeTSDELTA(s$output)
-          s=.explodeTSDELTAP(s$output)
-          s=.explodeTSDELTALOG(s$output)
-          s=.explodeMTOT(s$output)
-          s=.explodeMAVE(s$output)
+          tempS=.explodeTSLAG(outIE)
+          tempS=.explodeTSDELTA(tempS$output)
+          tempS=.explodeTSDELTAP(tempS$output)
+          tempS=.explodeTSDELTALOG(tempS$output)
+          tempS=.explodeMTOT(tempS$output)
+          tempS=.explodeMAVE(tempS$output)
           
-          outIE=s$output
+          outIE=tempS$output
           
           #stop if the inequality requires lagging time series more than model equations
           if (-.getLowerLag(outIE)>model_max_lag) 
@@ -6231,13 +6148,10 @@ SIMULATE <- function(model=NULL,
           tryCatch({
             OptimizeRestrictions[[idxN]]$inExpr=parse(text=outIE)
           },error=function(err) stop(callerName,'syntax error in INEQUALITY definition "',OptimizeRestrictions[[idxN]]$INEQUALITY,'" in "OptimizeRestrictions$',idxN,'".')
-          
           )
         }
         
-        
       } else {
-        
         .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, "OptimizeRestrictions" are null in the simulation TSRANGE.\n')) 
       }
     }
@@ -6256,7 +6170,6 @@ SIMULATE <- function(model=NULL,
           || all(sort(names(OptimizeFunctions[[idxN]])) != c('FUNCTION','TSRANGE')))
         stop(callerName,'"OptimizeFunctions$',idxN,'" must be a named list built of the following 2 components: FUNCTION, TSRANGE.')
       
-      
       if (is.logical(OptimizeFunctions[[idxN]]$TSRANGE) && ! is.na(OptimizeFunctions[[idxN]]$TSRANGE)) 
       {
         if (OptimizeFunctions[[idxN]]$TSRANGE!=TRUE) 
@@ -6265,7 +6178,8 @@ SIMULATE <- function(model=NULL,
         #set full TSRANGE if OptimizeFunctions$idxN$TSRANGE is TRUE
         OptimizeFunctions[[idxN]]$TSRANGE=TSRANGE 
       } else
-      { #check TSRANGE
+      { 
+        #check TSRANGE
         tryCatch({
           tmpTSRANGE=OptimizeFunctions[[idxN]]$TSRANGE
           
@@ -6292,20 +6206,17 @@ SIMULATE <- function(model=NULL,
       if (NUMPERIOD(c(tmpTSRANGE[1],tmpTSRANGE[2]),
                     c(TSRANGE[1],TSRANGE[2]),frequency)>0)
       {
-        
         if (NUMPERIOD(c(tmpTSRANGE[3],tmpTSRANGE[4]),
                       c(TSRANGE[1],TSRANGE[2]),frequency)>0)
         {
           idxToBeRemoved=c(idxToBeRemoved,idxN) 
           .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, "OptimizeFunctions$',elemName,'$TSRANGE" does not intersect with simulation TSRANGE.\n')) 
         } 
-        
       }
       
       if (NUMPERIOD(c(tmpTSRANGE[3],tmpTSRANGE[4]),
                     c(TSRANGE[3],TSRANGE[4]),frequency)<0) 
       {
-        
         if (NUMPERIOD(c(tmpTSRANGE[1],tmpTSRANGE[2]),
                       c(TSRANGE[3],TSRANGE[4]),frequency)<0)
         {
@@ -6313,7 +6224,6 @@ SIMULATE <- function(model=NULL,
           .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, "OptimizeFunctions$',elemName,'$TSRANGE" does not intersect with simulation TSRANGE.\n')) 
         }
       }
-      
     }
     
     if (length(idxToBeRemoved)>0) OptimizeFunctions=OptimizeFunctions[-idxToBeRemoved]
@@ -6346,7 +6256,6 @@ SIMULATE <- function(model=NULL,
       #check there's no overlapping in Restrictions TSRANGEs
       if (length(OptimizeFunctions)>1)
       {
-        
         for (idxN in 1:(length(OptimizeFunctions)-1))
         {
           for (idxM in (idxN+1):length(OptimizeFunctions))
@@ -6371,14 +6280,12 @@ SIMULATE <- function(model=NULL,
                           c(tmp2TSRANGE[3],tmp2TSRANGE[4])
                           ,frequency)>-1)
               stop(callerName,'"OptimizeFunctions$',names(OptimizeFunctions)[idxN],'$TSRANGE" overlaps with "OptimizeFunctions$',names(OptimizeFunctions)[idxM],'$TSRANGE".')
-            
           }
         }
       }
       
       for (idxN in names(OptimizeFunctions))
       {
-        
         if (any(is.null(OptimizeFunctions[[idxN]]$FUNCTION)) 
             || any(! is.character(OptimizeFunctions[[idxN]]$FUNCTION))
             || length(OptimizeFunctions[[idxN]]$FUNCTION) !=1) 
@@ -6387,13 +6294,14 @@ SIMULATE <- function(model=NULL,
         #transform fun raw text into suitable expression
         outFUN=OptimizeFunctions[[idxN]]$FUNCTION
         
-        
         #check unknown funs names
         unknownFuns=.unknownFunsNames(outFUN,reservedKeyw)
         if (length(unknownFuns)>0) stop(callerName,'unsupported functions in "OptimizeFunctions$',idxN,'": ',
                                         paste0(paste0(unknownFuns,'()'),collapse=', ')) 
+        
         #extract components names from restriction
         namesOnFun=strsplit(gsub("^\\s+|\\s+$", "",gsub(symOnEqCleaner,' ',outFUN,ignore.case=TRUE)),'\\s+')[[1]] 
+        
         #remove numbers
         rmvNumOnFunIdx=c() 
         for (idxNamesOnF in 1:length(namesOnFun)) {
@@ -6403,52 +6311,46 @@ SIMULATE <- function(model=NULL,
           }
         }
         if (length(rmvNumOnFunIdx)>0) namesOnFun=namesOnFun[-rmvNumOnFunIdx] 
+        
         #check function is time series
         if (length(namesOnFun)==0) stop(callerName,'syntax error in FUNCTION definition "',outFUN,'" in "OptimizeFunction$',idxN,'". Function definition must contain time series.')
-        
         
         #check components name
         for (idxNOF in 1:length(namesOnFun)) {
           if (length(grep(allowedCharOnName,namesOnFun[idxNOF]))==0) 
           {
             stop(callerName,'syntax error in FUNCTION definition "',outFUN,'" in "OptimizeFunction$',idxN,'". The following symbol cannot be a variable name: "',namesOnFun[idxNOF],'".')
-            
           }
         }
         
         if (any(grepl('__',namesOnFun)))
           stop(callerName,'variable names in FUNCTION definition "',outFUN,'" in "OptimizeFunction$',idxN,'" cannot contain double underscore "__". Please change the following variable names: ',paste0(namesOnFun[which(grepl('__',namesOnFun))],collapse=', '))
-        
-        
-        
+      
         for (idxNOF in 1:length(namesOnFun)) {
           if (! namesOnFun[idxNOF] %in% model_fullComponentList) 
           {
             stop(callerName,'unknown symbol in FUNCTION definition "',outFUN,'" in "OptimizeFunction$',idxN,'". The variable "',namesOnFun[idxNOF],'" is not a model variable.',
                  ifelse(! is.null(RESCHECKeqList),paste0(' Please note that RESCHECKeqList="',paste(RESCHECKeqList,collapse=', '),'"'),'')
             )
-            
           }
         }
         
         if ( grepl('(=|<|>|>=|<=|!=|&|\\|)',outFUN))
           stop(callerName,'syntax error in FUNCTION definition "',outFUN,'" in OptimizeFunctions$',idxN,'. No logical nor assignment operators allowed in function definition.')
         
-        
         outFUN=.MODEL_MOD_FUNC_NAMES(outFUN)
         outFUN=.appendIndexToVars(outFUN,c(model_vexog,
                                            model_vendog)
                                   ,'0') 
         #explode model funs
-        s=.explodeTSLAG(outFUN)
+        tempS=.explodeTSLAG(outFUN)
+        tempS=.explodeTSDELTA(tempS$output)
+        tempS=.explodeTSDELTAP(tempS$output)
+        tempS=.explodeTSDELTALOG(tempS$output)
+        tempS=.explodeMTOT(tempS$output)
+        tempS=.explodeMAVE(tempS$output)
         
-        s=.explodeTSDELTA(s$output)
-        s=.explodeTSDELTAP(s$output)
-        s=.explodeTSDELTALOG(s$output)
-        s=.explodeMTOT(s$output)
-        s=.explodeMAVE(s$output)
-        
-        outFUN=s$output
+        outFUN=tempS$output
         
         #stop if the function requires lagging time series more than model equations
         if (-.getLowerLag(outFUN)>model_max_lag) 
@@ -6462,26 +6364,15 @@ SIMULATE <- function(model=NULL,
         tryCatch({
           OptimizeFunctions[[idxN]]$funExpr=parse(text=outFUN)
         },error=function(err) stop(callerName,'syntax error in FUNCTION definition "',OptimizeFunctions[[idxN]]$FUNCTION,'" in "OptimizeFunctions$',idxN,'".')
-        
         )
-        
-        
       }
-      
-      
     } else {
-      
       stop(callerName,'"OptimizeFunctions" is null in the simulation TSRANGE.\n')
-      
     }
     
     # end check OptimizeFunctions
     
   }#end if OPTIMIZE
-  
-  
-  
-  
   
   # extended tsrange --------------------------------------
   
@@ -6509,7 +6400,8 @@ SIMULATE <- function(model=NULL,
   #check behavioral coefficients
   if (length(model$behaviorals)>0) 
   {  if (is.null(RESCHECKeqList)) 
-  { #user requested a full simulation
+  { 
+    #user requested a full simulation
     for (idx in 1:length(model$behaviorals)) 
     {
       #check behavioral has coefficients defined and consistent
@@ -6538,17 +6430,12 @@ SIMULATE <- function(model=NULL,
                RESCHECK_behaviorals[idx],'" or rerun ESTIMATE().')
         }    
       }
+    }
   }
-  }
-  
-  
-  
   
   if (! is.null(verboseVars) &&
       (! is.character(verboseVars) || ! all(verboseVars %in% model_fullComponentList)))
     stop(callerName,'"verboseVars" must be a character array built of model variables.')
-  
-  
   
   #user requested a selection of endogenous rescheck
   if (!is.null(RESCHECKeqList))
@@ -6575,13 +6462,10 @@ SIMULATE <- function(model=NULL,
     model_names_identity=base::intersect(names(model$identities),RESCHECK_identities) 
     if (! is.null(verboseVars))
     {
-      #  verboseVars=model_fullComponentList 
-      #} else {
       verboseVars=base::intersect(verboseVars,model_fullComponentList) 
       if (length(verboseVars)==0) 
       {
         .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, "verboseVars" is not coherent and will be set equal to "RESCHECKeqList".\n')) 
-        #  verboseVars=model_fullComponentList 
       }
     }
   }
@@ -6592,7 +6476,6 @@ SIMULATE <- function(model=NULL,
   model_vendog_forecast=c() 
   for (idx in 1:length(model_vendog))
   {
-    
     if (model_vendog[idx] %in% model_names_identity)
     {
       if (model$identities[[model_vendog[idx]]]$hasIF==FALSE)
@@ -6611,14 +6494,10 @@ SIMULATE <- function(model=NULL,
   #get exogenized vendog with IF condition (vendog_forecast UNION vendog_exogenized = vendog)
   model_vendog_exogenized = base::setdiff(model_vendog,model_vendog_forecast) 
   
-  
-  
   # create proxies -----------------------------------
-  
   
   tryCatch(
     {
-      
       #create local proxies (i.e. model variables stored in matrices)
       #for all references (i.e. component names used in eq) in behaviorals/identities
       #and stores each var as "name"__ORIGINAL
@@ -6630,20 +6509,19 @@ SIMULATE <- function(model=NULL,
                            ARRAY=TRUE,
                            EXTEND=TRUE,
                            avoidCompliance = TRUE) 
-        #builds matrices (in case of parallel sims)
+        #build matrices (in case of parallel sims)
         tempValues=matrix(tsValues,ncol=replica,nrow=extSimSteps) 
         
         #create proxy for full original time series (on EXTENDED_TSRANGE)
         #__ORIGINAL wont be modified during sim
         localE[[paste0(tempName,'__ORIGINAL')]]=tempValues
         
-        
-        
       }
       
     },error=function(e){
       stop(callerName,'model data must contain time series "',tempName,'".') 
     }) 
+  
   tryCatch(
     {
       #add factor all set to 0
@@ -6651,25 +6529,23 @@ SIMULATE <- function(model=NULL,
       tempValues=matrix(tsValues,ncol=replica,nrow=extSimSteps) 
       for (tempName in paste0(model_vendog,'__ADDFACTOR'))
       {
-        
         #create proxy for full original time series (on EXTENDED_TSRANGE)
         localE[[paste0(tempName,'__ORIGINAL')]]=tempValues
         
         #this is needed if tmpName time series is not in CA, INSTRUMENT or StochStructure
         localE[[paste0(tempName)]]=tempValues
-        
       } 
       
     },error=function(e){
       stop(callerName,'cannot initialize the constant adjustment of "',tempName,'".') 
     }) 
+  
   tryCatch(
     {
       #... create proxies for explicit Constant Adjustment
       if (length(ConstantAdjustment)>0) 
         for (idxAF in 1:length(ConstantAdjustment))
         {
-          
           tempName=paste0(names(ConstantAdjustment)[idxAF],'__ADDFACTOR') 
           #assign from input list to local environment
           #project to ext TSRANGE
@@ -6690,6 +6566,7 @@ SIMULATE <- function(model=NULL,
     },error=function(e){
       stop(callerName,'"ConstantAdjustment" must contain time series "',tempName,'".') 
     }) 
+  
   #if multipliers requested then modify INSTRUMENTS columns with SHOCKs...
   if (MULTMATRIX) 
   { 
@@ -6716,15 +6593,12 @@ SIMULATE <- function(model=NULL,
         #save back
         localE[[idxI]]=tmpM
       }
-      
     } 
   }
   
-  
-  
   # check missings and lengths --------------------------------
   
-  #missing check in first max_lag obs: NA allowed so in case print just a warnings
+  #missing check in first max_lag obs: NA allowed so in case print a warning
   
   #leadingTSRANGE  = EXTENDED_TSRANGE - TSRANGE
   leadingTSRANGE=EXTENDED_TSRANGE 
@@ -6738,13 +6612,13 @@ SIMULATE <- function(model=NULL,
       
       #verify there are no missing values in first max_lag values
       localMissingIndexes=which(! is.finite(tmpProxy[(1:model_max_lag),])) 
+      
       #index in GETDATE accounts for replicas
       if (length(localMissingIndexes)>0 )
         .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, ',
                                                        ifelse(idxName %in% model_vendog,'endogenous','exogenous'),' variable "',idxName,'" is not fully defined in extended TSRANGE. There are undefined values at year-period ',
                                                        paste0(date2yp(as.Date(
                                                          GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=leadingTSRANGE,EXTEND=TRUE,avoidCompliance = TRUE),
-                                                                 #localMissingIndexes[length(localMissingIndexes)/replica],avoidCompliance = TRUE)
                                                                  (localMissingIndexes[length(localMissingIndexes)]-1) %% leadingSteps+1,avoidCompliance = TRUE)
                                                        ),f=frequency),collapse = '-'),'.\n')) 
     }
@@ -6761,18 +6635,15 @@ SIMULATE <- function(model=NULL,
         .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, constant adjustment of endogenous variable "',idxCA,'" is not fully defined in extended TSRANGE. There are undefined values at year-period ',
                                                        paste0(date2yp(as.Date(
                                                          GETDATE(TSPROJECT(ConstantAdjustment[[idxCA]],TSRANGE=leadingTSRANGE,EXTEND=TRUE),
-                                                                 #localMissingIndexes[length(localMissingIndexes)/replica],avoidCompliance = TRUE)
                                                                  (localMissingIndexes[length(localMissingIndexes)]-1) %% leadingSteps+1,avoidCompliance = TRUE)
                                                        ),f=frequency),collapse = '-'),'.\n')) 
-    }
-  
+      }
   
   #check missing and length in vexog time series inside TSRANGE : if NA then error
   
   if (length(model_vexog)>0) 
     for (idxName in (model_vexog))    
     {
-      
       tmpProxy=localE[[paste0(idxName,'__ORIGINAL')]]
       
       #verify there are no missing values
@@ -6780,88 +6651,78 @@ SIMULATE <- function(model=NULL,
       localMissingIndexes=which(! is.finite(tmpProxy[-(1:model_max_lag),])) 
       #index in GETDATE accounts for replicas
       if (length(localMissingIndexes)>0 )
-        stop(callerName,'exogenous variable "',idxName,'" is not fully defined in the TSRANGE. There are undefined values at year-period ',
+        stop(callerName,'exogenous variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values at year-period ',
              paste0(date2yp(as.Date(
                GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=TSRANGE,EXTEND=TRUE,avoidCompliance = TRUE),
-                       #localMissingIndexes[length(localMissingIndexes)/replica],avoidCompliance = TRUE)
                        (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1,avoidCompliance = TRUE)
              ),f=frequency),collapse = '-'),'\n')
-      
-      
     }
   
-  #check missing and length in vexogenized time series inside TSRANGE  : if NA then error
+  #check missing and length in vexogenized time series inside TSRANGE : if NA then error
   if (length(model_vendog_exogenized)>0) 
     for (idxName in (model_vendog_exogenized))
     {
-      
       tmpProxy=localE[[paste0(idxName,'__ORIGINAL')]]
       
       #verify there are no missing values
       localMissingIndexes=which(! is.finite(tmpProxy[-(1:model_max_lag),])) 
       if (length(localMissingIndexes)>0  ) 
-        stop(callerName,'exogenized variable "',idxName,'" is not fully defined in the TSRANGE. There are undefined values at year-period ',
+        stop(callerName,'exogenized variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values at year-period ',
              paste0(date2yp(as.Date(
                GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=TSRANGE,EXTEND=TRUE,avoidCompliance = TRUE),
-                       #localMissingIndexes[length(localMissingIndexes)/replica],avoidCompliance = TRUE)
                        (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1,avoidCompliance = TRUE)
              ),f=frequency),collapse = '-'),'.\n')
-      
     }
   
-  #check missing and length in vendog time series inside TSRANGE  : if NA then ..depends on simType
+  #check missing and length in vendog time series inside TSRANGE  : if NA then ...depends on simType
   if (length(model_vendog)>0) 
     for (idxName in (model_vendog))
     { 
-      
       tmpProxy=localE[[paste0(idxName, '__ORIGINAL')]]
       
       #verify there are no missing values 
       localMissingIndexes=which(! is.finite(tmpProxy[-(1:model_max_lag),])) 
+      
       #in DYNAMIC and FORECAST sim we can allow missings in trailing obs
       if (length(localMissingIndexes)>0  ) 
       { if (simType != 'FORECAST') .MODEL_outputText(outputText = !quietly,
                                                      paste0('\n',callerName,'warning, endogenous variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values at year-period ',
                                                             paste0(date2yp(as.Date(
                                                               GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=TSRANGE,EXTEND=TRUE,avoidCompliance = TRUE),
-                                                                      #localMissingIndexes[length(localMissingIndexes)/replica],avoidCompliance = TRUE)
                                                                       (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1,avoidCompliance = TRUE)
-                                                            ),f=frequency),collapse = '-'),'\n')) 
+                                                            ),f=frequency),collapse = '-'),'.\n')) 
         if (simType=='DYNAMIC')
         {
-          .MODEL_outputText(outputText = !quietly,paste0('\nSimulation will continue replicating last observation in time series "', idxName,'" over the full TSRANGE. Use the FORECAST option to avoid this message.\n')) 
+          .MODEL_outputText(outputText = !quietly,paste0('\nSimulation will continue replicating last observation in time series "', idxName,'" over the full TSRANGE. Use the "FORECAST" option in "simType" argument to avoid this message.\n')) 
         }
         
         if (simType=='DYNAMIC' || simType == 'FORECAST')
         {
           
-          #here we propagate last known finite observation if any trailing missing
-          localMissingIndexes=which(! is.finite(tmpProxy)) 
           #should never happen
-          if (length(localMissingIndexes)==length(tmpProxy)) 
+          if (all(! is.finite(tmpProxy))) 
             stop(callerName,'all endogenous time series "', idxName,'" values are undefined in the extended TSRANGE. Cannot initialize the simulation.')
           
-          #get last known finite observation
-          lastKnownIndex=max(which(is.finite(rowSums(tmpProxy)))) 
-          #all obs, if lastKnownIndex is last row of tmpProxy then skip
-          if (replica*lastKnownIndex < length(tmpProxy))
-          {
-            #assign finite values it to trailing missings (and consider replica)
-            lastKnownObservation=tmpProxy[drop=FALSE,lastKnownIndex,] 
-            lastKnownObservationM=c() 
-            for (tmpIdx in 1:length(lastKnownIndex:(length(tmpProxy)/replica))) lastKnownObservationM=rbind(lastKnownObservationM,lastKnownObservation) 
-            tmpProxy[lastKnownIndex:(length(tmpProxy)/replica),]=lastKnownObservationM 
-            #update original and current time series
-            localE[[paste0(idxName,'__ORIGINAL')]]=tmpProxy
-          }
+          #here we propagate last known finite observation if any trailing missing
+          localMissingIndexes=which(! is.finite(tmpProxy)) 
+          
+          numRows=dim(tmpProxy)[1]
+          
+          #replicate last known finite observation 
+          if (length(localMissingIndexes)>0 && numRows>1)
+            for (idxR in 2:numRows)
+              if (any(! is.finite(tmpProxy[idxR,]))) tmpProxy[idxR,]=tmpProxy[idxR-1,]
+          
+          #update original and current time series
+          localE[[paste0(idxName,'__ORIGINAL')]]=tmpProxy
           
           localMissingIndexes=which(! is.finite(tmpProxy[-(1:model_max_lag),])) 
+          
           #check all missings are gone (may be we have NA inside TSRANGE but latest obs are ok)
           if (length(localMissingIndexes)>0  ) 
             stop(paste0('\n',callerName,'endogenous variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values at year-period ',
                         paste0(date2yp(as.Date(
                           GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=TSRANGE,EXTEND=TRUE),
-                                  #localMissingIndexes[length(localMissingIndexes)/replica],avoidCompliance = TRUE)
                                   (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1,avoidCompliance = TRUE)
                         ),f=frequency),collapse = '-'),'.\n')) 
         }
@@ -6871,41 +6732,35 @@ SIMULATE <- function(model=NULL,
           stop(callerName,'endogenous variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values at year-period ',
                paste0(date2yp(as.Date(
                  GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=TSRANGE,EXTEND=TRUE),
-                         #localMissingIndexes[length(localMissingIndexes)/replica],avoidCompliance = TRUE)
                          (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1,avoidCompliance = TRUE)
-               ),f=frequency),collapse = '-'),'.\n','Simulation of type "',simType,'" will stop.')
+               ),f=frequency),collapse = '-'),'.\n')
         }
       }
-      
     }
   
   #check missing and length in CA time series inside TSRANGE: if NA then stop
   if (length(ConstantAdjustment)>0) 
     for (idxCA in names(ConstantAdjustment))
     {
-      
       tmpProxy=localE[[paste0(idxCA,'__ADDFACTOR__ORIGINAL')]]
       
       #verify there are no missing values
       localMissingIndexes=which(! is.finite(tmpProxy[-(1:model_max_lag),])) 
       if (length(localMissingIndexes)>0 )
-        stop(callerName,'constant adjustment of endogenous variable "',idxCA,'" is not fully defined in the TSRANGE. There are undefined values at year-period ',
+        stop(callerName,'constant adjustment of endogenous variable "',idxCA,'" is not fully defined in TSRANGE. There are undefined values at year-period ',
              paste0(date2yp(as.Date(
                GETDATE(TSPROJECT(ConstantAdjustment[[idxCA]],TSRANGE=TSRANGE,EXTEND=TRUE),
-                       #localMissingIndexes[length(localMissingIndexes)/replica],avoidCompliance = TRUE)
                        (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1,avoidCompliance = TRUE)
              ),f=frequency),collapse = '-'),'.\n')
-      
-      
     }
   
   #backupped and later saved in simulate_parameters
   Exogenize_original=Exogenize 
+  
   #print messages....
   if (length(Exogenize) >0) 
     for (idxEL in names(Exogenize))
     {
-      
       .MODEL_outputText(outputText = !quietly,paste0(callerName,'endogenous variable "',
                                                      idxEL,
                                                      '" has been exogenized from year-period ',
@@ -6917,13 +6772,11 @@ SIMULATE <- function(model=NULL,
         (NUMPERIOD(TSRANGE[1:2],Exogenize[[idxEL]][1:2],frequency)+1):
           (NUMPERIOD(TSRANGE[1:2],Exogenize[[idxEL]][3:4],frequency)+1)
       )
-      
     }
   
   if (length(ConstantAdjustment) >0) 
     for (idxCA in names(ConstantAdjustment))
     {
-      
       tryCatch(
         {.MODEL_outputText(outputText = !quietly,paste0(callerName,'endogenous variable "',
                                                         idxCA,
@@ -6947,6 +6800,7 @@ SIMULATE <- function(model=NULL,
   
   #backupped and later saved in simulate_parameters
   StochStructure_original= StochStructure 
+  
   #print messages....
   if (STOCHSIMULATE && length(StochStructure)>0) 
     for (idxSS in names(StochStructure))
@@ -6968,16 +6822,13 @@ SIMULATE <- function(model=NULL,
           (NUMPERIOD(EXTENDED_TSRANGE[1:2],StochStructure[[idxSS]]$TSRANGE[3:4],frequency)+1)
       )
       
-      
       if (StochStructure[[idxSS]]$TYPE == 'MATRIX')
       { 
         if( (nrow(StochStructure[[idxSS]]$PARS) != length(StochStructure[[idxSS]]$TSRANGE)) ||
             (ncol(StochStructure[[idxSS]]$PARS) != (replica-1)) )
           stop(callerName,paste0('"StochStructure$',idxSS,'PARS" must be a ',length(StochStructure[[idxSS]]$TSRANGE),' x ',replica-1,' matrix (i.e. "periods in TSRANGE" x "StochReplica").'))
       }
-      
     }
-  
   
   if (OPTIMIZE)
   {
@@ -6996,7 +6847,6 @@ SIMULATE <- function(model=NULL,
           (NUMPERIOD(EXTENDED_TSRANGE[1:2],OptimizeBounds[[idxSS]]$TSRANGE[1:2],frequency)+1):
             (NUMPERIOD(EXTENDED_TSRANGE[1:2],OptimizeBounds[[idxSS]]$TSRANGE[3:4],frequency)+1)
         )
-        
       }
     }
     
@@ -7014,7 +6864,6 @@ SIMULATE <- function(model=NULL,
           (NUMPERIOD(EXTENDED_TSRANGE[1:2],OptimizeRestrictions[[idxSS]]$TSRANGE[1:2],frequency)+1):
             (NUMPERIOD(EXTENDED_TSRANGE[1:2],OptimizeRestrictions[[idxSS]]$TSRANGE[3:4],frequency)+1)
         )
-        
       }
     }
     
@@ -7032,15 +6881,9 @@ SIMULATE <- function(model=NULL,
           (NUMPERIOD(EXTENDED_TSRANGE[1:2],OptimizeFunctions[[idxSS]]$TSRANGE[1:2],frequency)+1):
             (NUMPERIOD(EXTENDED_TSRANGE[1:2],OptimizeFunctions[[idxSS]]$TSRANGE[3:4],frequency)+1)
         )
-        
       }
     }
-    
-    
   }
-  
-  
-  
   
   # add stoch noise ----------------------------------------------------------------------------------------
   
@@ -7052,10 +6895,8 @@ SIMULATE <- function(model=NULL,
     
     if (length(StochStructure)>0) 
     { 
-      
       for (idxN in names(StochStructure))
       {
-        
         #create uniform perturbation
         if (StochStructure[[idxN]]$TYPE=='UNIF')
           noise=matrix(
@@ -7079,7 +6920,6 @@ SIMULATE <- function(model=NULL,
         #pass perturbation matrix to model
         if (StochStructure[[idxN]]$TYPE=='MATRIX')
         {
-          
           noise=StochStructure[[idxN]]$PARS
         }
         
@@ -7088,12 +6928,10 @@ SIMULATE <- function(model=NULL,
           #get un-noised time series
           tmpNoised_ORIG=localE[[paste0(idxN,'__ADDFACTOR__ORIGINAL')]]
           
-          
         } else if(idxN %in% model_vexog)
         {
           #get un-noised time series
           tmpNoised_ORIG=localE[[paste0(idxN,'__ORIGINAL')]]
-          
           
         } else if (! is.null(RESCHECKeqList) && length(base::intersect(idxN,model_fullComponentList))==0)
         {
@@ -7109,7 +6947,6 @@ SIMULATE <- function(model=NULL,
           tmpNoised_ORIG[StochStructure[[idxN]]$TSRANGE,2:replica]=noise
         } else
         {
-          
           tmpNoised_ORIG[StochStructure[[idxN]]$TSRANGE,2:replica]=tmpNoised_ORIG[StochStructure[[idxN]]$TSRANGE,2:replica]+noise
         }
         
@@ -7127,7 +6964,6 @@ SIMULATE <- function(model=NULL,
         
         #store perturbed ts for output
         INSTRUMENT_MM[[idxN]]=tmpNoised_ORIG[drop=FALSE,-(1:model_max_lag),]
-        
       }
     }
   }
@@ -7149,7 +6985,6 @@ SIMULATE <- function(model=NULL,
     
     if (length(OptimizeBounds)>0) 
     { 
-      
       for (idxN in names(OptimizeBounds))
       {
         #create unif noise in range
@@ -7160,7 +6995,6 @@ SIMULATE <- function(model=NULL,
             max=OptimizeBounds[[idxN]]$BOUNDS[2])
           ,nrow=length(OptimizeBounds[[idxN]]$TSRANGE)
         )
-        
         
         if (idxN %in% model_vendog)
         {
@@ -7197,8 +7031,6 @@ SIMULATE <- function(model=NULL,
         
         #store perturbed ts for output
         INSTRUMENT_MM[[idxN]]=tmpNoised_ORIG[drop=FALSE,-(1:model_max_lag),]
-        
-        
       }
     }
   }
@@ -7208,16 +7040,19 @@ SIMULATE <- function(model=NULL,
   #temp list with sim results
   simulation=list() 
   .MODEL_outputText(outputText=!quietly,"\n") 
+  
   for (currentVendog in model_names_behavioral)
   { #cycle in endogenous
     
     #get eq components names and assign into them the behavioral coefficient values
-    
     currentBehavioral=model$behaviorals[[currentVendog]] 
+    
     #get names of coefficients for current behavioral endogenous
     localCoefficientNames=currentBehavioral$eqCoefficientsNames 
+    
     #get values of coefficients for current behavioral endogenous
     localCoefficientValues=c(currentBehavioral$coefficients) 
+    
     #check there is a coefficient value for every coefficient name
     if (length(localCoefficientNames) != length(localCoefficientValues)) 
       stop(callerName,'coefficients count error in behavioral "',currentVendog,'".')
@@ -7243,10 +7078,7 @@ SIMULATE <- function(model=NULL,
           localE[[paste0(currentVendog,'__RHO__',idxEC)]]=currentBehavioral$errorCoefficients[idxEC]
         }
       }
-      
     }# end deal with AUTO
-    
-    
     
   }#for in model_names_behaviorals
   
@@ -7258,7 +7090,6 @@ SIMULATE <- function(model=NULL,
     #array of expressions used in convergence algos
     vpre_expressions=vector('list',simSteps) 
     vsim_expressions=vector('list',simSteps)
-    vsim_single_newton_expressions=vector('list',simSteps)
     vpost_expressions=vector('list',simSteps) 
     
     #support variables, needed for convergence check on feedback variables
@@ -7271,7 +7102,7 @@ SIMULATE <- function(model=NULL,
     #temp feedback values
     localE$VFEED__TEMP=matrix(ncol=replica,nrow=length_model_vfeed)
     
-    #newton methods
+    #newton methods, we need more info copied into localE
     if (simAlgo!='GAUSS-SEIDEL')
     {
       #model vfeed proxy
@@ -7331,6 +7162,7 @@ SIMULATE <- function(model=NULL,
     if (simAlgo!='GAUSS-SEIDEL')
     {
       #populate matrix of active vfeed in jacobian
+      #Exogenize or Drop can reduce the vfeed set active in Jacobian
       localE$JACOBIAN__VFEED__ACTIVE[]=1
       
       #disable vfeed idxVF in iteration idxSP if exogenized
@@ -7397,7 +7229,6 @@ SIMULATE <- function(model=NULL,
       if (length(vfeedIndexInVsim)==0) stop(callerName,'unknown error while splitting vsim vs vfeed.')
     }
     
-    
     #build gauss vsim expression (needed also in netwon algos)
     if (length_model_vsim>0) 
     { 
@@ -7448,10 +7279,8 @@ SIMULATE <- function(model=NULL,
           
           for (idxSP in 1: simSteps)  vsim_expressions[[idxSP]]=c( vsim_expressions[[idxSP]],tmp_expressions) 
         }
-        
       }#end idxE
     }
-    
     
     #build vpost expression
     if (length_model_vpost>0) 
@@ -7490,13 +7319,10 @@ SIMULATE <- function(model=NULL,
       }
     }
     
-    
     #set convergence value in local environment
     localE$CONVERGENCE__VALUE=simConvergence/100
     
-    
-  }#not RESCHECK
-  
+  }#end block simType != RESCHECK
   
   
   if (simType!='RESCHECK' && length_model_vsim==0) 
@@ -7509,16 +7335,16 @@ SIMULATE <- function(model=NULL,
   #proxies 4 speedup
   if (STOCHSIMULATE )
     noised_vendog=base::intersect(names(StochStructure),model_vendog) 
+  
   if (OPTIMIZE )
     optimized_vendog=base::intersect(names(OptimizeBounds),model_vendog) 
   
-  
+  #outer simulation tryCatch
   tryCatch({
     
     #simrange loop
     for (simIterLoopIdx in 1:simSteps)
     {
-      
       if (MULTMATRIX)
       {.MODEL_outputText(outputText=!quietly,paste0('\r','Multiplier Matrix:'),sprintf("%10.2f",simIterLoopIdx*100/simSteps),'%') 
       } else if (STOCHSIMULATE)
@@ -7528,11 +7354,10 @@ SIMULATE <- function(model=NULL,
       } else
       {.MODEL_outputText(outputText=!quietly,paste0('\r','Simulation:'),sprintf("%10.2f",simIterLoopIdx*100/simSteps),'%') }
       
-      
       if (simType != 'RESCHECK' && (verbose)) {cat('\n') }
       
       #create local proxies for all references 
-      #(components names used in eq) in  behaviorals/identities
+      #(components names used in eq) in behaviorals/identities
       #in sliding window (with range maxlag) starting from simIterLoopIdx
       for (tempName in (model_fullComponentList))
       {
@@ -7553,7 +7378,6 @@ SIMULATE <- function(model=NULL,
         {
           localE[[tempName]]=localE[[paste0(tempName,'__ORIGINAL')]][drop=FALSE,simIterLoopIdx+(0:model_max_lag),]
         } 
-      
       
       #proxy for vendog noised in stochastic simulation 
       #vendog can be noised (e.g. in StochStructure) but not in CA list
@@ -7590,7 +7414,7 @@ SIMULATE <- function(model=NULL,
               
               localE$LAST__EVAL__EQ=paste0('OptimizeRestrictions$',names(OptimizeRestrictions)[idxIE])
               
-              #eval current restriction using current simulated data
+              #eval current restriction using current INSTRUMENT data
               currentRestrictionResults=eval(OptimizeRestrictions[[idxIE]]$inExpr,envir = localE)
               
               if (length(currentRestrictionResults)==0 || any(is.na(currentRestrictionResults)) || ! all(is.logical(currentRestrictionResults))) 
@@ -7636,7 +7460,7 @@ SIMULATE <- function(model=NULL,
               #get evaluated current value
               tmpResCheck=localE[[currentVendog]][drop=FALSE,  model_max_lag_1,] 
               
-              #restore vendog (may be used in other eqs)
+              #restore vendog (could be used in other eqs)
               localE[[currentVendog]]=backupVendog
               
               #check missings     
@@ -7653,12 +7477,13 @@ SIMULATE <- function(model=NULL,
                 )) 
               #append results
               simulation[[currentVendog]]=rbind(simulation[[currentVendog]],tmpResCheck) 
+              
             } #end cycle behaviorals
             
           },error=function(err){
             stop(paste0(err$message))}
+          
         ) #end trycatch
-        
         
         tryCatch(
           {   
@@ -7713,7 +7538,7 @@ SIMULATE <- function(model=NULL,
         if (simType=='FORECAST') 
           for (tempName in (model_vendog_forecast))
           {
-            #if any error we save current vendog name to be prointed out in messages
+            #if any error we save current vendog name to be printed out in messages
             localE$LAST__EVAL__EQ=tempName
             
             #NEEDED...deal with exogenization...
@@ -7756,76 +7581,22 @@ SIMULATE <- function(model=NULL,
           cat('\nVPRE eval.:\n') 
           cat('VPRE vars: ',paste0(model_vpre,collapse=', '),'\n') 
           
+          .printVerboseSim(ConstantAdjustment,
+                           verboseVars,
+                           frequency,
+                           TSRANGE,
+                           simIterLoopIdx,
+                           idxIter,
+                           model_max_lag_1,
+                           length_model_vexog,
+                           model_vexog,
+                           replica,
+                           localE,
+                           model_vpre,
+                           model_vsim,
+                           model_vpost)
           
-          if (length(ConstantAdjustment)>0)
-          {
-            cat('CONSTANT ADJUSTMENTS:\n') 
-            for (tmpV in names(ConstantAdjustment)) 
-            {  
-              if ( tmpV %in% verboseVars)
-              {
-                cat(paste0(
-                  'Prd. ',
-                  sprintf("%4i",simIterLoopIdx),', ',
-                  paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' ',
-                  'Iter. ',
-                  sprintf("%4i",idxIter),' ',
-                  sprintf("%12s CA",tmpV),' ='))
-                
-                for (idxR in 1:replica)
-                  cat(sprintf("%20.15g",localE[[paste0(tmpV,'__ADDFACTOR')]][  model_max_lag_1,idxR])) 
-                cat('\n') 
-              }
-              
-            }
-          }
-          
-          if (length_model_vexog>0 && length(verboseVars)>0)
-          {
-            
-            cat('VEXOGS:\n') 
-            for (tmpV in model_vexog) 
-            {  
-              if ( tmpV %in% verboseVars)
-              {
-                cat(paste0(
-                  'Prd. ',
-                  sprintf("%4i",simIterLoopIdx),', ',
-                  paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' ',
-                  'Iter. ',
-                  sprintf("%4i",idxIter),' ',
-                  sprintf("%15s",tmpV),' ='))
-                
-                for (idxR in 1:replica)
-                  cat(sprintf("%20.15g",localE[[tmpV]][  model_max_lag_1,idxR])) 
-                cat('\n') 
-              }
-              
-            }
-          }
-          if ( length(verboseVars)>0) 
-          { cat('VENDOGS:\n') 
-            for (tmpV in c(model_vpre,model_vsim,model_vpost)) #...in this way vendos are ordered
-            {  
-              if (tmpV %in% verboseVars)
-              {
-                cat(paste0(
-                  'Prd. ',
-                  sprintf("%4i",simIterLoopIdx),', ',
-                  paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' ',
-                  'Iter. ',
-                  sprintf("%4i",idxIter),' ',
-                  sprintf("%15s",tmpV),' ='))
-                
-                for (idxR in 1:replica)
-                  cat(sprintf("%20.15g",localE[[tmpV]][  model_max_lag_1,idxR])) 
-                cat('\n') 
-              }
-              
-            }
-          }
         }  
-        
         
         if ( length_model_vsim>0 )
         {
@@ -7834,7 +7605,6 @@ SIMULATE <- function(model=NULL,
             #init feedback proxy with historical values (we need it for convergence test)
             #during iterations we assign VFEED_CURRENT=VFEED_NEXT
             localE$VFEED__NEXT[idxE,]=localE[[model_vfeed[idxE]]][model_max_lag_1,,drop=F]
-            
           }
           
           # init jacobian  ------------------------------
@@ -7861,7 +7631,7 @@ SIMULATE <- function(model=NULL,
                
               if (LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS==0)
               {
-                .MODEL_outputText(outputText = verbose,paste0('\n',callerName,'warning, a "NEWTON" algorithm is requested but all feedback variables have been exogenized or dropped from the Jacobian matrix, at year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' (simulation period ',simIterLoopIdx,').\n')) 
+                .MODEL_outputText(outputText = verbose,paste0('\n',callerName,'warning, a "NEWTON" algorithm is requested but all feedback variables have been exogenized or dropped from the Jacobian matrix, at year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' (simulation period ',simIterLoopIdx,').\n')) 
                 
               } else {
                 
@@ -7936,23 +7706,20 @@ SIMULATE <- function(model=NULL,
                       JACOBIAN__RELAX__VALUE=max(JACOBIAN__RELAX__VALUE*0.8,0.5)
                     }
                   }
-                  
-                  #cat('Per:',sprintf("%4i",SIM__ITER__LOOP__IDX),'Iter:',sprintf("%4i",IDX__ITER),'  -  RATIO:',sprintf("%.8e",JACOBIAN__RATIO__CURRENT),' -  GMRRP:',sprintf("%.8e",JACOBIAN__GMRRP__),' -  RELAX:',sprintf("%.8e",JACOBIAN__RELAX__VALUE),'\n')
-                  
+                 
                   # build jacobian ---------------------------------------
                   
                   if (RECALCULATE__JACOBIAN) {
                     
-                    
                     #reset jacobian
                     if (SIM__ALGO=='NEWTON')
                     {
-                      .MODEL_outputText(outputText = verbose,paste0('\n',callerName,'building a new Jacobian matrix (',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,'x',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,') at iter ',IDX__ITER,' of year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' (simulation period ',simIterLoopIdx,').\n')) 
+                      .MODEL_outputText(outputText = verbose,paste0('\n',callerName,'building a new Jacobian matrix (',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,'x',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,') at iter ',IDX__ITER,' of year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' (simulation period ',simIterLoopIdx,').\n')) 
                       JACOBIAN__SINGLE__MATRIX[]=NA
                       
                     } else{#FULLNEWTON
                       
-                      .MODEL_outputText(outputText = verbose,paste0('\n',callerName,'building a new Jacobian array (',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,'x',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,'x',REPLICA__,') at iter ',IDX__ITER,' of year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' (simulation period ',simIterLoopIdx,').\n')) 
+                      .MODEL_outputText(outputText = verbose,paste0('\n',callerName,'building a new Jacobian array (',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,'x',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,'x',REPLICA__,') at iter ',IDX__ITER,' of year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' (simulation period ',simIterLoopIdx,').\n')) 
                       JACOBIAN__FULL__MATRIX[]=NA
                     }
                     
@@ -7975,7 +7742,6 @@ SIMULATE <- function(model=NULL,
                     #cycle to vfeed, shock them one by one, re-calculate vsim, then store derivative in jacobian column
                     for (IDX__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
                     {  
-                      
                       #calculate local shock
                       TEMP__DELTA=localE[[MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__]]]][MODEL__MAX__LAG__1,]*JACOBIAN__SHOCK
                       TEMP__DELTA[which(abs(TEMP__DELTA)<JACOBIAN__SHOCK)]=JACOBIAN__SHOCK
@@ -8031,7 +7797,6 @@ SIMULATE <- function(model=NULL,
                       {
                         localE[[MODEL__VFEED[IDX2__]]][ MODEL__MAX__LAG__1,]=VFEED__CURRENT__BACKUP[IDX2__,]
                       }
-                      
                     }
                     
                     #restore VFEED__NEXT to old VFEED__CURRENT in order to run again vsim
@@ -8044,7 +7809,6 @@ SIMULATE <- function(model=NULL,
                     
                     #log operations in case of error
                     LAST__EVAL__EQ='Jacobian Scaling'
-                    
                     
                     if (SIM__ALGO=='NEWTON')
                     {
@@ -8079,7 +7843,6 @@ SIMULATE <- function(model=NULL,
                                         '" variable from the Jacobian matrix by using the "JacobianDrop" argument.'))
                           
                           FAC__=sqrt(sqrt(SROW__ / SCOL__))
-                         
                           
                           if (FAC__ < 0.5 || FAC__ > 2)
                           {
@@ -8092,7 +7855,6 @@ SIMULATE <- function(model=NULL,
                             
                             if (any(! is.finite(JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],])))
                               stop('No convergence, due to numeric overflow in Jacobian matrix scaling.')
-                            
                           }
                           
                         }#end cycle in active vfeed
@@ -8101,7 +7863,7 @@ SIMULATE <- function(model=NULL,
                         
                       }#end 10 tries
                       
-                      if (IDX__==10) .MODEL_outputText(outputText = verbose,paste0('\n',callerName,'warning, 10 iterations not sufficent to normalize the Jacobian matrix at year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' (simulation period ',simIterLoopIdx,').\n')) 
+                      if (IDX__==10) .MODEL_outputText(outputText = verbose,paste0('\n',callerName,'warning, 10 iterations not sufficent to normalize the Jacobian matrix at year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' (simulation period ',simIterLoopIdx,').\n')) 
                     
                     } else {#FULLNEWTON scaling
                       
@@ -8150,7 +7912,6 @@ SIMULATE <- function(model=NULL,
                             
                             if (any(! is.finite(JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],IDX3__])))
                               stop('No convergence, due to numeric overflow in Jacobian array scaling.')
-                            
                           }
                           
                         }#end cycle in active vfeed
@@ -8164,7 +7925,6 @@ SIMULATE <- function(model=NULL,
                     RECALCULATE__JACOBIAN=FALSE
                     
                   }
-                 
                   
                   # eval Jacobian ----------------------------------------
                   
@@ -8192,7 +7952,6 @@ SIMULATE <- function(model=NULL,
                                                                               JACOBIAN__RELAX__VALUE+
                                                                               VFEED__CURRENT[VFEED__ACTIVE__JACOBIAN__IDXS,IDX__]
                       
-                      
                   }  
                   
                   if (any(!is.finite(VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS,]))) stop('No convergence, due to non-finite solution in Jacobian feedback variables update.')
@@ -8209,75 +7968,26 @@ SIMULATE <- function(model=NULL,
               
             }
             
-            
             if (verbose && verboseSincePeriod<=simIterLoopIdx && length(verboseVars)>0)
             {
               cat('\nVSIM eval.:\n')
               cat('VSIM vars: ',paste0(model_vsim,collapse=', '),'\n')
-              if (length(ConstantAdjustment)>0)
-              {
-                cat('CONSTANT ADJUSTMENTS:\n')
-                for (tmpV in names(ConstantAdjustment))
-                {
-                  if ( tmpV %in% verboseVars)
-                  {
-                    cat(paste0(
-                      'Prd. ',
-                      sprintf("%4i",simIterLoopIdx),', ',
-                      paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' ',
-                      'Iter. ',
-                      sprintf("%4i",idxIter),' ',
-                      sprintf("%12s CA",tmpV),' ='))
-                    
-                    for (idxR in 1:replica)
-                      cat(sprintf("%20.15g",localE[[paste0(tmpV,'__ADDFACTOR')]][  model_max_lag_1,idxR]))
-                    cat('\n')
-                  }
-                  
-                }
-              }
-              if (length_model_vexog>0 && length(verboseVars)>0 )
-              {
-                cat('VEXOGS:\n')
-                for (tmpV in c(model_vexog))
-                {
-                  if (  tmpV %in% verboseVars)
-                  {
-                    cat(paste0(
-                      'Prd. ',
-                      sprintf("%4i",simIterLoopIdx),', ',
-                      paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' ',
-                      'Iter. ',
-                      sprintf("%4i",idxIter),' ',
-                      sprintf("%15s",tmpV),' ='))
-                    
-                    for (idxR in 1:replica)
-                      cat(sprintf("%20.15g",localE[[tmpV]][  model_max_lag_1,idxR]))
-                    cat('\n')
-                  }
-                  
-                }
-              }
-              if ( length(verboseVars)>0)
-              { cat('VENDOGS:\n')
-                for (tmpV in c(model_vpre,model_vsim,model_vpost)) #in this way vendogs are ordered
-                {
-                  if (  tmpV %in% verboseVars)
-                  {
-                    cat(paste0(
-                      'Prd. ',
-                      sprintf("%4i",simIterLoopIdx),', ',
-                      paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' ',
-                      'Iter. ',
-                      sprintf("%4i",idxIter),' ',
-                      sprintf("%15s",tmpV),' ='))
-                    
-                    for (idxR in 1:replica)
-                      cat(sprintf("%20.15g",localE[[tmpV]][  model_max_lag_1,idxR]))
-                    cat('\n')
-                  }
-                }
-              }
+              
+              .printVerboseSim(ConstantAdjustment,
+                               verboseVars,
+                               frequency,
+                               TSRANGE,
+                               simIterLoopIdx,
+                               idxIter,
+                               model_max_lag_1,
+                               length_model_vexog,
+                               model_vexog,
+                               replica,
+                               localE,
+                               model_vpre,
+                               model_vsim,
+                               model_vpost)
+              
             }
             
             #eval convergence expression 
@@ -8296,7 +8006,6 @@ SIMULATE <- function(model=NULL,
             
           }#main convergence vsim for
           
-          
         }
         
         # eval vpost ------------------------------
@@ -8304,83 +8013,33 @@ SIMULATE <- function(model=NULL,
         #eval vpost expressions
         eval(vpost_expressions[[simIterLoopIdx]],envir=localE) 
         
-        
         if (verbose && verboseSincePeriod<=simIterLoopIdx && length(verboseVars)>0)
         {
           cat('\nVPOST eval.:\n') 
           cat('VPOST vars: ',paste0(model_vpost,collapse=', '),'\n') 
-          if (length(ConstantAdjustment)>0)
-          {
-            cat('CONSTANT ADJUSTMENTS:\n') 
-            for (tmpV in names(ConstantAdjustment)) 
-            {  
-              if (  tmpV %in% verboseVars)
-              {
-                cat(paste0(
-                  'Prd. ',
-                  sprintf("%4i",simIterLoopIdx),', ',
-                  paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' ',
-                  'Iter. ',
-                  sprintf("%4i",idxIter),' ',
-                  sprintf("%12s CA",tmpV),' ='))
-                
-                for (idxR in 1:replica)
-                  cat(sprintf("%20.15g",localE[[paste0(tmpV,'__ADDFACTOR')]][  model_max_lag_1,idxR])) 
-                cat('\n') 
-              }
-              
-            }
-          }
-          if (length_model_vexog>0 && length(verboseVars)>0)
-          {
-            cat('VEXOGS:\n') 
-            for (tmpV in c(model_vexog)) 
-            {  
-              if ( tmpV %in% verboseVars)
-              {
-                cat(paste0(
-                  'Prd. ',
-                  sprintf("%4i",simIterLoopIdx),', ',
-                  paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' ',
-                  'Iter. ',
-                  sprintf("%4i",idxIter),' ',
-                  sprintf("%15s",tmpV),' ='))
-                
-                for (idxR in 1:replica)
-                  cat(sprintf("%20.15g",localE[[tmpV]][  model_max_lag_1,idxR])) 
-                cat('\n') 
-              }
-              
-            }
-          }
-          if (length(verboseVars)>0)
-          {
-            cat('VENDOGS:\n') 
-            for (tmpV in c(model_vpre,model_vsim,model_vpost)) 
-            { 
-              if (  tmpV %in% verboseVars)
-              {
-                cat(paste0(
-                  'Prd. ',
-                  sprintf("%4i",simIterLoopIdx),', ',
-                  paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' ',
-                  'Iter. ',
-                  sprintf("%4i",idxIter),' ',
-                  sprintf("%15s",tmpV),' ='))
-                
-                for (idxR in 1:replica)
-                  cat(sprintf("%20.15g",localE[[tmpV]][  model_max_lag_1,idxR]))  
-                cat('\n') 
-              }
-            }
-          }
+          
+          .printVerboseSim(ConstantAdjustment,
+                           verboseVars,
+                           frequency,
+                           TSRANGE,
+                           simIterLoopIdx,
+                           idxIter,
+                           model_max_lag_1,
+                           length_model_vexog,
+                           model_vexog,
+                           replica,
+                           localE,
+                           model_vpre,
+                           model_vsim,
+                           model_vpost)
+          
         }
         
         #...messages
         if (flagConvergence==1) 
         {
           if (verbose) cat(paste0('Prd. ',sprintf("%4i",simIterLoopIdx),', ',
-                                  paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' convergence reached in iter ',idxIter,'\n')) 
+                                  paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' convergence reached in iter ',idxIter,'\n')) 
         } else
         {
           #if (verbose) 
@@ -8388,7 +8047,6 @@ SIMULATE <- function(model=NULL,
         }
         
       }#not RESCHECK
-      
       
       #store simulated values
       tmpIdx=simIterLoopIdx+model_max_lag 
@@ -8415,7 +8073,6 @@ SIMULATE <- function(model=NULL,
           
           #store in ORIGNAL for next iterations
           localE[[paste0(currentVendog,'__ORIGINAL')]]=tmpArr
-          
         }
         
       }#end for save simulate observation
@@ -8425,18 +8082,15 @@ SIMULATE <- function(model=NULL,
       
       if (OPTIMIZE)
       {
-        #used to build ts of OPTIMIZE FUNs results
+        #time series of OPTIMIZE FUNs results
         optFunTSRow=rep(NA,replica-1) 
         
         for (idxIE in 1:length(OptimizeFunctions))
         {
-          
           #check if we are inside optimize function tsrange
           if ((model_max_lag+simIterLoopIdx) %in% OptimizeFunctions[[idxIE]]$TSRANGE)
           {
-            
             tryCatch({
-              
               
               #in RESCHECK localE does not contain simulated ts
               if (simType=='RESCHECK')
@@ -8460,11 +8114,8 @@ SIMULATE <- function(model=NULL,
                   
                   #assign to localE
                   localE[[idxS]]=tempM
-                  
                 }
-                
               }
-              
               
               #eval OPTIMIZ FUNCTION idxIE in current simIterLoopIdx period
               localE$LAST__EVAL__EQ=paste0('OptimizeFunctions$',names(OptimizeFunctions)[idxIE])
@@ -8509,76 +8160,25 @@ SIMULATE <- function(model=NULL,
   {
     #intercept sim algo errors
     
-    
     if (!exists('idxIter')) idxIter=0 
     if (!exists('simIterLoopIdx')) simIterLoopIdx=1 
     if (verbose && length(verboseVars)>0) 
     {
       cat('\nERROR SNAPSHOT:\n') 
-      if (length(ConstantAdjustment)>0)
-      {
-        cat('CONSTANT ADJUSTMENTS:\n') 
-        for (tmpV in names(ConstantAdjustment)) 
-        {  
-          if (tmpV %in% verboseVars)
-          {
-            cat(paste0(
-              'Prd. ',
-              sprintf("%4i",simIterLoopIdx),', ',
-              paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' ',
-              'Iter. ',
-              sprintf("%4i",idxIter),' ',
-              sprintf("%12s CA",tmpV),' ='))
-            
-            for (idxR in 1:replica)
-              cat(sprintf("%20.15g",localE[[paste0(tmpV,'__ADDFACTOR')]][  model_max_lag_1,idxR])) 
-            cat('\n') 
-          }
-          
-        }
-      }
-      if (length_model_vexog>0)
-      {
-        cat('VEXOGS:\n') 
-        for (tmpV in c(model_vexog)) 
-        {  
-          if ( tmpV %in% verboseVars)
-          {
-            cat(paste0(
-              'Prd. ',
-              sprintf("%4i",simIterLoopIdx),', ',
-              paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' ',
-              'Iter. ',
-              sprintf("%4i",idxIter),' ',
-              sprintf("%15s",tmpV),' ='))
-            
-            for (idxR in 1:replica)
-              cat(sprintf("%20.15g",localE[[(tmpV)]][  model_max_lag_1,idxR])) 
-            cat('\n') 
-          }
-          
-        }
-      }
-      cat('VENDOGS:\n') 
-      for (tmpV in c(model_vpre,model_vsim,model_vpost)) 
-      { 
-        if ( tmpV %in% verboseVars)
-        {
-          cat(paste0(
-            'Prd. ',
-            sprintf("%4i",simIterLoopIdx),', ',
-            paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=model$frequency),collapse='-'),' ',
-            'Iter. ',
-            sprintf("%4i",idxIter),' ',
-            sprintf("%15s",tmpV),' ='))
-          
-          for (idxR in 1:replica)
-            cat(sprintf("%20.15g",localE[[(tmpV)]][  model_max_lag_1,idxR]))  
-          cat('\n') 
-          
-          
-        }
-      }
+      .printVerboseSim(ConstantAdjustment,
+                       verboseVars,
+                       frequency,
+                       TSRANGE,
+                       simIterLoopIdx,
+                       idxIter,
+                       model_max_lag_1,
+                       length_model_vexog,
+                       model_vexog,
+                       replica,
+                       localE,
+                       model_vpre,
+                       model_vsim,
+                       model_vpost)
     }
     
     stop(paste0('\n',callerName,'error in simulation of type "',simType,'" at year-period ',
@@ -8594,7 +8194,6 @@ SIMULATE <- function(model=NULL,
     ))
   }) 
   
-  
   # build MULT MATRIX ------------------------------------------------------------
   
   if (MULTMATRIX==TRUE)
@@ -8605,7 +8204,6 @@ SIMULATE <- function(model=NULL,
     
     MultiplierMatrix=matrix(nrow=lenT*simSteps,
                             ncol=lenI*simSteps) 
-    
     
     #assign names to column 
     tmpColNames=vector('character',length=simSteps*lenI) 
@@ -8653,8 +8251,6 @@ SIMULATE <- function(model=NULL,
           
           for (idxIS in 1:simSteps)
           {
-            
-            
             rowT=idxTS 
             colT=1+(idxI-1)*simSteps+idxIS 
             
@@ -8665,14 +8261,11 @@ SIMULATE <- function(model=NULL,
             
             dx=tmpI[rowI,colI]-tmpI[rowI,1]
             
-            
             rowMM=idxT+(idxTS-1)*lenT 
             colMM=idxI+(idxIS-1)*lenI 
             
-            
             #dx cannot be 0 because of shocks
             MultiplierMatrix[rowMM,colMM]=ifelse(dy==0,0,dy/dx)
-            
             
           }
         }
@@ -8681,7 +8274,6 @@ SIMULATE <- function(model=NULL,
     
     model$MultiplierMatrix=MultiplierMatrix 
   }
-  
   
   .MODEL_outputText(outputText=!quietly,'\n') 
   
@@ -8718,7 +8310,6 @@ SIMULATE <- function(model=NULL,
         }
       }#end multmatrix
       
-      
       if (STOCHSIMULATE)
       {
         
@@ -8751,7 +8342,6 @@ SIMULATE <- function(model=NULL,
       
       if (OPTIMIZE)
       {
-        
         #store simulation list as matrix in model
         simulation_MM=simulation 
         
@@ -8766,9 +8356,7 @@ SIMULATE <- function(model=NULL,
                                       START=TSRANGE[1:2],
                                       FREQ=frequency,
                                       avoidCompliance = TRUE) 
-          
         }
-        
         
         if (length(optColsToBeKept) != length(optFunResults)) stop(callerName,' length mismatch in optimize function results.')
         
@@ -8855,7 +8443,6 @@ SIMULATE <- function(model=NULL,
                             FREQ=frequency,
                             avoidCompliance = TRUE) 
           
-          
         } else {
           if (! quietly) cat(callerName,'warning, none of the computed realizations are finite and verify the provided restrictions. Try to review inequalities and objective functions definition or try to increase the "StochReplica" argument value. OPTIMIZE() will exit with no solution.\n',sep='')
         }
@@ -8863,24 +8450,18 @@ SIMULATE <- function(model=NULL,
         #export stuff
         #(modelData and ConstantAdjustment already exported)
         optimize$optFunResults=optFunResults
-        #optimize$optFunResultsFiltered=optFunResultsFiltered
         optimize$realizationsToKeep=optColsToBeKept
         optimize$optFunMax=optFunMax
-        #optimize$optFunMaxIdx=optFunMaxIdx
         optimize$INSTRUMENT=OPT_INSTRUMENT
         optimize$optFunTS=optFunTS
         optimize$optFunSd=optFunSd
         optimize$optFunAve=optFunAve
         
-        
-        
       }#end optimize
       
     } #end replica > 1
     
-    
   }
-  
   
   # backfill -----------------------------------------------
   
@@ -8889,7 +8470,6 @@ SIMULATE <- function(model=NULL,
   if (BackFill>0 )
   {
     .MODEL_outputText(outputText = !quietly,paste0('\n',callerName,'"BackFill" enabled.\nSolutions will include up to ',BackFill,' periods (if available) of historical data starting at year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]-BackFill),frequency),collapse = '-'),'\n')) 
-    
     
     #extend simulation
     if (length(simulation)>0) 
@@ -8917,8 +8497,6 @@ SIMULATE <- function(model=NULL,
                                     ,START=newStart,FREQ=frequency,avoidCompliance = TRUE) 
         
       }
-    
-    
     
   }
   
@@ -8981,9 +8559,6 @@ SIMULATE <- function(model=NULL,
   } else
   {.MODEL_outputText(outputText=!quietly,'...SIMULATE OK\n') }
   
-  
-  
-  
   return(model) 
   
 }
@@ -8997,14 +8572,13 @@ print.BIMETS_MODEL <- function(x=NULL, ...)
   
   if (! inherits(model, "BIMETS_MODEL")) stop("print.BIMETS_MODEL(): model object is not a BIMETS model.") 
   
-  
-  
   cat(paste0('\nBIMETS MODEL\n')) 
   cat(paste0('-----------------------------------\n')) 
   cat(paste0(sprintf("%-18s",'name:'),model$modelName,'\n')) 
   cat(paste0(sprintf("%-18s",'behaviorals:'),(model$totNumEqs),'\n')) 
   cat(paste0(sprintf("%-18s",'identities:'),(model$totNumIds),'\n')) 
   cat(paste0(sprintf("%-18s",'coefficients:'),(model$eqCoeffNum),'\n')) 
+  
   tryCatch({
     .CHECK_MODEL_DATA(model,showWarnings = FALSE) 
     cat(paste0(sprintf("%-18s",'model data:'),"OK",'\n')) 
@@ -9019,7 +8593,6 @@ print.BIMETS_MODEL <- function(x=NULL, ...)
   fullyEstimated=ifelse(totCoeffEstimated<model$eqCoeffNum,FALSE,TRUE) 
   cat(paste0(sprintf("%-18s",'fully estimated:'),(fullyEstimated),'\n')) 
   
-  
   simulated=FALSE 
   if (! is.null(model$simulation))
   {
@@ -9028,9 +8601,8 @@ print.BIMETS_MODEL <- function(x=NULL, ...)
     if (length(base::setdiff(model$vendog,namesSim))==0)
       simulated=TRUE 
   }
+  
   cat(paste0(sprintf("%-18s",'simulated:'),(simulated),'\n')) 
-  
-  
   
 }
 

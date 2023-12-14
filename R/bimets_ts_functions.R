@@ -33,30 +33,25 @@
   
   #clear console
   packageStartupMessage("\014 ") 
-  packageStartupMessage(gsub("\\$","",'bimets is active - version 3.0.1\nFor help type \'?bimets\'\n'))
+  packageStartupMessage(gsub("\\$","",'bimets is active - version 3.0.2\nFor help type \'?bimets\'\n'))
   
 }
 
 .onLoad <- function(...) {
-  
-  
-  
-  tryCatch({
-    
-    
-    #init default configuration day in period
+
+	tryCatch({
+	
+	#init default configuration day in period
     if (is.null(getOption('BIMETS_CONF_DIP'))) 
     {
       #day in the period setup
-      #options('BIMETS_CONF_DIP'='FIRST') 
-      options('BIMETS_CONF_DIP'='LAST') 
+       options('BIMETS_CONF_DIP'='LAST') 
     }
     
     #init default configuration constructor class type
     if (is.null(getOption('BIMETS_CONF_CCT'))) 
     {
       #day in the period setup
-      #options('BIMETS_CONF_DIP'='FIRST') 
       options('BIMETS_CONF_CCT'='TS') 
     }
     
@@ -64,7 +59,6 @@
     if (is.null(getOption('BIMETS_CONF_NOC'))) 
     {
       #day in the period setup
-      #options('BIMETS_CONF_DIP'='FIRST') 
       options('BIMETS_CONF_NOC'=FALSE) 
     }
     
@@ -115,7 +109,6 @@
         tryCatch({
           outI=(1+NUMPERIOD(start(x),normalizeYP(c(idx,jdx),fTS),fTS)) 
         },error=function(e){stop('ts[[year,period]]: wrong syntax. ',e$message)}) 
-        #if ((outI<1)|| (outI>length(x)))
         if (outI<1)
         {
           stop('ts[[year,period]]: index out of range.')
@@ -170,7 +163,6 @@
     #address ts data by date
     registerS3method('[','ts' , function (x, idx, jdx, drop = TRUE, avoidCompliance=FALSE) {
       
-      #print(idx) 
       #if not numeric take in charge
       if ((!(missing(idx))) && (!(is.null(idx))) && ((is.character(idx) || inherits(idx,'Date') || inherits(idx,'yearmon') || inherits(idx,'yearqtr')  )))
       {
@@ -246,7 +238,7 @@
           if (inherits( startXTS ,'yearmon') ) startXTSYP=ym2yp(startXTS) 
           if (is.null(startXTSYP)) stop('unknown xts tclass()') 
         },error=function(e){stop('xts[[year,period]]: unable to convert start date. ',e$message)}) 
-        #return(startXTSYP) 
+
         tryCatch({
           outI=(1+NUMPERIOD(startXTSYP,normalizeYP(c(idx,jdx),xtsF),xtsF)) 
         },error=function(e){stop('xts[[year,period]]: wrong syntax. ',e$message)}) 
@@ -263,7 +255,7 @@
       
       return(NextMethod()) 
     }) 
-    #packageStartupMessage('Overloading time series operators...OK\nBIMETS is active.') 
+
   },error=function(e){stop('BIMETS not fully loaded. ',e$message)})
   
   
@@ -292,7 +284,7 @@ setBIMETSconf <- function(opt=NULL,value=NULL,suppressOutput=FALSE)
   if (opt=='BIMETS_CONF_CCT') options('BIMETS_CONF_CCT'=value) 
   if (opt=='BIMETS_CONF_NOC') options('BIMETS_CONF_NOC'=value) 
   if (suppressOutput==TRUE) return(invisible()) 
-  return(print(paste(opt,'=',toupper(.TRIM(value))))) 
+  return(cat(paste(opt,'=',toupper(.TRIM(value)),'\n'))) 
 }
 
 #get bimets conf
@@ -396,10 +388,10 @@ as.bimets <- function(x=NULL,FILLVALUE=NA,VERBOSE=FALSE,...)
       #get indexdes filled with new data
       newYPs=base::setdiff(staticYPn,localYPn) 
       newIndexes=match(newYPs , staticYPn) 
-      if (length(newIndexes) != length(newYPs)) stop('as.bimets(): unknown error in VERBOSE.') 
+      if (length(newIndexes) != length(newYPs)) stop('as.bimets(): unknown error in "VERBOSE".') 
       if (length(newIndexes)>0) 
       {
-        cat('\nas.bimets(): There are new observations inserted in to the non-regular input time series:\n\n') 
+        cat('as.bimets(): There are new observations inserted into the non-regular input time series:\n') 
         for (idxNI in 1:length(newIndexes))
         {
           insertedY=trunc(newYPs[idxNI]/1000) 
@@ -410,17 +402,12 @@ as.bimets <- function(x=NULL,FILLVALUE=NA,VERBOSE=FALSE,...)
         cat('\n') 
       }
       
-      
     }
-    
-    
     
     tmpCD[matchIdx]=coreD 
     #deal with 366 <- 365 if not bisextile
     if (freqIn==366) 
     {
-      
-      
       staticDates=.getStaticDates(start=date2yp(startDate,f=366),end=date2yp(endDate,f=366),freq=freqIn) 
       whicNA=which(is.na(staticDates)) 
       tmpCD[whicNA]=tmpCD[whicNA-1] 
@@ -768,8 +755,6 @@ frequency.xts <- function(x=NULL, ...)
   return(.xtsPeriodicity(x)$relFrequency) 
 }
 
-
-
 #extract periodicity from xts (xts::periodicity dont fit requirements)
 .xtsPeriodicity <- function (x=NULL) 
 {
@@ -786,7 +771,7 @@ frequency.xts <- function(x=NULL, ...)
     {	
       
       #diff on index unreliable due to dependance on index class (i.e. in yearmon a diff of 1 is not a day nor really a month...)
-      #p = suppressWarnings(min(diff(.index(x)))) 
+
       tempDiff=diff(.index(x)) 
       p = suppressWarnings(min(tempDiff[which(tempDiff>0)])) 
       if (!(is.na(p)))
@@ -833,8 +818,6 @@ frequency.xts <- function(x=NULL, ...)
     
     else stop('.xtsPeriodicity(): unsupported .bimetsFreq.') 
   } 
-  
-  
   
   #eg. .xtsPeriodicity(xts)$scale...
   return(structure(list( scale = scale, value = value ,relFrequency = relFrequency))) 
@@ -902,8 +885,6 @@ frequency.xts <- function(x=NULL, ...)
       return(FALSE) 
     }
   }
-  
-  
   
   if (is.xts(x))
   {
@@ -1071,7 +1052,6 @@ normalizeYP <- function(x=NULL,f=NULL)
   if (is.na(x[1])  )  stop('normalizeYP(): year must be a positive integer.') 
   if (is.na(x[2])  )  stop('normalizeYP(): period must be a positive integer.') 
   if (!( x[1]>=0) )  stop('normalizeYP(): year must be a positive integer.') 
-  #if (!( x[2]>=0) )  stop('normalizeYP(): period must be a positive integer.') 
   if (!(x[1]%%1==0))  stop('normalizeYP(): non-integer year.') 
   if (!(x[2]%%1==0))  stop('normalizeYP(): non-integer period.') 
   return(c(x[1]+((x[2]-1)%/%f ),((x[2]-1)%%f)+1)) 
@@ -1159,18 +1139,121 @@ NUMPERIOD <- function (x1,x2,f=NULL)
   return(i-1) 
 }
 
+.monthToSemiAnnual <- function(month)
+{
+  if (month<7)
+  {
+    return(1)
+  } else 
+  {
+    return(2)
+  }
+}
+
+.monthToQuarter <- function(month)
+{
+  if (month<4)
+  {
+    return(1)
+  } else if(month<7)
+  {
+    return(2)
+  } else if(month<10)
+  {
+    return(3)
+  } else 
+  {
+    return(4)
+  }
+}
+
+.isFirstDateOnSemiAnnual <- function(date)
+{
+  day=date[3]
+  month=date[2]
+  if (
+    (day==1 && month==1) ||
+    (day==1 && month==7) 
+  ) return(TRUE)
+  else return(FALSE)
+}
+
+.isLastDateOnSemiAnnual <- function(date)
+{
+  day=date[3]
+  month=date[2]
+  if (
+    (day==30 && month==6) ||
+    (day==31 && month==12) 
+  ) return(TRUE)
+  else return(FALSE)
+}
+
+.isFirstDateOnQuarter <- function(date)
+{
+  day=date[3]
+  month=date[2]
+  if (
+    (day==1 && month==1) ||
+    (day==1 && month==4) ||
+    (day==1 && month==7) ||
+    (day==1 && month==10) 
+    ) return(TRUE)
+  else return(FALSE)
+}
+
+.isLastDateOnQuarter <- function(date)
+{
+  day=date[3]
+  month=date[2]
+  if (
+    (day==31 && month==3) ||
+    (day==30 && month==6) ||
+    (day==30 && month==9) ||
+    (day==31 && month==12) 
+  ) return(TRUE)
+  else return(FALSE)
+}
+
+.isFirstDateOnMonth <- function(date)
+{
+  day=date[3]
+  if (day==1) return(TRUE)
+  else return(FALSE)
+}
+
+.isLastDateOnMonth <- function(date)
+{
+  year=date[1]
+  month=date[2]
+  day=date[3]
+  
+  if  (
+          (month==1  && day== 31) ||
+          (month==2  && day== 29 && .isBisextile(year)) ||
+          (month==2  && day== 28 && (!.isBisextile(year))) ||
+          (month==3  && day== 31) ||
+          (month==4  && day== 30) ||
+          (month==5  && day== 31) ||
+          (month==6  && day== 30) ||
+          (month==7  && day== 31) ||
+          (month==8  && day== 31) ||
+          (month==9  && day== 30) ||
+          (month==10  && day== 31) ||
+          (month==11  && day== 30) ||
+          (month==12  && day== 31) 
+      ) return(TRUE)
+  else return(FALSE)
+  
+}
+
 #bisextile year check
 .isBisextile <- function(year=NULL)
 {
-  if (any(is.null(year))) stop('.isBisextile(): NULL year') 
-  if (any(is.na(year))) stop('.isBisextile(): missing year') 
   if (length(year)==1)
   {
-    if (!(is.numeric(year) && year>0) ) stop('.isBisextile(): year must be a positive integer.') 
-    if (!(year%%1==0))  stop('.isBisextile(): non-integer year.') 
     return((year %% 4 == 0 && (year %% 100 != 0 || year %% 400 == 0))) 
   } else {
-    if (!(is.numeric(year) ) ) stop('.isBisextile(): year must be a positive integer.') 
     outF=c()
     for (idxTmp in 1:length(year))
     {
@@ -1203,7 +1286,6 @@ A1D <- function(..., length = NULL, avoidCompliance=FALSE)
   
   if (!(is.null(length))) 
   {
-    #stop('A1D(): null length.') 
     if (!(is.numeric(length) ) ) stop('A1D(): length must be an integer.') 
     if (!(length%%1==0))  stop('A1D(): non-integer length.') 
     if (!(length>=0))  stop('A1D(): length must be a positive integer.') 
@@ -1212,8 +1294,6 @@ A1D <- function(..., length = NULL, avoidCompliance=FALSE)
   outF=c() 
   #an input is null
   tryCatch({inputsL=list(...) },error=function(e){stop('A1D(): an input argument is NULL.')}) 
-  #cat('length=',length,'\n') 
-  #cat('list len=',length(inputsL),'\n') 
   #no args
   if (is.null(length) && (length(inputsL)==0)) stop('A1D(): at least one parameter is required.') 
   #no values
@@ -1242,10 +1322,8 @@ A1D <- function(..., length = NULL, avoidCompliance=FALSE)
       
       totLength=totLength+length(inputsL[[idx]]) 
     }
-    
-    #print(totLength)
-    
-    if (!(is.null(length)) && (totLength>length)) stop('A1D(): too many elements are specified for given length.') 
+	
+	if (!(is.null(length)) && (totLength>length)) stop('A1D(): too many elements are specified for given length.') 
     #combine
     for (idx in (1:length(inputsL))) 
     {
@@ -1271,11 +1349,9 @@ A1D <- function(..., length = NULL, avoidCompliance=FALSE)
     #length specified and inputs are strings
     if (!(is.null(length)))
     { 
-      
       for (idx in (1:length)) 
       {
         if (idx > length(inputsL)) { outF=c(outF,'') } else {outF=c(outF,inputsL[[idx]]) }
-        
       }
       
       #length not specified and inputs are strings
@@ -1289,8 +1365,6 @@ A1D <- function(..., length = NULL, avoidCompliance=FALSE)
   } else {
     stop('A1D(): inputs must be all strings or all instances of the class numeric, NA, ts() or xts().') 
   }
-  
-  
   
   return(outF) 
 }
@@ -1314,7 +1388,7 @@ TSTRIM <- function(x=NULL, VALUE=NA, TRAIL=TRUE, LEAD=TRUE, avoidCompliance=FALS
     (!is.na(VALUE) && all(inData==VALUE))
   ) 
   { 
-    cat(paste0('TSTRIM(): warning, all values have been trimmed out. Result is a NULL.\n')) 
+    cat(paste0('TSTRIM(): warning, all values have been trimmed out. Result will be NULL.\n')) 
     return(NULL) 
   }
   
@@ -1386,11 +1460,8 @@ TSEXTEND <- function(x=NULL,BACKTO=NULL,UPTO=NULL,EXTMODE='GROWTH',FACTOR=NA,avo
     tryCatch({.isCompliant(x) },error=function(e){stop('TSEXTEND():',e$message) }) 
   }
   
-  
-  
   if (is.ts(x))
   { 
-    
     
     #BACKTO not null and before  start(x)			
     if (! is.null(BACKTO))
@@ -1548,8 +1619,7 @@ TSEXTEND <- function(x=NULL,BACKTO=NULL,UPTO=NULL,EXTMODE='GROWTH',FACTOR=NA,avo
           value2ins2=NA 
           value2ins=NA 
           if (length(x)>2)
-          {         
-            
+          {   
             #look code 4 description :)								
             i=1 
             #if internal missing stop...
@@ -1609,7 +1679,6 @@ TSEXTEND <- function(x=NULL,BACKTO=NULL,UPTO=NULL,EXTMODE='GROWTH',FACTOR=NA,avo
           outF[length(outF)-(0:(NUMPERIOD(end(x),UPTO,frequency(x))-1+.numberOfEndingMissing(x)))]=value2ins 
         }
         
-        
         if (EXTMODE=='MYCONST') 
         {
           
@@ -1619,7 +1688,6 @@ TSEXTEND <- function(x=NULL,BACKTO=NULL,UPTO=NULL,EXTMODE='GROWTH',FACTOR=NA,avo
           }) 
           outF[length(outF)-(0:(NUMPERIOD(end(x),UPTO,frequency(x))-1+.numberOfEndingMissing(x)))]=tmpF 
         }
-        
         
         if (EXTMODE=='MEAN4') 
         {
@@ -1748,9 +1816,6 @@ TSEXTEND <- function(x=NULL,BACKTO=NULL,UPTO=NULL,EXTMODE='GROWTH',FACTOR=NA,avo
         
       }
     
-    
-    
-    
   }#end is.ts()
   
   if (is.xts(x))
@@ -1778,8 +1843,6 @@ TSJOIN <- function(x=NULL, y=NULL, JPRD=NULL, ALLOWGAP=FALSE, WARN=FALSE, avoidC
     tryCatch({.isCompliant(y) },error=function(e){stop('TSJOIN(): y - ',e$message) }) 
   }
   
-  
-  
   if (is.ts(x) && is.ts(y))
   {	
     if (!(frequency(x) == frequency(y))) stop('TSJOIN(): input time series have different frequencies.') 
@@ -1795,7 +1858,7 @@ TSJOIN <- function(x=NULL, y=NULL, JPRD=NULL, ALLOWGAP=FALSE, WARN=FALSE, avoidC
     if (NUMPERIOD(end(x),start(y),frequency(x))>1 )
     {
       if (!(ALLOWGAP==TRUE)) stop('TSJOIN(): There is a gap between the two input time series. Use ALLOWGAP=TRUE in order to fill it with missing value.') 
-      if (WARN) print('TSJOIN(): warning, there is a gap between the two input time series that has been filled with missing values.') 
+      if (WARN) cat('TSJOIN(): warning, there is a gap between the two input time series that has been filled with missing values.\n') 
     }
     
     #select out ts start and end
@@ -1809,7 +1872,6 @@ TSJOIN <- function(x=NULL, y=NULL, JPRD=NULL, ALLOWGAP=FALSE, WARN=FALSE, avoidC
       #outFstart=start(y) 
       outFstart=JPRD 
     }
-    
     
     outFend=end(y) 
     #create out ts with missings
@@ -1832,7 +1894,7 @@ TSJOIN <- function(x=NULL, y=NULL, JPRD=NULL, ALLOWGAP=FALSE, WARN=FALSE, avoidC
       outF[rangeTemp]=x[(1:(1+endTemp))] 
     }
     else {
-      if (WARN) print('TSJOIN(): warning, nothing got from the first time series. The result will be the second time series, in case plus padding.') 
+      if (WARN) cat('TSJOIN(): warning, nothing got from the first time series. The result will be the second time series, in case plus padding.\n') 
     }
     
     #project y on outF
@@ -1842,7 +1904,7 @@ TSJOIN <- function(x=NULL, y=NULL, JPRD=NULL, ALLOWGAP=FALSE, WARN=FALSE, avoidC
     startTemp=1+NUMPERIOD(start(outF),JPRD,frequency(y)) 
     endTemp=NUMPERIOD(JPRD,end(y),frequency(y)) 
     rangeTemp=(startTemp:(startTemp+endTemp)) 
-    #print(rangeTemp) 
+    
     outF[rangeTemp]=y[((1+NUMPERIOD(start(y),JPRD,frequency(y))):length(y))] 
   }#end is.ts()
   
@@ -1871,11 +1933,8 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
     tryCatch({.isCompliant(x) },error=function(e){stop('SEMIANNUAL(): x - ',e$message) }) 
   }
   
-  
-  
   if (is.ts(x) )
   {			
-    
     #input is semiannual
     if (frequency(x)==2) {outF=x }
     
@@ -1911,17 +1970,16 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         
         outF=ts(outCD,start=c(start(x)[1],1),frequency=2) 
       }
-      else stop('SEMIANNUAL(): unknown agg/disagg function (fun) type.') 
+      else stop('SEMIANNUAL(): unknown argument "fun".') 
     }
     
     #input is quarterly
     else if (frequency(x)==4)
     {
       
-      
       if (is.null(fun))
       {
-        stop('SEMIANNUAL(): an option (fun=F) must be given when converting a quarterly time series.') 
+        stop('SEMIANNUAL(): argument "fun" must be provided when converting a quarterly time series.') 
       }
       else if (fun=='STOCK')		 	
       {	
@@ -1937,8 +1995,8 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
           if ((idx + start(x)[2] -1) %% 2 == 0 ) outCD=c(outCD,x[idx]) 
         }
         
-        if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 qtr. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 quarters. Nothing defined.') 
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -1963,7 +2021,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -1982,8 +2040,8 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
           if (((idx + start(x)[2] -1) %% 2 == 0 ) && (idx>1)) outCD=c(outCD,sum(x[idx],x[(idx-1)])) 
         }
         
-        if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 qtrs. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 quarters. Nothing defined.') 
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -2008,8 +2066,8 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
           }
         }
         
-        if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 qtrs. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 quarters. Nothing defined.') 
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -2028,8 +2086,8 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
           if (((idx + start(x)[2] -1) %% 2 == 0 ) && (idx>1)) outCD=c(outCD,mean(c(x[idx],x[(idx-1)]))) 
         }
         
-        if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 qtrs. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 quarters. Nothing defined.') 
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -2054,22 +2112,21 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
           }
         }
         
-        if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 qtrs. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 quarters. Nothing defined.') 
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
-      else stop('SEMIANNUAL(): unknown agg/disagg function (fun) type.') 
+      else stop('SEMIANNUAL(): unknown argument "fun".') 
     }
     
     #input is monthly
     else if (frequency(x)==12)
     {
       
-      
       if (is.null(fun))
       {
-        stop('SEMIANNUAL(): an option (fun=F) must be given when converting a monthly time series.') 
+        stop('SEMIANNUAL(): argument "fun" must be provided when converting a monthly time series.') 
       }
       else if (fun=='STOCK')		 	
       {	
@@ -2086,7 +2143,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -2110,7 +2167,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -2130,7 +2187,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -2156,7 +2213,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -2176,7 +2233,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -2201,120 +2258,100 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
           }
         }
         
-        if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 month. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.') 
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
-      else stop('SEMIANNUAL(): unknown agg/disagg function (fun) type.') 
+      else stop('SEMIANNUAL(): unknown argument "fun".') 
     }
     
     #input is daily
     else if (frequency(x)==366)
     {
+      #start period of out ts
+      outStartP=NA 
+      #out data
+      outCD=NULL 
       
+      #get ts dates
+      xDates=GETDATE(x,avoidCompliance=TRUE)
+      
+      #convert to 3-cols matrix
+      #if 366 in non-bisextile xDates==NA
+      matrixDates=matrix(unlist(lapply(strsplit(xDates,'-'),
+                                       function(x) if (is.na(x[1])) return(c(NA,NA,NA)) else return(as.numeric(x)))
+                          ),
+                          nrow=length(xDates),ncol=3,byrow = T)
+                          
       
       if (is.null(fun))
       {
-        stop('SEMIANNUAL(): an option (fun=F) must be given when converting a daily time series.') 
+        stop('SEMIANNUAL(): argument "fun" must be provided when converting a daily time series.') 
       }
       else if (fun=='STOCK')		 	
       {	
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+        if (is.na(matrixDates[1,1]) )
         { #day is 366 and not bisextile
           outStartP=3 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<7)
-        {
-          outStartP=1 
-        } else {
-          outStartP=2 
+        } else { 
+          outStartP=.monthToSemiAnnual(matrixDates[1,2]) 
         }
-        
-        
         
         for (idx in (1:length(x)))
         {
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31') outCD=c(outCD,x[idx]) 
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='06-30') outCD=c(outCD,x[idx]) 
+            if (.isLastDateOnSemiAnnual(matrixDates[idx,])) outCD=c(outCD,x[idx]) 
           }
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
       else if (fun=='NSTOCK')		 	
       {	
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+        
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=3 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<7)
-        {
-          outStartP=1 
         } else {
-          outStartP=2 
+          outStartP=.monthToSemiAnnual(matrixDates[1,2])
         }
-        
-        
         
         for (idx in (1:length(x)))
         {
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31') 
+            if (.isLastDateOnSemiAnnual(matrixDates[idx,])) 
             {
+              baseSemiAnnual=.monthToSemiAnnual(matrixDates[idx,2])
+              
               idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE))>6) idx_tmp=idx_tmp+1
+              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && .monthToSemiAnnual(matrixDates[idx-idx_tmp,2])==baseSemiAnnual) idx_tmp=idx_tmp+1
               outCD=c(outCD,x[idx-idx_tmp]) 
             }
-            
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='06-30') 
-            {
-              idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE))<7) idx_tmp=idx_tmp+1
-              outCD=c(outCD,x[idx-idx_tmp]) 
-            }
-            
           }
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
       else if (fun=='SUM')		 	
       {	
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
         #skip first 6m if we dont have all days
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=3 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='01-01')
+        } else if (.isFirstDateOnSemiAnnual(matrixDates[1,]))
         {
-          outStartP=1 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<7)
-        {
-          outStartP=2 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='07-01')
-        {
-          outStartP=2 
-        } else {
-          outStartP=3 
+          outStartP=.monthToSemiAnnual(matrixDates[1,2])
+        } else  {
+          outStartP=.monthToSemiAnnual(matrixDates[1,2])+1 
         }
         
         #tmp for sum
@@ -2324,9 +2361,9 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         for (idx in (1:length(x)))
         { 
           
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='01-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='07-01'))
+            if (.isFirstDateOnSemiAnnual(matrixDates[idx,]))
             {
               tmpOut=x[idx] 
               canInsert=TRUE 
@@ -2334,40 +2371,30 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               tmpOut=x[idx]+tmpOut 
             }
             
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='06-30') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31'))
+            if (.isLastDateOnSemiAnnual(matrixDates[idx,]))
             {
               if (canInsert) outCD=c(outCD,tmpOut) 
             }
           }
-          
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
       else if (fun=='NSUM')		 	
       {  
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
+       
         #skip first 6m if we dont have all days
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=3 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='01-01')
+        } else if (.isFirstDateOnSemiAnnual(matrixDates[1,]))
         {
-          outStartP=1 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<7)
-        {
-          outStartP=2 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='07-01')
-        {
-          outStartP=2 
-        } else {
-          outStartP=3 
+          outStartP=.monthToSemiAnnual(matrixDates[1,2])
+        } else  {
+          outStartP=.monthToSemiAnnual(matrixDates[1,2])+1 
         }
         
         #tmp for sum
@@ -2376,10 +2403,9 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         canInsert=FALSE 
         for (idx in (1:length(x)))
         { 
-          
-          if (! is.na(GETDATE(x,idx)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='01-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='07-01'))
+            if (.isFirstDateOnSemiAnnual(matrixDates[idx,]))
             {
               tmpOut=NA 
               if (! is.na(x[idx])) tmpOut=x[idx] 
@@ -2390,7 +2416,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               if (( is.na(tmpOut)) && (! is.na(x[idx]))) tmpOut=x[idx] 
             }
             
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='06-30') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31'))
+            if (.isLastDateOnSemiAnnual(matrixDates[idx,]))
             {
               if (canInsert) outCD=c(outCD,tmpOut) 
             }
@@ -2399,31 +2425,22 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
       else if (fun=='AVE')		 	
       {  
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
+        
         #skip first 6m if we dont have all days
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=3 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='01-01')
+        } else if (.isFirstDateOnSemiAnnual(matrixDates[1,]))
         {
-          outStartP=1 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<7)
-        {
-          outStartP=2 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='07-01')
-        {
-          outStartP=2 
-        } else {
-          outStartP=3 
+          outStartP=.monthToSemiAnnual(matrixDates[1,2])
+        } else  {
+          outStartP=.monthToSemiAnnual(matrixDates[1,2])+1 
         }
         
         #tmp for ave
@@ -2434,9 +2451,9 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         for (idx in (1:length(x)))
         { 
           
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='01-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='07-01'))
+            if ( .isFirstDateOnSemiAnnual(matrixDates[idx,]))
             {
               tmpOut=x[idx] 
               tmpCnt=1 
@@ -2446,40 +2463,30 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               tmpCnt=1+tmpCnt 
             }
             
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='06-30') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31'))
+            if (.isLastDateOnSemiAnnual(matrixDates[idx,]))
             {
               if (canInsert) outCD=c(outCD,tmpOut/tmpCnt) 
             }
           }
-          
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
       else if (fun=='NAVE')		 	
       {  
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
+        
         #skip first 6m if we dont have all days
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=3 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='01-01')
+        } else if (.isFirstDateOnSemiAnnual(matrixDates[1,]))
         {
-          outStartP=1 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<7)
-        {
-          outStartP=2 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='07-01')
-        {
-          outStartP=2 
-        } else {
-          outStartP=3 
+          outStartP=.monthToSemiAnnual(matrixDates[1,2])
+        } else  {
+          outStartP=.monthToSemiAnnual(matrixDates[1,2])+1 
         }
         
         #tmp for sum
@@ -2489,10 +2496,9 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         canInsert=FALSE 
         for (idx in (1:length(x)))
         { 
-          
-          if (! is.na(GETDATE(x,idx)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='01-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='07-01'))
+            if (.isFirstDateOnSemiAnnual(matrixDates[idx,]))
             {
               tmpOut=NA 
               if (! is.na(x[idx])) 
@@ -2515,20 +2521,19 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               }
             }
             
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='06-30') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31'))
+            if (.isLastDateOnSemiAnnual(matrixDates[idx,]))
             {
               if (canInsert) outCD=c(outCD,tmpOut/tmpCnt) 
             }
           }
-          
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.') 
-        if (length(outCD)<2) print('SEMIANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
-      else stop('SEMIANNUAL(): unknown agg/disagg function (fun) type.') 
+      else stop('SEMIANNUAL(): unknown argument "fun".') 
     }
     
     else {stop('SEMIANNUAL(): unsupported input frequency.') }
@@ -2543,8 +2548,6 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
   return(outF) 
 }
 
-
-
 # QUARTERLY code ----------------------------------------
 
 #QUARTERLY creates a quarterly time series from an existing time series.
@@ -2558,8 +2561,6 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
     tryCatch({.isCompliant(x) },error=function(e){stop('QUARTERLY(): x - ',e$message) }) 
   }
   
-  
-  
   if (is.ts(x) )
   {			
     
@@ -2570,92 +2571,100 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
     else if (frequency(x)==1)
     {
       if (length(x)<2) stop('QUARTERLY(): at least two observations required for interpolation.') 
-      #build out data
-      inCD=coredata(x) 
-      #out data
-      outCD=inCD[1] 
-      for (idx in (2:length(inCD)))
-      {
-        for (idx2 in (1:3))
-        {
-          outCD=c(outCD,inCD[(idx-1)]+idx2*(inCD[idx]-inCD[(idx-1)])/4) 
-        }
-        
-        outCD=c(outCD,inCD[idx]) 
-      }
+      
       
       if (is.null(fun))
       {
         outF=ts(rep(coredata(x),each=4),start=start(x),frequency=4) 
       }
-      else if (fun=='INTERP_END')		 	
+      else 
       {
-        
-        
-        outF=ts(outCD,start=c(start(x)[1],4),frequency=4) 
+          #build out data
+          inCD=coredata(x) 
+          #out data
+          outCD=inCD[1] 
+          for (idx in (2:length(inCD)))
+          {
+            for (idx2 in (1:3))
+            {
+              outCD=c(outCD,inCD[(idx-1)]+idx2*(inCD[idx]-inCD[(idx-1)])/4) 
+            }
+            
+            outCD=c(outCD,inCD[idx]) 
+          }
+      
+          if (fun=='INTERP_END')		 	
+          {
+            
+            outF=ts(outCD,start=c(start(x)[1],4),frequency=4) 
+          }
+          else if (fun=='INTERP_CENTER')		 	
+          {
+            
+            outF=ts(outCD,start=c(start(x)[1],3),frequency=4) 
+          }
+          else if (fun=='INTERP_BEGIN')		 	
+          {
+            
+            outF=ts(outCD,start=c(start(x)[1],1),frequency=4) 
+          }
+          else stop('QUARTERLY(): unknown argument "fun".') 
       }
-      else if (fun=='INTERP_CENTER')		 	
-      {
-        
-        outF=ts(outCD,start=c(start(x)[1],3),frequency=4) 
-      }
-      else if (fun=='INTERP_BEGIN')		 	
-      {
-        
-        outF=ts(outCD,start=c(start(x)[1],1),frequency=4) 
-      }
-      else stop('QUARTERLY(): unknown agg/disagg function (fun) type.') 
     }
     
     #input is semiannual
     else if (frequency(x)==2)
     {
       if (length(x)<2) stop('QUARTERLY(): at least two observations required for interpolation.') 
-      #build out data
-      inCD=coredata(x) 
-      #out data
-      outCD=inCD[1] 
-      for (idx in (2:length(inCD)))
-      {
-        for (idx2 in (1:1))
-        {
-          outCD=c(outCD,inCD[(idx-1)]+idx2*(inCD[idx]-inCD[(idx-1)])/2)
-        }
-        
-        outCD=c(outCD,inCD[idx]) 
-      }
+     
       
       if (is.null(fun))
       {
         if (start(x)[2]==1) outF=ts(rep(coredata(x),each=2),start=c(start(x)[1],1),frequency=4) 
-        if (start(x)[2]==2) outF=ts(rep(coredata(x),each=2),start=c(start(x)[1],3),frequency=4) 
+        else if (start(x)[2]==2) outF=ts(rep(coredata(x),each=2),start=c(start(x)[1],3),frequency=4) 
       }
-      else if (fun=='INTERP_END')		 	
+      else
       {
-        if (start(x)[2]==1) outF=ts(outCD,start=c(start(x)[1],2),frequency=4) 
-        if (start(x)[2]==2) outF=ts(outCD,start=c(start(x)[1],4),frequency=4) 
+          #build out data
+          inCD=coredata(x) 
+          #out data
+          outCD=inCD[1] 
+          for (idx in (2:length(inCD)))
+          {
+            for (idx2 in (1:1))
+            {
+              outCD=c(outCD,inCD[(idx-1)]+idx2*(inCD[idx]-inCD[(idx-1)])/2)
+            }
+            
+            outCD=c(outCD,inCD[idx]) 
+          }
+          
+          if (fun=='INTERP_END')		 	
+          {
+            if (start(x)[2]==1) outF=ts(outCD,start=c(start(x)[1],2),frequency=4) 
+            else if (start(x)[2]==2) outF=ts(outCD,start=c(start(x)[1],4),frequency=4) 
+          }
+          else if (fun=='INTERP_CENTER')		 	
+          {
+            if (start(x)[2]==1) 	outF=ts(outCD,start=c(start(x)[1],2),frequency=4) 
+            else if (start(x)[2]==2) 	outF=ts(outCD,start=c(start(x)[1],4),frequency=4) 
+          }
+          else if (fun=='INTERP_BEGIN')		 	
+          {	
+            if (start(x)[2]==1) 	outF=ts(outCD,start=c(start(x)[1],1),frequency=4) 
+            else if (start(x)[2]==2) 	outF=ts(outCD,start=c(start(x)[1],3),frequency=4) 
+          }
+          else stop('QUARTERLY(): unknown argument "fun".') 
       }
-      else if (fun=='INTERP_CENTER')		 	
-      {
-        if (start(x)[2]==1) 	outF=ts(outCD,start=c(start(x)[1],2),frequency=4) 
-        if (start(x)[2]==2) 	outF=ts(outCD,start=c(start(x)[1],4),frequency=4) 
-      }
-      else if (fun=='INTERP_BEGIN')		 	
-      {	
-        if (start(x)[2]==1) 	outF=ts(outCD,start=c(start(x)[1],1),frequency=4) 
-        if (start(x)[2]==2) 	outF=ts(outCD,start=c(start(x)[1],3),frequency=4) 
-      }
-      else stop('QUARTERLY(): unknown agg/disagg function (fun) type.') 
     }
     
     #input is monthly
     else if (frequency(x)==12)
     {
       
-      
       if (is.null(fun))
       {
-        stop('QUARTERLY(): an option (fun=F) must be given when converting a monthly time series.') 
+        stop('QUARTERLY(): argument "fun" must be provided when converting a monthly time series.') 
       }
       else if (fun=='STOCK')		 	
       {	
@@ -2667,6 +2676,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         if (start(x)[2]<=9) outStartP=3 
         if (start(x)[2]<=6) outStartP=2 
         if (start(x)[2]<=3) outStartP=1 
+        
         for (idx in (1:length(x)))
         {
           #if month == (mar jun sep dec) add to out
@@ -2674,7 +2684,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -2701,7 +2711,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -2723,7 +2733,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -2751,7 +2761,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -2773,7 +2783,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -2801,159 +2811,103 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
-      else stop('QUARTERLY(): unknown agg/disagg function (fun) type.') 
+      else stop('QUARTERLY(): unknown argument "fun".') 
     }
     
     #input is daily
     else if (frequency(x)==366)
     {
+      #start period of out ts
+      outStartP=NA 
+      #out data
+      outCD=NULL 
       
+      #get ts dates
+      xDates=GETDATE(x,avoidCompliance=TRUE)
       
+      #convert to 3-cols matrix
+      #if 366 in non-bisextile xDates==NA
+      matrixDates=matrix(unlist(lapply(strsplit(xDates,'-'),
+                                       function(x) if (is.na(x[1])) return(c(NA,NA,NA)) else return(as.numeric(x)))
+                            ),
+                            nrow=length(xDates),ncol=3,byrow = T)
+                            
       if (is.null(fun))
       {
-        stop('QUARTERLY(): an option (fun=F) must be given when converting a daily time series.') 
+        stop('QUARTERLY(): argument "fun" must be provided when converting a daily time series.') 
       }
       else if (fun=='STOCK')		 	
       {	
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
-        {
-          outStartP=5 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<4)
-        {
-          outStartP=1 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<7)
-        {
-          outStartP=2 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<10)
-        {
-          outStartP=3 
-        } else {
-          outStartP=4 
-        }
+       
         
+        if (is.na(matrixDates[1,1]))
+        {
+          #x starts in 366 period in non bisextile
+          outStartP=5 
+        } else {
+          outStartP=.monthToQuarter(matrixDates[1,2]) 
+        }
         
         
         for (idx in (1:length(x)))
         {
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31') outCD=c(outCD,x[idx]) 
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='06-30') outCD=c(outCD,x[idx]) 
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='03-31') outCD=c(outCD,x[idx]) 
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='09-30') outCD=c(outCD,x[idx]) 
+           if(.isLastDateOnQuarter(matrixDates[idx,])) outCD=c(outCD,x[idx])
           }
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
       else if (fun=='NSTOCK')		 	
       {	
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+       
+        
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=5 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<4)
-        {
-          outStartP=1 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<7)
-        {
-          outStartP=2 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<10)
-        {
-          outStartP=3 
         } else {
-          outStartP=4 
+          outStartP=.monthToQuarter(matrixDates[1,2]) 
         }
-        
-        
         
         for (idx in (1:length(x)))
         {
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31') 
+            if(.isLastDateOnQuarter(matrixDates[idx,])) 
             {
+              baseQuarter=.monthToQuarter(matrixDates[idx,2])
+              
               idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE))>9) idx_tmp=idx_tmp+1
+              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && .monthToQuarter(matrixDates[idx-idx_tmp,2])==baseQuarter) idx_tmp=idx_tmp+1
               outCD=c(outCD,x[idx-idx_tmp]) 
             }
-            
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='06-30') 
-            {
-              idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE))>3) idx_tmp=idx_tmp+1
-              outCD=c(outCD,x[idx-idx_tmp]) 
-            }
-            
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='03-31') 
-            {
-              idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE))<4) idx_tmp=idx_tmp+1
-              outCD=c(outCD,x[idx-idx_tmp]) 
-            }
-            
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='09-30') 
-            {
-              idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE))>6) idx_tmp=idx_tmp+1
-              outCD=c(outCD,x[idx-idx_tmp]) 
-            }
-            
           }
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
       else if (fun=='SUM')		 	
       {	
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
         #skip first q if we dont have all days
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=5 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='01-01')
+        } else if (.isFirstDateOnQuarter(matrixDates[1,]))
         {
-          outStartP=1 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<4)
-        {
-          outStartP=2 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='04-01')
-        {
-          outStartP=2 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<7)
-        {
-          outStartP=3 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='07-01')
-        {
-          outStartP=3 
-        } else if (as.numeric(GETDATE(x,1,format='%m,avoidCompliance=TRUE'))<10)
-        {
-          outStartP=4 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='10-01')
-        {
-          outStartP=4 
+          outStartP=.monthToQuarter(matrixDates[1,2]) 
         } else {
-          outStartP=5 
+          outStartP=.monthToQuarter(matrixDates[1,2])+1
         }
         
         #tmp for sum
@@ -2963,9 +2917,9 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         for (idx in (1:length(x)))
         { 
           
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='01-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='07-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='04-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='10-01')  )
+            if (.isFirstDateOnQuarter(matrixDates[idx,]))
             {
               tmpOut=x[idx] 
               canInsert=TRUE 
@@ -2973,7 +2927,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               tmpOut=x[idx]+tmpOut 
             }
             
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='06-30') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='03-31') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='09-30')  )
+            if (.isLastDateOnQuarter(matrixDates[idx,]))
             {
               if (canInsert) outCD=c(outCD,tmpOut) 
             }
@@ -2982,43 +2936,22 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
       else if (fun=='NSUM')		 	
       {  
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
+        
         #skip first q if we dont have all days
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=5 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='01-01')
+        } else if (.isFirstDateOnQuarter(matrixDates[1,]))
         {
-          outStartP=1 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<4)
-        {
-          outStartP=2 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='04-01')
-        {
-          outStartP=2 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<7)
-        {
-          outStartP=3 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='07-01')
-        {
-          outStartP=3 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<10)
-        {
-          outStartP=4 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='10-01')
-        {
-          outStartP=4 
+          outStartP=.monthToQuarter(matrixDates[1,2]) 
         } else {
-          outStartP=5 
+          outStartP=.monthToQuarter(matrixDates[1,2])+1
         }
         
         #tmp for sum
@@ -3028,9 +2961,9 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         for (idx in (1:length(x)))
         { 
           
-          if (! is.na(GETDATE(x,idx)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='01-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='07-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='04-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='10-01')  )
+            if (.isFirstDateOnQuarter(matrixDates[idx,]))
             {
               tmpOut=NA 
               if (! is.na(x[idx])) tmpOut=x[idx] 
@@ -3041,7 +2974,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               if (( is.na(tmpOut)) && (! is.na(x[idx]))) tmpOut=x[idx] 
             }
             
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='06-30') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='03-31') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='09-30')  )
+            if (.isLastDateOnQuarter(matrixDates[idx,]))
             {
               if (canInsert) outCD=c(outCD,tmpOut) 
             }
@@ -3050,43 +2983,22 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
       else if (fun=='AVE')		 	
       {  
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
+                          
         #skip first q if we dont have all days
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=5 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='01-01')
+        } else if (.isFirstDateOnQuarter(matrixDates[1,]))
         {
-          outStartP=1 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<4)
-        {
-          outStartP=2 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='04-01')
-        {
-          outStartP=2 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<7)
-        {
-          outStartP=3 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='07-01')
-        {
-          outStartP=3 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<10)
-        {
-          outStartP=4 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='10-01')
-        {
-          outStartP=4 
+          outStartP=.monthToQuarter(matrixDates[1,2]) 
         } else {
-          outStartP=5 
+          outStartP=.monthToQuarter(matrixDates[1,2])+1
         }
         
         #tmp for ave
@@ -3097,9 +3009,9 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         for (idx in (1:length(x)))
         { 
           
-          if (! is.na(GETDATE(x,idx)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='01-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='07-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='04-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='10-01')  )
+            if (.isFirstDateOnQuarter(matrixDates[idx,]))
             {
               tmpOut=x[idx] 
               tmpCnt=1 
@@ -3109,7 +3021,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               tmpCnt=1+tmpCnt 
             }
             
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='06-30') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='03-31') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='09-30')  )
+            if ((.isLastDateOnQuarter(matrixDates[idx,])))
             {
               if (canInsert) outCD=c(outCD,tmpOut/tmpCnt) 
             }
@@ -3118,43 +3030,22 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
       else if (fun=='NAVE')		 	
       {  
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
+        
         #skip first q if we dont have all days
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=5 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='01-01')
+        } else if (.isFirstDateOnQuarter(matrixDates[1,]))
         {
-          outStartP=1 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<4)
-        {
-          outStartP=2 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='04-01')
-        {
-          outStartP=2 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<7)
-        {
-          outStartP=3 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='07-01')
-        {
-          outStartP=3 
-        } else if (as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))<10)
-        {
-          outStartP=4 
-        } else if (GETDATE(x,1,format='%m-%d',avoidCompliance=TRUE)=='10-01')
-        {
-          outStartP=4 
+          outStartP=.monthToQuarter(matrixDates[1,2]) 
         } else {
-          outStartP=5 
+          outStartP=.monthToQuarter(matrixDates[1,2])+1
         }
         
         #tmp for sum
@@ -3165,9 +3056,9 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         for (idx in (1:length(x)))
         { 
           
-          if (! is.na(GETDATE(x,idx)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='01-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='07-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='04-01') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='10-01')  )
+            if (.isFirstDateOnQuarter(matrixDates[idx,]))
             {
               tmpOut=NA 
               if (! is.na(x[idx])) 
@@ -3190,7 +3081,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               }
             }
             
-            if ((GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='06-30') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='03-31') || (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='09-30')  )
+            if (.isLastDateOnQuarter(matrixDates[idx,]))
             {
               if (canInsert) outCD=c(outCD,tmpOut/tmpCnt) 
             }
@@ -3199,11 +3090,11 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) print('QUARTERLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
-      else stop('QUARTERLY(): unknown agg/disagg function (fun) type.') 
+      else stop('QUARTERLY(): unknown argument "fun".') 
     }
     
     else {stop('QUARTERLY(): unsupported input frequency.') }
@@ -3219,7 +3110,6 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
 }
 
 
-
 # ANNUAL code ----------------------------------------
 
 #ANNUAL creates a annual time series from an existing time series.
@@ -3233,11 +3123,8 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
     tryCatch({.isCompliant(x) },error=function(e){stop('ANNUAL(): x - ',e$message) }) 
   }
   
-  
-  
   if (is.ts(x) )
   {			
-    
     #input is annual
     if (frequency(x)==1) {outF=x }
     
@@ -3245,10 +3132,9 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
     else if (frequency(x)==2)
     {
       
-      
       if (is.null(fun))
       {
-        stop('ANNUAL(): an option (fun=F) must be given when converting a semiannual time series.') 
+        stop('ANNUAL(): argument "fun" must be provided when converting a semiannual time series.') 
       }
       else if (fun=='STOCK')		 	
       {	
@@ -3264,7 +3150,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -3287,7 +3173,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -3306,7 +3192,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -3331,7 +3217,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -3350,7 +3236,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -3375,21 +3261,19 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
-      else stop('ANNUAL(): unknown agg/disagg function (fun) type.') 
+      else stop('ANNUAL(): unknown argument "fun".') 
     }
     
     #input is QUARTERLY
     else if (frequency(x)==4)
     {
-      
-      
       if (is.null(fun))
       {
-        stop('ANNUAL(): an option (fun=F) must be given when converting a quarterly time series.') 
+        stop('ANNUAL(): argument "fun" must be provided when converting a quarterly time series.') 
       }
       else if (fun=='STOCK')		 	
       {	
@@ -3405,7 +3289,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -3425,11 +3309,10 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
             while(is.na(x[idx-idx_tmp]) && idx_tmp < 3 && idx_tmp < idx -1) idx_tmp=idx_tmp+1 
             outCD=c(outCD,x[idx-idx_tmp]) 
           }
-          
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -3448,7 +3331,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -3473,7 +3356,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -3492,7 +3375,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -3517,21 +3400,19 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
-      else stop('ANNUAL(): unknown agg/disagg function (fun) type.') 
+      else stop('ANNUAL(): unknown argument "fun".') 
     }
     
     #input is monthly
     else if (frequency(x)==12)
     {
-      
-      
       if (is.null(fun))
       {
-        stop('ANNUAL(): an option (fun=F) must be given when converting a monthly time series.') 
+        stop('ANNUAL(): argument "fun" must be provided when converting a monthly time series.') 
       }
       else if (fun=='STOCK')		 	
       {	
@@ -3547,7 +3428,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -3567,11 +3448,10 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
             while (is.na(x[idx-idx_tmp]) && idx_tmp < 11 && idx_tmp< idx-1) {idx_tmp=idx_tmp+1 }
             outCD=c(outCD,x[idx-idx_tmp]) 
           }
-          
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -3590,7 +3470,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -3616,7 +3496,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -3635,7 +3515,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -3660,57 +3540,65 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
-      else stop('ANNUAL(): unknown agg/disagg function (fun) type.') 
+      else stop('ANNUAL(): unknown argument "fun".') 
     }
     
     #input is daily
     else if (frequency(x)==366)
     {
+      #out data
+      outCD=NULL 
       
+      #get ts dates
+      xDates=GETDATE(x,avoidCompliance=TRUE)
+      
+      #convert to 3-cols matrix
+      #if 366 in non-bisextile xDates==NA
+      matrixDates=matrix(unlist(lapply(strsplit(xDates,'-'),
+                                       function(x) if (is.na(x[1])) return(c(NA,NA,NA)) else return(as.numeric(x)))
+                              ),
+                              nrow=length(xDates),ncol=3,byrow = T)
       
       if (is.null(fun))
       {
-        stop('ANNUAL(): an option (fun=F) must be given when converting a daily time series.') 
+        stop('ANNUAL(): argument "fun" must be provided when converting a daily time series.') 
       }
       else if (fun=='STOCK')		 	
       {	
         
-        #out data
-        outCD=NULL 
         outStartP=1 
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) outStartP=2 
+        
+        if (is.na(matrixDates[1,1] )) outStartP=2 
         for (idx in (1:length(x)))
         {
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31') outCD=c(outCD,x[idx]) 
+            if (matrixDates[idx,2]==12 && matrixDates[idx,3]==31 ) outCD=c(outCD,x[idx]) 
           }
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
       else if (fun=='NSTOCK')		 	
       {	
         
-        #out data
-        outCD=NULL 
         outStartP=1 
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) outStartP=2 
+        if (is.na(matrixDates[1,1] )) outStartP=2 
         for (idx in (1:length(x)))
         {
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1] ))
           {
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31') 
+            if (matrixDates[idx,2]==12 && matrixDates[idx,3]==31 ) 
             {
               idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 &&  GETDATE(x,idx-idx_tmp,format='%y',avoidCompliance=TRUE)==GETDATE(x,idx,format='%y',avoidCompliance=TRUE)) idx_tmp=idx_tmp+1 
+              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && matrixDates[idx,1]==matrixDates[idx-idx_tmp,1] ) idx_tmp=idx_tmp+1 
               outCD=c(outCD,x[idx-idx_tmp]) 
             }
             
@@ -3718,28 +3606,28 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
       else if (fun=='SUM')		 	
       {	
-        
-        #out data
-        outCD=NULL 
         #skip first year if we dont have all days
         outStartP=2 
+        
         if (start(x)[2]<=1) outStartP=1 
+        
         #tmp for sum
         tmpOut=0 
         #flag for skip incomplete years
         canInsert=FALSE 
+        
         for (idx in (1:length(x)))
         { 
           
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1] ))
           {
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='01-01') 
+            if (matrixDates[idx,2]==1 && matrixDates[idx,3]==1) 
             {
               tmpOut=x[idx] 
               canInsert=TRUE 
@@ -3747,7 +3635,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               tmpOut=x[idx]+tmpOut 
             }
             
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31')
+            if (matrixDates[idx,2]==12 && matrixDates[idx,3]==31)
             {
               if (canInsert) outCD=c(outCD,tmpOut) 
             }
@@ -3756,28 +3644,30 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
       else if (fun=='NSUM')		 	
       {  
         
-        #out data
-        outCD=NULL 
+        
         #skip first year if we dont have all days
         outStartP=2 
+        
         if (start(x)[2]<=1) outStartP=1 
+        
         #tmp for sum
         tmpOut=NA 
         #flag for skip incomplete years
         canInsert=FALSE 
+        
         for (idx in (1:length(x)))
         { 
           
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='01-01') 
+            if (matrixDates[idx,2]==1 && matrixDates[idx,3]==1 ) 
             {
               tmpOut=NA 
               if (! is.na(x[idx])) tmpOut=x[idx] 
@@ -3788,7 +3678,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               if (( is.na(tmpOut)) && (! is.na(x[idx]))) tmpOut=x[idx] 
             }
             
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31')
+            if (matrixDates[idx,2]==12 && matrixDates[idx,3]==31)
             {
               if (canInsert) outCD=c(outCD,tmpOut) 
             }
@@ -3797,29 +3687,30 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
       else if (fun=='AVE')		 	
       {  
         
-        #out data
-        outCD=NULL 
         #skip first year if we dont have all days
         outStartP=2 
+        
         if (start(x)[2]<=1) outStartP=1 
+        
         #tmp for ave
         tmpOut=0 
         tmpCnt=1 
+        
         #flag for skip incomplete years
         canInsert=FALSE 
         for (idx in (1:length(x)))
         { 
           
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='01-01') 
+            if (matrixDates[idx,2]==1 && matrixDates[idx,3]==1) 
             {
               tmpOut=x[idx] 
               tmpCnt=1 
@@ -3829,7 +3720,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               tmpCnt=1+tmpCnt 
             }
             
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31')
+            if (matrixDates[idx,2]==12 && matrixDates[idx,3]==31)
             {
               if (canInsert) outCD=c(outCD,tmpOut/tmpCnt) 
             }
@@ -3838,15 +3729,13 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
       else if (fun=='NAVE')		 	
       {  
         
-        #out data
-        outCD=NULL 
         #skip first year if we dont have all days
         outStartP=2 
         if (start(x)[2]<=1) outStartP=1 
@@ -3858,9 +3747,9 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         for (idx in (1:length(x)))
         { 
           
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='01-01') 
+            if (matrixDates[idx,2]==1 && matrixDates[idx,3]==1) 
             {
               tmpOut=NA 
               if (! is.na(x[idx])) 
@@ -3883,7 +3772,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               }
             }
             
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31')
+            if (matrixDates[idx,2]==12 && matrixDates[idx,3]==31)
             {
               if (canInsert) outCD=c(outCD,tmpOut/tmpCnt) 
             }
@@ -3892,11 +3781,11 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) print('ANNUAL(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
-      else stop('ANNUAL(): unknown agg/disagg function (fun) type.') 
+      else stop('ANNUAL(): unknown argument "fun".') 
     }
     
     else {stop('ANNUAL(): unsupported input frequency.') }
@@ -3910,8 +3799,6 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
   
   return(outF) 
 }
-
-
 
 # YEARLY code ----------------------------------------
 
@@ -3929,7 +3816,6 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
   {
     tryCatch({.isCompliant(x) },error=function(e){stop('MONTHLY(): x - ',e$message) }) 
   }
-  
   
   
   if (is.ts(x) )
@@ -3975,7 +3861,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         
         outF=ts(outCD,start=c(start(x)[1],1),frequency=12) 
       }
-      else stop('MONTHLY(): unknown agg/disagg function (fun) type.') 
+      else stop('MONTHLY(): unknown argument "fun".') 
     }
     
     #input is semiannual
@@ -3998,24 +3884,24 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
       if (is.null(fun))
       {
         if (start(x)[2]==1) outF=ts(rep(coredata(x),each=6),start=c(start(x)[1],1),frequency=12) 
-        if (start(x)[2]==2) outF=ts(rep(coredata(x),each=6),start=c(start(x)[1],7),frequency=12) 
+        else if (start(x)[2]==2) outF=ts(rep(coredata(x),each=6),start=c(start(x)[1],7),frequency=12) 
       }
       else if (fun=='INTERP_END')		 	
       {
         if (start(x)[2]==1) outF=ts(outCD,start=c(start(x)[1],6),frequency=12) 
-        if (start(x)[2]==2) outF=ts(outCD,start=c(start(x)[1],12),frequency=12) 
+        else if (start(x)[2]==2) outF=ts(outCD,start=c(start(x)[1],12),frequency=12) 
       }
       else if (fun=='INTERP_CENTER')		 	
       {
         if (start(x)[2]==1) 	outF=ts(outCD,start=c(start(x)[1],4),frequency=12) 
-        if (start(x)[2]==2) 	outF=ts(outCD,start=c(start(x)[1],10),frequency=12) 
+        else if (start(x)[2]==2) 	outF=ts(outCD,start=c(start(x)[1],10),frequency=12) 
       }
       else if (fun=='INTERP_BEGIN')		 	
       {	
         if (start(x)[2]==1) 	outF=ts(outCD,start=c(start(x)[1],1),frequency=12) 
-        if (start(x)[2]==2) 	outF=ts(outCD,start=c(start(x)[1],7),frequency=12) 
+        else if (start(x)[2]==2) 	outF=ts(outCD,start=c(start(x)[1],7),frequency=12) 
       }
-      else stop('MONTHLY(): unknown agg/disagg function (fun) type.') 
+      else stop('MONTHLY(): unknown argument "fun".') 
     }
     
     #input is quarterly
@@ -4038,218 +3924,127 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
       if (is.null(fun))
       {
         if (start(x)[2]==1) outF=ts(rep(coredata(x),each=3),start=c(start(x)[1],1),frequency=12) 
-        if (start(x)[2]==2) outF=ts(rep(coredata(x),each=3),start=c(start(x)[1],4),frequency=12) 
-        if (start(x)[2]==3) outF=ts(rep(coredata(x),each=3),start=c(start(x)[1],7),frequency=12) 
-        if (start(x)[2]==4) outF=ts(rep(coredata(x),each=3),start=c(start(x)[1],10),frequency=12) 
+        else if (start(x)[2]==2) outF=ts(rep(coredata(x),each=3),start=c(start(x)[1],4),frequency=12) 
+        else if (start(x)[2]==3) outF=ts(rep(coredata(x),each=3),start=c(start(x)[1],7),frequency=12) 
+        else if (start(x)[2]==4) outF=ts(rep(coredata(x),each=3),start=c(start(x)[1],10),frequency=12) 
       }
       else if (fun=='INTERP_END')		 	
       {
         if (start(x)[2]==1) outF=ts(outCD,start=c(start(x)[1],3),frequency=12) 
-        if (start(x)[2]==2) outF=ts(outCD,start=c(start(x)[1],6),frequency=12) 
-        if (start(x)[2]==3) outF=ts(outCD,start=c(start(x)[1],9),frequency=12) 
-        if (start(x)[2]==4) outF=ts(outCD,start=c(start(x)[1],12),frequency=12) 
+        else if (start(x)[2]==2) outF=ts(outCD,start=c(start(x)[1],6),frequency=12) 
+        else if (start(x)[2]==3) outF=ts(outCD,start=c(start(x)[1],9),frequency=12) 
+        else if (start(x)[2]==4) outF=ts(outCD,start=c(start(x)[1],12),frequency=12) 
       }
       else if (fun=='INTERP_CENTER')		 	
       {
         if (start(x)[2]==1) 	outF=ts(outCD,start=c(start(x)[1],2),frequency=12) 
-        if (start(x)[2]==2) 	outF=ts(outCD,start=c(start(x)[1],5),frequency=12) 
-        if (start(x)[2]==3) 	outF=ts(outCD,start=c(start(x)[1],8),frequency=12) 
-        if (start(x)[2]==4) 	outF=ts(outCD,start=c(start(x)[1],11),frequency=12) 
+        else if (start(x)[2]==2) 	outF=ts(outCD,start=c(start(x)[1],5),frequency=12) 
+        else if (start(x)[2]==3) 	outF=ts(outCD,start=c(start(x)[1],8),frequency=12) 
+        else if (start(x)[2]==4) 	outF=ts(outCD,start=c(start(x)[1],11),frequency=12) 
       }
       else if (fun=='INTERP_BEGIN')		 	
       {	
         if (start(x)[2]==1) 	outF=ts(outCD,start=c(start(x)[1],1),frequency=12) 
-        if (start(x)[2]==2) 	outF=ts(outCD,start=c(start(x)[1],4),frequency=12) 
-        if (start(x)[2]==3) 	outF=ts(outCD,start=c(start(x)[1],7),frequency=12) 
-        if (start(x)[2]==4) 	outF=ts(outCD,start=c(start(x)[1],10),frequency=12) 
+        else if (start(x)[2]==2) 	outF=ts(outCD,start=c(start(x)[1],4),frequency=12) 
+        else if (start(x)[2]==3) 	outF=ts(outCD,start=c(start(x)[1],7),frequency=12) 
+        else if (start(x)[2]==4) 	outF=ts(outCD,start=c(start(x)[1],10),frequency=12) 
       }
-      else stop('MONTHLY(): unknown agg/disagg function (fun) type.') 
+      else stop('MONTHLY(): unknown argument "fun".') 
     }
     
     #input is daily
     else if (frequency(x)==366)
     {
       
+      #start period of out ts
+      outStartP=NA 
+      #out data
+      outCD=NULL 
+      
+      #get ts dates
+      xDates=GETDATE(x,avoidCompliance=TRUE)
+      
+      #convert to 3-cols matrix
+      #if 366 in non-bisextile xDates==NA
+      matrixDates=matrix(unlist(lapply(strsplit(xDates,'-'),
+                                       function(x) if (is.na(x[1])) return(c(NA,NA,NA)) else return(as.numeric(x)))
+                            ),
+                            nrow=length(xDates),ncol=3,byrow = T)
       
       if (is.null(fun))
       {
-        stop('MONTHLY(): an option (fun=F) must be given when converting a daily time series.') 
+        stop('MONTHLY(): argument "fun" must be provided when converting a daily time series.') 
       }
       else if (fun=='STOCK')		 	
       {	
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+        
+        
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=13 
         } else 
         {
-          outStartP=as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE)) 
+          outStartP=matrixDates[1,2]
         } 
-        
         
         
         for (idx in (1:length(x)))
         {
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='01-31') outCD=c(outCD,x[idx])
-            
-            #bisextile workaround... (if tomorrow is first march then today is last 28 or 29 feb)
-            else if (format(as.Date(as.Date(GETDATE(x,idx,avoidCompliance=TRUE))+1),format='%m-%d')=='03-01') outCD=c(outCD,x[idx])
-            
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='03-31') outCD=c(outCD,x[idx])
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='04-30') outCD=c(outCD,x[idx])
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='05-31') outCD=c(outCD,x[idx])
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='06-30') outCD=c(outCD,x[idx])
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='07-31') outCD=c(outCD,x[idx])
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='08-31') outCD=c(outCD,x[idx])
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='09-30') outCD=c(outCD,x[idx])
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='10-31') outCD=c(outCD,x[idx])
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='11-30') outCD=c(outCD,x[idx])
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31') outCD=c(outCD,x[idx]) 
+            if (.isLastDateOnMonth(matrixDates[idx,]) ) outCD=c(outCD,x[idx]) 
           }
         }
         
         if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.') 
-        if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('MONTHLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12) 
       }
       else if (fun=='NSTOCK')		 	
       {	
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+                                
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=13 
         } else 
         {
-          outStartP=as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE)) 
+          outStartP=matrixDates[1,2]
         } 
-        
         
         
         for (idx in (1:length(x)))
         {
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1] ))
           {
-            if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='01-31') 
+            if (.isLastDateOnMonth(matrixDates[idx,]) ) 
             {
               idx_tmp=0 
               while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 
-                     && as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE)) ==1) idx_tmp=idx_tmp+1
-              outCD=c(outCD,x[idx-idx_tmp])
-            }
-            
-            #bisextile workaround... (if tomorrow is first march then today is last 28 or 29 feb)           
-            else if (format(as.Date(as.Date(GETDATE(x,idx,avoidCompliance=TRUE))+1),format='%m-%d')=='03-01') 
-            {
-              idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 
-                     && as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE)) ==2) idx_tmp=idx_tmp+1
-              outCD=c(outCD,x[idx-idx_tmp])
-            }
-            
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='03-31') 
-            {
-              idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && 
-                     as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE)) ==3) idx_tmp=idx_tmp+1
-              outCD=c(outCD,x[idx-idx_tmp])
-            }
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='04-30') 
-            {
-              idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && 
-                     as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE)) ==4) idx_tmp=idx_tmp+1
-              outCD=c(outCD,x[idx-idx_tmp])
-            }
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='05-31') 
-            {
-              idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && 
-                     as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE)) ==5) idx_tmp=idx_tmp+1
-              outCD=c(outCD,x[idx-idx_tmp])
-            }
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='06-30') 
-            {
-              idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && 
-                     as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE)) ==6) idx_tmp=idx_tmp+1
-              outCD=c(outCD,x[idx-idx_tmp])
-            }
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='07-31') 
-            {
-              idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && 
-                     as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE)) ==7) idx_tmp=idx_tmp+1
-              outCD=c(outCD,x[idx-idx_tmp])
-            }
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='08-31') 
-            {
-              idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && 
-                     as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE)) ==8) idx_tmp=idx_tmp+1
-              outCD=c(outCD,x[idx-idx_tmp])
-            }
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='09-30') 
-            {
-              idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && 
-                     as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE)) ==9) idx_tmp=idx_tmp+1
-              outCD=c(outCD,x[idx-idx_tmp])
-            }
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='10-31') 
-            {
-              idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && 
-                     as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE)) ==10) idx_tmp=idx_tmp+1
-              outCD=c(outCD,x[idx-idx_tmp])
-            }
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='11-30') 
-            {
-              idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && 
-                     as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE)) ==11) idx_tmp=idx_tmp+1
-              outCD=c(outCD,x[idx-idx_tmp])
-            }
-            else if (GETDATE(x,idx,format='%m-%d',avoidCompliance=TRUE)=='12-31') 
-            {
-              idx_tmp=0 
-              while (is.na(x[idx-idx_tmp]) && idx_tmp<idx-1 && 
-                     as.numeric(GETDATE(x,idx-idx_tmp,format='%m',avoidCompliance=TRUE)) ==12) idx_tmp=idx_tmp+1
+                     && matrixDates[idx-idx_tmp,2]==matrixDates[idx,2]) idx_tmp=idx_tmp+1
               outCD=c(outCD,x[idx-idx_tmp])
             }
           }
         }
         
         if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.') 
-        if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('MONTHLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12) 
       }
       else if (fun=='SUM')		 	
       {	
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
+        
         #skip first m if we dont have all days
-        if (is.na(GETDATE(x,1))) 
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=13 
-        } else if (as.numeric(GETDATE(x,1,format='%d',avoidCompliance=TRUE))==1)
+        } else if (.isFirstDateOnMonth(matrixDates[1,]))
         {
-          outStartP=as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE)) 
+          outStartP=matrixDates[1,2] 
         } else {
-          outStartP=as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))+1 
+          outStartP=matrixDates[1,2]+1 
         }
-        
         
         #tmp for sum
         tmpOut=0 
@@ -4258,9 +4053,9 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         for (idx in (1:length(x)))
         { 
           
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]  ))
           {
-            if (as.numeric(GETDATE(x,idx,format='%d',avoidCompliance=TRUE))==1)
+            if (.isFirstDateOnMonth(matrixDates[idx,]) )
             {
               tmpOut=x[idx] 
               canInsert=TRUE 
@@ -4268,7 +4063,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               tmpOut=x[idx]+tmpOut 
             }
             
-            if (as.numeric(format(as.Date(as.Date(GETDATE(x,idx,avoidCompliance=TRUE))+1),format='%d'))==1)
+            if (.isLastDateOnMonth(matrixDates[idx,]))
             {
               if (canInsert) outCD=c(outCD,tmpOut) 
             }
@@ -4277,25 +4072,22 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.') 
-        if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('MONTHLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12) 
       }
       else if (fun=='NSUM')		 	
       {  
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
+        
         #skip first m if we dont have all days
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=13 
-        } else if (as.numeric(GETDATE(x,1,format='%d',avoidCompliance=TRUE))==1)
+        } else if (.isFirstDateOnMonth(matrixDates[1,]))
         {
-          outStartP=as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE)) 
+          outStartP=matrixDates[1,2]
         } else {
-          outStartP=as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))+1 
+          outStartP=matrixDates[1,2]+1
         }
         
         #tmp for sum
@@ -4305,9 +4097,9 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         for (idx in (1:length(x)))
         { 
           
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if (as.numeric(GETDATE(x,idx,format='%d',avoidCompliance=TRUE))==1)
+            if (.isFirstDateOnMonth(matrixDates[idx,]))
             {
               tmpOut=NA 
               if (! is.na(x[idx])) tmpOut=x[idx] 
@@ -4318,7 +4110,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               if (( is.na(tmpOut)) && (! is.na(x[idx]))) tmpOut=x[idx] 
             }
             
-            if (as.numeric(format(as.Date(as.Date(GETDATE(x,idx,avoidCompliance=TRUE))+1),format='%d'))==1)
+            if (.isLastDateOnMonth(matrixDates[idx,]))
             {
               if (canInsert) outCD=c(outCD,tmpOut) 
             }
@@ -4327,25 +4119,22 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.') 
-        if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('MONTHLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12) 
       }
       else if (fun=='AVE')		 	
       {  
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
+        
         #skip first m if we dont have all days
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=13 
-        } else if (as.numeric(GETDATE(x,1,format='%d',avoidCompliance=TRUE))==1)
+        } else if (.isFirstDateOnMonth(matrixDates[1,]))
         {
-          outStartP=as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE)) 
+          outStartP=matrixDates[1,2]
         } else {
-          outStartP=as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))+1 
+          outStartP=matrixDates[1,2]+1
         }
         
         #tmp for ave
@@ -4356,9 +4145,9 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         for (idx in (1:length(x)))
         { 
           
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if (as.numeric(GETDATE(x,idx,format='%d',avoidCompliance=TRUE))==1)
+            if (.isFirstDateOnMonth(matrixDates[idx,]))
             {
               tmpOut=x[idx] 
               tmpCnt=1 
@@ -4368,7 +4157,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               tmpCnt=1+tmpCnt 
             }
             
-            if (as.numeric(format(as.Date(as.Date(GETDATE(x,idx,avoidCompliance=TRUE))+1),format='%d'))==1)
+            if (.isLastDateOnMonth(matrixDates[idx,]))
             {
               if (canInsert) outCD=c(outCD,tmpOut/tmpCnt) 
             }
@@ -4377,25 +4166,22 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.') 
-        if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('MONTHLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12) 
       }
       else if (fun=='NAVE')		 	
       {  
-        #start period of out ts
-        outStartP=NA 
-        #out data
-        outCD=NULL 
+       
         #skip first m if we dont have all days
-        if (is.na(GETDATE(x,1,avoidCompliance=TRUE))) 
+        if (is.na(matrixDates[1,1])) 
         {
           outStartP=13 
-        } else if (as.numeric(GETDATE(x,1,format='%d',avoidCompliance=TRUE))==1)
+        } else if (.isFirstDateOnMonth(matrixDates[1,]))
         {
-          outStartP=as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE)) 
+          outStartP=matrixDates[1,2]
         } else {
-          outStartP=as.numeric(GETDATE(x,1,format='%m',avoidCompliance=TRUE))+1 
+          outStartP=matrixDates[1,2]+1
         }
         
         #tmp for sum
@@ -4406,9 +4192,9 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         for (idx in (1:length(x)))
         { 
           
-          if (! is.na(GETDATE(x,idx,avoidCompliance=TRUE)))
+          if (! is.na(matrixDates[idx,1]))
           {
-            if (as.numeric(GETDATE(x,idx,format='%d',avoidCompliance=TRUE))==1)
+            if (.isFirstDateOnMonth(matrixDates[idx,]))
             {
               tmpOut=NA 
               if (! is.na(x[idx])) 
@@ -4431,20 +4217,19 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               }
             }
             
-            if (as.numeric(format(as.Date(as.Date(GETDATE(x,idx,avoidCompliance=TRUE))+1),format='%d'))==1)
+            if (.isLastDateOnMonth(matrixDates[idx,]))
             {
               if (canInsert) outCD=c(outCD,tmpOut/tmpCnt) 
             }
           }
-          
         }
         
         if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.') 
-        if (length(outCD)<2) print('MONTHLY(): warning, the output time series has only one observation.')
+        if (length(outCD)<2) cat('MONTHLY(): warning, the output time series has only one observation.\n')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12) 
       }
-      else stop('MONTHLY(): unknown agg/disagg function (fun) type.') 
+      else stop('MONTHLY(): unknown argument "fun".') 
     }
     
     else {stop('MONTHLY(): unsupported input frequency.') }
@@ -4458,7 +4243,6 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
   
   return(outF) 
 }
-
 
 
 # DAILY code ----------------------------------------
@@ -4485,7 +4269,6 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
     else if (frequency(x)==1)
     {
       
-      
       if (is.null(fun))
       {
         outF=ts(rep(coredata(x),each=366),start=start(x),frequency=366) 
@@ -4493,14 +4276,13 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
       else if (fun=='INTERP_END')		 	
       {
         
-        
         #build out data
         inCD=coredata(x) 
         #out data
         outCD=inCD[1] 
         for (idx in (2:length(inCD)))
         {
-          #print(.isBisextile(start(x)[1]-2+idx))
+        
           if (.isBisextile(start(x)[1]-2+idx))
           {
             for (idx2 in (1:364))
@@ -4543,7 +4325,6 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         outCD=inCD[1] 
         for (idx in (2:length(inCD)))
         {
-          #print(.isBisextile(start(x)[1]-2+idx))
           if (.isBisextile(start(x)[1]-2+idx))
           {
             for (idx2 in (1:364))
@@ -4587,7 +4368,6 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         outCD=inCD[1] 
         for (idx in (2:length(inCD)))
         {
-          #print(start(x)[1]-2+idx)
           if (.isBisextile(start(x)[1]-2+idx))
           {
             for (idx2 in (1:365))
@@ -4611,13 +4391,12 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         
         outF=ts(outCD,start=c(start(x)[1],1),frequency=366) 
       }
-      else stop('DAILY(): unknown agg/disagg function (fun) type.') 
+      else stop('DAILY(): unknown argument "fun".') 
     }
     
     #input is semiannual
     else if (frequency(x)==2)
     {
-      
       
       if (is.null(fun))
       {
@@ -4635,7 +4414,7 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
             {
               outCD=c(outCD,rep(x[idx],181)) 
             }
-          }else 
+          } else 
           {#second semester
             if (.isBisextile(start(x)[1]+trunc((1+(idx-1+start(x)[2]-2))/2)))
             {
@@ -4664,8 +4443,6 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
       }
       else if (fun=='INTERP_END')		 	
       {
-        
-        
         #out data
         outCD=c() 
         for (idx in (2:length(x)))
@@ -4810,13 +4587,12 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         
         outF=ts(outCD,start=c(start(x)[1],outStart),frequency=366) 
       }
-      else stop('DAILY(): unknown agg/disagg function (fun) type.') 
+      else stop('DAILY(): unknown argument "fun".') 
     }
     
     #input is quarterly
     else if (frequency(x)==4)
     {
-      
       
       if (is.null(fun))
       {
@@ -4844,12 +4620,11 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
             outCD=c(outCD,rep(x[idx],92)) 
           } else if ((idx -1+start(x)[2]) %% 4 == 0) 
           {#4 quarter
-            #print('q4') 
             if (.isBisextile(start(x)[1]+trunc((idx-2+start(x)[2])/4)))
-            {#print('b') 
+            {
               outCD=c(outCD,rep(x[idx],92)) 
             } else
-            {#print('nb') 
+            {
               outCD=c(outCD,rep(x[idx],93)) 
             }
           }
@@ -5097,14 +4872,12 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         
         outF=ts(outCD,start=c(start(x)[1],outStart),frequency=366) 
       }
-      else stop('DAILY(): unknown agg/disagg function (fun) type.') 
+      else stop('DAILY(): unknown argument "fun".') 
     }
     
     #input is monthly
     else if (frequency(x)==12)
     {
-      
-      
       if (is.null(fun))
       {
         #out data
@@ -5173,8 +4946,6 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
               {
                 outCD=c(outCD,rep(x[idx],32)) 
               }
-              
-              
             }
         }
         
@@ -5356,7 +5127,6 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
           
         } else if (1+start(x)[2]==2)
         {
-          
           outStart=32-1 
         } else if (1+start(x)[2]==3)
         {
@@ -5511,8 +5281,6 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
             {
               outCD=c(outCD,x[idx]+(x[idx+1]-x[idx])*(0:31)/32) 
             }
-            
-            
           }
         }
         
@@ -5678,8 +5446,6 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
             {
               outCD=c(outCD,x[idx]+(x[idx+1]-x[idx])*(0:31)/32) 
             }
-            
-            
           }
         }
         
@@ -5776,7 +5542,7 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         
         outF=ts(outCD,start=c(start(x)[1],outStart),frequency=366) 
       }
-      else stop('DAILY(): unknown agg/disagg function (fun) type.') 
+      else stop('DAILY(): unknown argument "fun".') 
     }
     
     else {stop('DAILY(): unsupported input frequency.') }
@@ -5790,7 +5556,6 @@ DAILY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
   
   return(outF) 
 }
-
 
 
 # TSDELTA code ----------------------------------------
@@ -5828,16 +5593,19 @@ TSDELTA <- function(x=NULL,L=1,O=1,avoidCompliance=FALSE,...)
 }
 
 DELTA <- TSDELTA 
+
 # TSLAG code ----------------------------------------
 
 #TSLAG lags time series data by the specified number of time periods.
-TSLAG <- function(x=NULL,L=1,avoidCompliance=FALSE,...)
+TSLAG <- function(x=NULL, L=1, avoidCompliance=FALSE, verbose=FALSE, ...)
 {
   
   if (is.null(x)) stop('TSLAG(): input time series needs to be instance of ts() or xts() class.') 
   if (is.null(L)) stop('TSLAG(): NULL lag L.') 
   if (!(is.numeric(L) ) ) stop('TSLAG(): lag L must be an integer.') 
   if (!(L%%1==0))  stop('TSLAG(): non-integer lag L.') 
+  if (is.na(verbose) || !is.logical(verbose)) stop('TSLAG(): verbose must be TRUE or FALSE.') 
+  																							  
   outF=x 
   if (! avoidCompliance ) 
   {
@@ -5846,7 +5614,7 @@ TSLAG <- function(x=NULL,L=1,avoidCompliance=FALSE,...)
   
   if (is.ts(x) )
   {			
-    if (length(x)<=abs(L)) cat('TSLAG(): warning, too much lags. Attempting to define a NULL object.\n')
+    if (length(x)<=abs(L) && verbose) cat('TSLAG(): warning, too much lags. Attempting to define a NULL object.\n')
     outF=stats::lag(x,k=-L) 	#R direction inverse	
   }
   
@@ -5858,19 +5626,20 @@ TSLAG <- function(x=NULL,L=1,avoidCompliance=FALSE,...)
   return(outF) 
 }
 
-TSLEAD <- function(x=NULL,L=1,avoidCompliance=FALSE,...)
+TSLEAD <- function(x=NULL, L=1, avoidCompliance=FALSE, verbose=FALSE,...)
 {
   
   if (is.null(x)) stop('TSLEAD(): input time series needs to be instance of ts() or xts() class.') 
   if (is.null(L)) stop('TSLEAD(): NULL lag L.') 
   if (!(is.numeric(L) ) ) stop('TSLEAD(): lag L must be an integer.') 
   if (!(L%%1==0))  stop('TSLEAD(): non-integer lag L.') 
+  if (is.na(verbose) || !is.logical(verbose)) stop('TSLAG(): verbose must be TRUE or FALSE.') 
+  																							  
   tryCatch({
     
-    return(TSLAG(x=x,L=-L,avoidCompliance=avoidCompliance,...)) 
+    return(TSLAG(x=x, L=-L, avoidCompliance=avoidCompliance, verbose=verbose,...)) 
   },error=function(e){stop('TSLEAD(): ',e$message)}) 
 }
-
 
 # TSDELTALOG code ----------------------------------------
 
@@ -5887,8 +5656,6 @@ TSDELTALOG <- function(x=NULL, L=1, avoidCompliance=FALSE,...)
   {
     tryCatch({.isCompliant(x) },error=function(e){stop('TSDELTALOG(): x - ',e$message) }) 
   }
-  
-  
   
   if (is.ts(x) )
   {			
@@ -5922,8 +5689,6 @@ TSDELTAP <- function(x=NULL,L=1,ANNUALIZE=FALSE,avoidCompliance=FALSE,...)
     tryCatch({.isCompliant(x) },error=function(e){stop('TSDELTAP(): x - ',e$message) }) 
   }
   
-  
-  
   if (is.ts(x) )
   {			
     if (length(x)<=(L)) stop('TSDELTAP(): Too much lags: attempting to define a NULL object.')
@@ -5952,6 +5717,7 @@ TSDELTAP <- function(x=NULL,L=1,ANNUALIZE=FALSE,avoidCompliance=FALSE,...)
 }
 
 DELTAP <- TSDELTAP 
+
 # TSMERGE code ----------------------------------------
 
 #TSMERGE merges two time series.
@@ -5994,14 +5760,14 @@ TSMERGE <- function(...,fun=NULL,MV=FALSE,avoidCompliance=FALSE)
     outF=ts(start=startOutF,end=endOutF,frequency=fOutF) 
     for (idx in (1:length(outF)))
     {
-      #cat('idx:',idx,'\n') 
+      
       #...keep # of non missing columns (...used in SUM AVE etc)			
       activeColumns=0 
       #true if observation has been initializated 
       initializedValue=FALSE 
       for (idxL in (1:length(tsL)))
       { 
-        #cat('idL:',idxL,'\n') 
+       
         #periods betw start of out time series and start of input time series
         deltaStart=NUMPERIOD(start(outF),start(tsL[[idxL]]),fOutF) 
         deltaEnd=NUMPERIOD(start(outF),end(tsL[[idxL]]),fOutF) 
@@ -6069,7 +5835,6 @@ TSMERGE <- function(...,fun=NULL,MV=FALSE,avoidCompliance=FALSE)
                 outF[idx]=min(outF[idx],tsL[[idxL]][(idx-deltaStart)]) 
               }
               
-              
             }
             
             else stop('TSMERGE(): unknown merge function (fun) type') 
@@ -6089,13 +5854,8 @@ TSMERGE <- function(...,fun=NULL,MV=FALSE,avoidCompliance=FALSE)
           outF[idx]=NA 
           break 
         }
-        
       }	
-      #cat('outF[idx]',outF[idx],'\n') 
     }
-    
-    
-    
     
   }#end is.ts()
   
@@ -6111,9 +5871,6 @@ TSMERGE <- function(...,fun=NULL,MV=FALSE,avoidCompliance=FALSE)
   
   return(outF) 
 }
-
-
-
 
 
 # TSERIES code ----------------------------------------
@@ -6147,7 +5904,6 @@ TSERIES <- function(..., START = c(2000,1), FREQ = 1, SOURCE=NULL, TITLE=NULL, U
   if (is.null(START) ) stop('TIMESERIES(): start date is required. Please use START=c(y,p).') 
   #no args
   if (!(is.null(inputsL[['end']]))) stop('TIMESERIES(): end date is not allowed in TIMESERIES().') 
-  #print(typeof(attributes(inputsL))) 
   #no data provided
   if (length(inputsL)==0)
   {
@@ -6177,8 +5933,6 @@ TSERIES <- function(..., START = c(2000,1), FREQ = 1, SOURCE=NULL, TITLE=NULL, U
     attr(outF,'ScaleFac')=SCALEFAC 
   }
   
-  
-  
   if (! is.null(class))
   {
     if (toupper(.TRIM(class))=='XTS')
@@ -6204,6 +5958,7 @@ TSERIES <- function(..., START = c(2000,1), FREQ = 1, SOURCE=NULL, TITLE=NULL, U
 }
 
 TIMESERIES <- TSERIES 
+
 # MOVAVG code ----------------------------------------
 
 #MOVAVG moving average
@@ -6243,7 +5998,6 @@ MOVAVG <- function(x=NULL, L = NULL, DIRECTION=NULL, avoidCompliance=FALSE,...)
       outF=ts(MOVAVG(locData,L,avoidCompliance=avoidCompliance),start=c(locStartDateY,locStartDateP+L-1),frequency=locF) 
     }
     
-    
   } else {#is array
     
     
@@ -6259,14 +6013,13 @@ MOVAVG <- function(x=NULL, L = NULL, DIRECTION=NULL, avoidCompliance=FALSE,...)
       for (idx2 in (1:(L-1))) tempSum=tempSum+x[idx+idx2] 
       outF=c(outF,tempSum/L) 
     }
-    
   }
-  
   
   return(outF) 
 }
 
 MAVE <- MOVAVG 
+
 # MOVTOT code ----------------------------------------
 
 MOVTOT <- function(x=NULL, L = NULL, DIRECTION=NULL, avoidCompliance=FALSE,...)
@@ -6289,6 +6042,7 @@ MOVTOT <- function(x=NULL, L = NULL, DIRECTION=NULL, avoidCompliance=FALSE,...)
 MTOT <- MOVTOT 
 MSUM <- MTOT 
 MOVSUM <- MOVTOT 
+
 # GETDATE code ----------------------------------------
 
 #GETDATE get dates of selected observations.
@@ -6337,7 +6091,7 @@ GETDATE <- function(x=NULL, index=NULL, format='%Y-%m-%d', avoidCompliance=FALSE
     
     
   } else stop('GETDATE(): input needs to be instance of class ts() or xts().') 
-  #asked for quarter?
+  #asked for quarter
   if (length(grep('%q', format ))>0)
   {
     
@@ -6351,7 +6105,6 @@ GETDATE <- function(x=NULL, index=NULL, format='%Y-%m-%d', avoidCompliance=FALSE
   
   return(outF) 
 }
-
 
 #NOELS code ----------------------------------------
 
@@ -6413,9 +6166,7 @@ ELIMELS <- function(x=NULL,idx=NULL,avoidCompliance=FALSE,...)
     outF=x[idx] 
     return(outF) 
   }
-  
 }
-
 
 #NOELS returns the number of elements of input arguments
 NOELS <- function(...)
@@ -6429,33 +6180,22 @@ NOELS <- function(...)
   #inputs are ts xts or numeric or na
   if (all(as.logical(lapply(inputsL,.NOELSCompliantInput))))
   {
-    
     #combine array/ts length
     for (idx in (1:length(inputsL))) 
     {
       outF=c(outF,length(inputsL[[idx]])) 
     }
     
-    
-    
-    
   } else if (all(as.logical(lapply(inputsL,is.character)))) 
   {
-    
-    
-    #outF=0 
     for (idx in (1:length(inputsL))) 
     {
-      #print(inputsL[[idx]])
-      #outF=outF+length(inputsL[[idx]]) 
       outF=c(outF,nchar(inputsL[[idx]])) 
     }
     
   } else {
     stop('NOELS(): inputs must be either strings or instances of class numeric, NA, ts(), or xts().') 
   }
-  
-  
   
   return(outF) 
 }
@@ -6483,8 +6223,6 @@ GETYEARPERIOD <- function(x=NULL,YEARS='YEAR', PERIODS='PRD', JOIN=FALSE, avoidC
   
   if (is.ts(x) )
   {			
-    
-    
     localStart=start(x)
     
     outY=vector(length = length(x),mode = 'numeric')
@@ -6500,20 +6238,16 @@ GETYEARPERIOD <- function(x=NULL,YEARS='YEAR', PERIODS='PRD', JOIN=FALSE, avoidC
     if (!JOIN)
     {
       outF=list() 
-      #assign years
-      #outF[[YEARS]]=trunc(coredata(time(x))) 
-      outF[[YEARS]]=outY
       
+      #assign years
+      outF[[YEARS]]=outY
       #assign prds
-      #outF[[PERIODS]]=coredata(cycle(x)) 
       outF[[PERIODS]]=outP
       
     } else
     {
-      #outF=cbind(trunc(coredata(time(x))),coredata(cycle(x))) 
       outF=cbind(outY,outP)
     }
-    
   }
   
   if (is.xts(x) )
@@ -6543,7 +6277,6 @@ TSPROJECT <- function(x=NULL, TSRANGE=NULL, ARRAY=FALSE, EXTEND=FALSE, avoidComp
   {
     tryCatch({.isCompliant(x) },error=function(e){stop('TSPROJECT(): x - ',e$message) }) 
   }
-  
   
   if (is.ts(x) )
   {			
@@ -6588,10 +6321,7 @@ TSPROJECT <- function(x=NULL, TSRANGE=NULL, ARRAY=FALSE, EXTEND=FALSE, avoidComp
   return(outF) 
 }
 
-
-
 # LOCS code ----------------------------------------
-
 
 #LOCS find array indexes by condition...
 LOCS <- function(x=NULL, options='ALL',...)
@@ -6636,8 +6366,6 @@ LOCS <- function(x=NULL, options='ALL',...)
     stop('LOCS(): allowed options are: ALL, UNIQUE, FIRST, LAST.') 
   }
   
-  
-  
   return(outF) 
 }
 
@@ -6646,8 +6374,6 @@ LOCS <- function(x=NULL, options='ALL',...)
 #NAMELIST defines a list of names...
 NAMELIST <- function(...)
 {
-  
-  
   outF=c() 
   #an input is null
   tryCatch({inputsL=list(...) },error=function(e){stop('NAMELIST(): an input argument is NULL')}) 
@@ -6664,12 +6390,9 @@ NAMELIST <- function(...)
       #verify that string is a variable name i.e. '9', '', 'special chars', etc...
       #remove dots
       tmpName=.MAKENAMES(inputsL[[idx]],callerName = 'NAMELIST(): ') 
-      #if (tmpName!=inputsL[[idx]]) warning('NAMELIST(): "',inputsL[[idx]],'" will be converted into "',tmpName,'"') 
       #make unique
-      #if (idx>1 && (tmpName %in% outF[1:(idx-1)]) ) tmpName=paste(tmpName,as.character(idx),sep='') 
       outF=c(outF,tmpName) 
     }
-    
     
     #outF=inputsL 
     return(outF) 
@@ -6685,8 +6408,6 @@ NAMELIST <- function(...)
   } else {
     stop('NAMELIST(): all inputs must be either string or instances of class ts() or xts().') 
   }
-  
-  
   
   return(outF) 
 }
@@ -6747,7 +6468,6 @@ TSINFO <- function(..., MODE = NULL, avoidCompliance=FALSE)
   #loop list
   for (idx in (1:length(inputsL))) 
   {
-    
     #if inputs is ts/xts check if required
     if (!(avoidCompliance) )
     {
@@ -6830,7 +6550,6 @@ TSINFO <- function(..., MODE = NULL, avoidCompliance=FALSE)
     }
   }
   
-  
   return(outF) 
 }
 
@@ -6868,8 +6587,6 @@ CUMPROD <- function(x=NULL, TSRANGE=NULL, avoidCompliance=FALSE,...)
     if (!(length(TSRANGE)==4)) stop('CUMPROD(): null TSRANGE. Usage: CUMPROD(ts, TSRANGE=c(START_Y, START_P, END_Y, END_P))') 
   }
   
-  
-  
   outF=x 
   #is xts
   if (is.xts(x)) {
@@ -6885,7 +6602,6 @@ CUMPROD <- function(x=NULL, TSRANGE=NULL, avoidCompliance=FALSE,...)
         outF=TSPROJECT(outF,TSRANGE=TSRANGE,avoidCompliance=TRUE)
       },error=function(e){stop('CUMPROD(): cannot project time series: ',e$message)}) 
     }
-    
     
   } else {#is array    
     
@@ -6933,7 +6649,6 @@ CUMSUM <- function(x=NULL, TSRANGE=NULL, MODE=NULL, avoidCompliance=FALSE,...)
       },error=function(e){stop('CUMSUM(): cannot project time series: ',e$message)}) 
     }
     
-    
   } else {#is array    
     
     if (!(is.numeric(x))) stop('CUMSUM(): input needs to be either an instance of ts() or xts() class, or a numeric array.') 
@@ -6976,7 +6691,7 @@ CUMULO <- function(x=NULL, TSRANGE=NULL,avoidCompliance=FALSE,...)
 # TABIT code ----------------------------------------
 
 #TABIT print ts in human readable form
-TABIT <- function(..., TSRANGE=NULL, digits=getOption('digits'),avoidCompliance=FALSE)
+TABIT <- function(..., TSRANGE=NULL, digits=getOption('digits'), avoidCompliance=FALSE)
 {
   
   outF=c() 
@@ -6989,7 +6704,6 @@ TABIT <- function(..., TSRANGE=NULL, digits=getOption('digits'),avoidCompliance=
   if (! is.null(TSRANGE)  && (! is.numeric(TSRANGE) || length(TSRANGE) != 4)) {    
     stop("TABIT(): TSRANGE must be a 4-elements numerical vector.") 
   } 
-  
   
   #check compliance
   if (! avoidCompliance ) 
@@ -7012,8 +6726,6 @@ TABIT <- function(..., TSRANGE=NULL, digits=getOption('digits'),avoidCompliance=
       },error=function(e){stop('TABIT(): cannot project time series: ',e$message)}) 
     }
   }
-  
-  
   
   stdFormat=paste0("% -",digits+8,".",digits,'g') 
   stdFormatS=paste0("% -",digits+8,'s') 
@@ -7043,8 +6755,7 @@ TABIT <- function(..., TSRANGE=NULL, digits=getOption('digits'),avoidCompliance=
   #add missings days
   arrayOfDatesMin=min(arrayOfDates) 
   arrayOfDatesMax=max(arrayOfDates) 
-  #print(arrayOfDatesMin) 
-  #print(arrayOfDatesMax) 
+ 
   tmpIdx=arrayOfDatesMin 
   arrayOfDates2=c(tmpIdx) 
   while (tmpIdx<arrayOfDatesMax)
@@ -7062,8 +6773,7 @@ TABIT <- function(..., TSRANGE=NULL, digits=getOption('digits'),avoidCompliance=
   
   arrayOfDates=arrayOfDates2 
   outF=arrayOfDates 
-  #print(outF) 
-  #create string of names
+ 
   seriesListADSLstr=paste(seriesListADSLstr,collapse=', ') 
   #init some arrays
   startYint=c() 
@@ -7079,27 +6789,22 @@ TABIT <- function(..., TSRANGE=NULL, digits=getOption('digits'),avoidCompliance=
     endYint[idx]=as.integer(end(seriesListADSL[[idx]])[1]) 
     endPint[idx]=as.integer(end(seriesListADSL[[idx]])[2]) 
     freqint[idx]=as.integer(frequency(seriesListADSL[[1]])) 
-    #cat(startYint[idx],startPint[idx],endYint[idx],endPint[idx],freqint[idx],'\n') 
-  }
+    }
   
   #print header
   cat('\n      Date, Prd., ',seriesListADSLstr,'\n\n',sep='') 
   #main cycle
   for (idx in (1:length(arrayOfDates))){
     
-    
     localYint=trunc(arrayOfDates[idx]/1000) 
     localPint=arrayOfDates[idx] %% 1000 
-    #cat(localYint,' - ',localPint) 
-    #init row str
+     #init row str
     tmpOutStr='' 
     #init array of out values
     value=c() 
     #cycle in time series
     for (idx2 in (1:length(seriesListADSL))) 
     {
-      
-      
       #a time series can have null value in selected date
       value[idx2]= sprintf(stdFormatS,'') 
       #check if real values exist on DB 'cause R set NA on extra observation
@@ -7112,12 +6817,9 @@ TABIT <- function(..., TSRANGE=NULL, digits=getOption('digits'),avoidCompliance=
       } else 
       {
         value[idx2]= try(
-          #substring(
           sprintf(stdFormat,as.numeric(seriesListADSL[[idx2]][(localYint-startYint[idx2])* freqint[idx2]+ (1+localPint-startPint[idx2])]))
-          #,1,10)
         ) 
       }
-      
       
       #compose row str      
       tmpOutStr=paste(tmpOutStr,', ',value[idx2],sep='') 
@@ -7130,14 +6832,9 @@ TABIT <- function(..., TSRANGE=NULL, digits=getOption('digits'),avoidCompliance=
     else if (outFreq==12) {cat(paste(sprintf("%10s",GETDATE(ts(1,start=c(localYint,localPint),frequency=outFreq),1,format='%b %Y',avoidCompliance=TRUE)),', ', sprintf("%-4d",localPint), tmpOutStr, '\n',sep=''),sep='')  }  
     else {cat(paste(sprintf("%10s",GETDATE(ts(1,start=c(localYint,localPint),frequency=outFreq),1,avoidCompliance=TRUE)),', ', sprintf("%-4d",localPint), tmpOutStr, '\n',sep=''),sep='')    }
     
-    
-    
   }
   cat('\n') 
-  #return(TRUE) 
 }
-
-
 
 # trim --------------------------------------------
 
@@ -7180,12 +6877,9 @@ TABIT <- function(..., TSRANGE=NULL, digits=getOption('digits'),avoidCompliance=
     { 
       if (s[idx]!=outF[idx]) cat(ifelse(is.null(callerName),'.MAKENAMES(): warning, ',callerName),s[idx],' name will be converted in ',outF[idx],'\n',sep='') 
     }
-    
   }
-  
   return(outF) 
 }
-
 
 # INDEXNUM code -------------------------------------------------------------------------
 
@@ -7214,7 +6908,6 @@ INDEXNUM <- function(x=NULL, BASEYEAR=NULL, avoidCompliance=FALSE,...)
   
   #calc factor
   factor=100/annualTmp[[BASEYEAR,1]]
-  #print(factor)
   
   #normalize input
   outF=x*factor 
@@ -7257,8 +6950,6 @@ VERIFY_MAGNITUDE <- function(x=list(), magnitude=10e-7, verbose=TRUE, ...)
   #output calc
   outF=which(unlist(lapply(x, function(x) sqrt(sum(x^2,na.rm = TRUE))>magnitude)))
   
-  #outF=setdiff(outF,tsToBeRemoved)
-  
   if (length(outF) > 0 && verbose)
   {
     for (idx in 1:length(outF))
@@ -7284,7 +6975,6 @@ GETRANGE <- function(x=list(), type='INNER', avoidCompliance=FALSE,  ...)
   #if single ts then transform to list
   if ( (is.ts(x) || is.xts(x))) x=list(x)
   
-  
   if (length(x)==0) stop('GETRANGE(): "x" is an empty list.')
   
   #check list of time series
@@ -7303,7 +6993,6 @@ GETRANGE <- function(x=list(), type='INNER', avoidCompliance=FALSE,  ...)
       if (frequency(x[[idx]]) != localF)
         stop('GETRANGE(): time series in the input list must have the same frequency.') 
     }
-  
   
   #get ts metadata
   localTSL=TSLOOK(x[[1]],avoidCompliance=avoidCompliance)
@@ -7351,8 +7040,5 @@ GETRANGE <- function(x=list(), type='INNER', avoidCompliance=FALSE,  ...)
   return(c(localStart,localEnd))
   
 }
-
-
-
 
 

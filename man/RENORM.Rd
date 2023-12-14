@@ -43,6 +43,7 @@ RENORM(model=NULL,
        INSTRUMENT=NULL,
        MM_SHOCK=0.00001,
        quietly=FALSE,
+       quietlyMULTMATRIX=FALSE,
        tol=1e-28,
        JACOBIAN_SHOCK=1e-4,
        JacobianDrop=NULL,
@@ -74,7 +75,8 @@ RENORM(model=NULL,
  \item{tol}{
   the tolerance for detecting linear dependencies in the columns of a matrix while an inversion is requested. }
 \item{MM_SHOCK}{see \code{\link[=MULTMATRIX]{MULTMATRIX}}}
-\item{quietly}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{quietly}{If \code{TRUE}, information messages related to the \code{\link[=RENORM]{RENORM}} operation will be suppressed.}
+\item{quietlyMULTMATRIX}{If \code{TRUE}, information messages related to the underlying \code{\link[=MULTMATRIX]{MULTMATRIX}} operation will be suppressed. If \code{quietly} argument is set to \code{TRUE}, then \code{quietlyMULTMATRIX} will be set to \code{TRUE}.}
 \item{JACOBIAN_SHOCK}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{JacobianDrop}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{avoidCompliance}{see \code{\link[=SIMULATE]{SIMULATE}}}

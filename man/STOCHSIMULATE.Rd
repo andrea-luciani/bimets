@@ -64,7 +64,7 @@ If a list element name is equal to an exogenous variable, the disturbance will b
 Each list element must be a named list built with the following three element: \cr \cr 
 - \code{TSRANGE}: the time range  wherein the disturbance is active and additive to the related model variable. The \code{TSRANGE} must be a 4 numerical array, i.e. \code{TSRANGE=c(start_year, start_period, end_year, end_period)} or \code{TSRANGE=TRUE} in order to apply the provided disturbance to whole \code{STOCHSIMULATE} \code{TSRANGE}. \cr \cr  
 - \code{TYPE}: the type of disturbance distribution. At the moment, only normal, i.e. \code{TYPE='NORM'}, and uniform, i.e. \code{TYPE='UNIF'}, disturbance distributions are allowed; \cr \cr
-- \code{PARS}: the parameters that shape the disturbance. \cr\cr In the case of a \code{TYPE='NORM'} distribution, these parameters must contain the mean and the standard deviation of the normal distribution, i.e. \code{PARS=c(mean,sd)}; \cr\cr  in the case of a \code{TYPE='UNIF'} distribution, these parameters must contain the lower and upper bound of the uniform distribution, i.e. \code{PARS=c(min,max)}; \cr\cr in the case of a \code{TYPE='MATRIX'}, these parameters must contain the user-built matrix of realized disturbances, i.e. \code{PARS=matrix}, with \code{matrix} as a \code{[ TSRANGE x StochReplica ]} matrix.\cr \cr 
+- \code{PARS}: the parameters that shape the disturbance. \cr\cr In the case of a \code{TYPE='NORM'} distribution, these parameters must contain the mean and the standard deviation of the normal distribution, i.e. \code{PARS=c(mean,sd)}; \cr\cr  in the case of a \code{TYPE='UNIF'} distribution, these parameters must contain the lower and upper bound of the uniform distribution, i.e. \code{PARS=c(min,max)}; \cr\cr in the case of a \code{TYPE='MATRIX'}, these parameters must contain the user-built matrix of realized disturbances, i.e. \code{PARS=matrix}, with \code{matrix} as a \code{[ TSRANGE x StochReplica ]} matrix. User-built provided matrix data will replace model data in specified \code{TSRANGE} if this list element name refers to an exogenous variable; otherwise, matrix data will be added-up to the related pre-defined add-factor, if any, in case this element list name refers to an endogenous variable.\cr \cr 
 See example in order to learn how to build a compliant stochastic structure.
 }
   
@@ -418,7 +418,7 @@ myFullNewtonModel <- STOCHSIMULATE(myFullNewtonModel,
                          cn=list(
                            TSRANGE=TRUE,
                            TYPE='NORM',
-                           PARS=c(0,10)
+                           PARS=c(0,20)
                          )
                        )
                        ,verbose=TRUE

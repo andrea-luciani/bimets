@@ -3,7 +3,7 @@
 
 **bimets** is an R package developed with the aim to ease time series analysis and to build up a framework that facilitates the definition, estimation, and simulation of simultaneous equation models.
 
-**bimets** does not depend on compilers or third-party software so it can be freely downloaded and installed on Linux, MS Windows(R) and Mac OSX(R), without any further requirements. 
+**bimets** does not depend on compilers or third-party software so it can be freely downloaded and installed on Linux, MS Windows(R) and Mac OsX(R), without any further requirements. 
 
 <!-- For an introduction and examples, visit the [bimets Dev Center](http://bimets.github.com/). 
 
@@ -139,21 +139,21 @@ COMMENT> autocorrelation on errors, restrictions, and conditional equation evalu
 
 COMMENT> Consumption with autocorrelation on errors
 BEHAVIORAL> cn
-TSRANGE 1925 1 1941 1
+TSRANGE 1923 1 1940 1
 EQ> cn =  a1 + a2*p + a3*TSLAG(p,1) + a4*(w1+w2) 
 COEFF> a1 a2 a3 a4
 ERROR> AUTO(2)
 
 COMMENT> Investment with restrictions
 BEHAVIORAL> i
-TSRANGE 1923 1 1941 1
+TSRANGE 1923 1 1940 1
 EQ> i = b1 + b2*p + b3*TSLAG(p,1) + b4*TSLAG(k,1)
 COEFF> b1 b2 b3 b4
 RESTRICT> b2 + b3 = 1
 
 COMMENT> Demand for Labor with PDL
 BEHAVIORAL> w1 
-TSRANGE 1925 1 1941 1
+TSRANGE 1923 1 1940 1
 EQ> w1 = c1 + c2*(y+t-w2) + c3*TSLAG(y+t-w2,1) + c4*time
 COEFF> c1 c2 c3 c4
 PDL> c3 1 2
@@ -219,7 +219,11 @@ kleinModel$incidence_matrix
 # y   1 1  0 0 0 0
 # p   0 0  1 1 0 0
 # k   0 1  0 0 0 0
+```
 
+![](https://github.com/andrea-luciani/bimets/blob/master/man/figures/KleinIG.png?raw=true)
+ 
+```r
 #define data
 kleinModelData <- list(  
     cn  =TIMESERIES(39.8,41.9,45,49.2,50.6,52.6,55.1,56.2,57.3,57.8,
@@ -275,47 +279,47 @@ kleinModel <- ESTIMATE(kleinModel)
 #Estimation Technique: OLS
 #Autoregression of Order  2  (Cochrane-Orcutt procedure)
 #
-#Convergence was reached in  9  /  20  iterations.
+#Convergence was reached in  6  /  20  iterations.
 #
 #
-#cn                  =   19.01352    
-#                        T-stat. 12.13083    ***
+#cn                  =   14.82685    
+#                        T-stat. 7.608453    ***
 #
-#                    +   0.3442816   p
-#                        T-stat. 3.533253    **
+#                    +   0.2589094   p
+#                        T-stat. 2.959808    *
 #
-#                    +   0.03443117  TSLAG(p,1)
-#                        T-stat. 0.3937881   
+#                    +   0.01423821  TSLAG(p,1)
+#                        T-stat. 0.1735191   
 #
-#                    +   0.6993905   (w1+w2)
-##                        T-stat. 14.0808     ***
+#                    +   0.8390274   (w1+w2)
+#                        T-stat. 14.67959    ***
 #
 #ERROR STRUCTURE:  AUTO(2) 
 #
 #AUTOREGRESSIVE PARAMETERS:
 #Rho             Std. Error      T-stat.         
-# 0.05743131      0.3324101       0.1727725       
-# 0.007785936     0.2647013       0.02941404      
+# 0.2542111       0.2589487       0.9817045       
+#-0.05250591      0.2593578      -0.2024458       
 #
 #
 #STATs:
-#R-Squared                      : 0.985263    
-#Adjusted R-Squared             : 0.9785644   
-#Durbin-Watson Statistic        : 1.966609    
-#Sum of squares of residuals    : 9.273455    
-#Standard Error of Regression   : 0.9181728   
-#Log of the Likelihood Function : -18.97047   
-#F-statistic                    : 147.0844    
-#F-probability                  : 1.090551e-09
-#Akaike's IC                    : 51.94093    
-#Schwarz's IC                   : 57.77343    
-#Mean of Dependent Variable     : 55.71765    
-#Number of Observations         : 17
-#Number of Degrees of Freedom   : 11
-#Current Sample (year-period)   : 1925-1 / 1941-1
+#R-Squared                      : 0.9826778   
+#Adjusted R-Squared             : 0.9754602   
+#Durbin-Watson Statistic        : 2.256004    
+#Sum of squares of residuals    : 8.071633    
+#Standard Error of Regression   : 0.8201439   
+#Log of the Likelihood Function : -18.32275   
+#F-statistic                    : 136.1502    
+#F-probability                  : 3.873514e-10
+#Akaike's IC                    : 50.6455     
+#Schwarz's IC                   : 56.8781     
+#Mean of Dependent Variable     : 54.29444    
+#Number of Observations         : 18
+#Number of Degrees of Freedom   : 12
+#Current Sample (year-period)   : 1923-1 / 1940-1
 #
 #
-#Signif. codes:   *** 0.001  ** 0.01  * 0.05  
+#Signif. codes:   *** 0.001  ** 0.01  * 0.05   
 #
 # 
 # ...similar output for all the regressions.
@@ -336,12 +340,12 @@ TABIT(kleinModel$simulation$y)
 #
 #      Date, Prd., kleinModel$simulation$y
 #
-#      1925, 1   ,  62.74953      
-#      1926, 1   ,  56.46665      
-#      1927, 1   ,  48.3741       
-#      1928, 1   ,  55.58927      
-#      1929, 1   ,  73.35799      
-#      1930, 1   ,  74.93561 
+#      1925, 1   ,  58.24584      
+#      1926, 1   ,  44.56501      
+#      1927, 1   ,  28.2727       
+#      1928, 1   ,  27.10598      
+#      1929, 1   ,  37.57604      
+#      1930, 1   ,  37.44899 
 
 
 # MODEL STOCHASTIC FORECAST ####################################################
@@ -386,12 +390,17 @@ with(kleinModel$stochastic_simulation,TABIT(y$mean, y$sd))
 
 #      Date, Prd., y$mean         , y$sd           
 #
-#      1941, 1   ,  104.3109      ,  3.267681      
-#      1942, 1   ,  115.4303      ,  7.014553      
-#      1943, 1   ,  91.64526      ,  7.685761      
-#      1944, 1   ,  33.41637      ,  6.199828  
+#      1941, 1   ,  125.5045      ,  4.250935      
+#      1942, 1   ,  173.2946      ,  9.2632        
+#      1943, 1   ,  185.9602      ,  11.87774      
+#      1944, 1   ,  141.0807      ,  11.6973      
+
+```
+
+![](https://github.com/andrea-luciani/bimets/blob/master/man/figures/StochKleinGNP.png?raw=true)
  
- 
+```r
+
 # MODEL MULTIPLIERS  ###########################################################
 
 #get multiplier matrix in 1941
@@ -406,8 +415,8 @@ kleinModel <- MULTMATRIX(kleinModel,
 
 kleinModel$MultiplierMatrix
 #           w2_1      g_1
-#cn_1 -0.1596758 2.853391
-#y_1  -0.7216553 5.720007
+#cn_1  0.2338194 3.753277
+#y_1  -0.2002040 7.444930
 
 
 # MODEL ENDOGENOUS TARGETING ###################################################
@@ -423,6 +432,7 @@ kleinTargets  <-  list(
 #and Government Expenditure 'g' as 
 #INSTRUMENT in the years 1940 and 1941:
 kleinModel <- RENORM(kleinModel
+                   ,simConvergence=1e-5
                    ,INSTRUMENT = c('w2','g')
                    ,TARGET = kleinTargets
                    ,TSRANGE = c(1940,1,1941,1)
@@ -445,16 +455,16 @@ with(kleinModel,TABIT(modelData$w2,
 # 
 #       ...
 # 
-#       1938, 1   ,          7.7,           ,          13,           
-#       1939, 1   ,          7.8,           ,        14.4,           
-#       1940, 1   ,            8,   8.857669,        15.4,    15.81276
-#       1941, 1   ,          8.5,   12.18823,        22.3,    21.83899
+#      1938, 1   ,  7.7           ,                ,  13            ,                
+#      1939, 1   ,  7.8           ,                ,  14.4          ,                
+#      1940, 1   ,  8             ,  5.577777      ,  15.4          ,  14.14058      
+#      1941, 1   ,  8.5           ,  5.354341      ,  22.3          ,  17.80586 
 
 #So, if we want to achieve on "cn" (Consumption) an arbitrary simulated value of 66 in 1940
 #and 78 in 1941, and if we want to achieve on "y" (GNP) an arbitrary simulated value of 77
 #in 1940 and 98 in 1941, we need to change exogenous "w2" (Wage Bill of the Government
-#Sector) from 8 to 8.86 in 1940 and from 8.5 to 12.19 in 1941, and we need to change exogenous
-#"g"(Government Expenditure) from 15.4 to 15.81 in 1940 and from 22.3 to 21.84 in 1941.
+#Sector) from 8 to 5.58 in 1940 and from 8.5 to 5.35 in 1941, and we need to change exogenous
+#"g"(Government Expenditure) from 15.4 to 14.14 in 1940 and from 22.3 to 17.81 in 1941.
 
 #Let's verify:
 
@@ -467,7 +477,7 @@ kleinRenorm$modelData <- kleinRenorm$renorm$modelData
 #simulate the new model
 kleinRenorm <- SIMULATE(kleinRenorm
                   ,TSRANGE=c(1940,1,1941,1)
-                  ,simConvergence=0.00001
+                  ,simConvergence=1e-4
                   ,simIterLimit=100
                   )
 #Simulation:    100.00%
@@ -478,11 +488,10 @@ with(kleinRenorm$simulation,
     TABIT(cn,y)
     )
     
-#    Date, Prd., cn             , y              
+#      Date, Prd., cn             , y              
 #
-#    1940, 1   ,  66.02157      ,  77.03568      
-#    1941, 1   ,  78.05216      ,  98.09119 
-
+#      1940, 1   ,  65.99977      ,  76.9996       
+#      1941, 1   ,  77.99931      ,  97.99879 
 
 # MODEL OPTIMAL CONTROL ########################################################
 
@@ -537,7 +546,7 @@ kleinModel <- OPTIMIZE(kleinModel
                         ,TSRANGE=c(1942,1,1942,1)
                         ,simConvergence= 1E-7
                         ,simIterLimit  = 1000
-                        ,StochReplica  = 50000
+                        ,StochReplica  = 10000
                         ,StochSeed = 123
                         ,OptimizeBounds = myOptimizeBounds
                         ,OptimizeRestrictions = myOptimizeRestrictions
@@ -546,7 +555,7 @@ kleinModel <- OPTIMIZE(kleinModel
 
 #print local maximum
 kleinModel$optimize$optFunMax
-#[1] 6.92624
+#[1] 210.577
 
 #print INSTRUMENT that allow local maximum to be achieved
 kleinModel$optimize$INSTRUMENT                              
@@ -555,15 +564,34 @@ kleinModel$optimize$INSTRUMENT
 #Start = 1942 
 #End = 1942 
 #Frequency = 1 
-#[1] 1.996275
+#[1] 2.032203
 #
 #$g
 #Time Series:
 #Start = 1942 
 #End = 1942 
 #Frequency = 1 
-#[1] 24.9766                                      
+#[1] 24.89773
+
 ```
+ 
+![](https://github.com/andrea-luciani/bimets/blob/master/man/figures/OptKlein.png?raw=true)
+ 
+**MODEL DEFINITION LANGUAGE SYNTAX**
+
+The mathematical expression available for use in model equations can include the standard arithmetic operators, parentheses and the
+following MDL functions:
+
+- `TSLAG(ts,i)`: lag the ts time series by i-periods;
+- `TSDELTA(ts,i)`: i-periods difference of the ts time series;
+- `TSDELTAP(ts,i)`: i-periods percentage difference of the ts time series;
+- `TSDELTALOG(ts,i)`: i-periods logarithmic difference of the ts time series;
+- `MOVAVG(ts,i)`: i-periods moving average of the ts time series;
+- `MOVSUM(ts,i)`: i-periods moving sum of the ts time series;
+- `LOG(ts)`: log of the ts time series;
+- `EXP(ts)`: exponential of the ts time series;
+- `ABS(ts)`: absolute values of the ts time series.
+
 Transformations of the dependent variable are allowed in `EQ>` definition, e.g. `TSDELTA(cn)=...`, `EXP(i)=...`, `TSDELTALOG(y)=...`, etc.
 
 More details are available in the [reference manual](https://CRAN.R-project.org/package=bimets/bimets.pdf).
@@ -572,7 +600,7 @@ More details are available in the [reference manual](https://CRAN.R-project.org/
 
 **COMPUTATIONAL DETAILS**
 
-The iterative simulation procedure is the most time-consuming operation of the **bimets** package. For small models, this operation is quite immediate; on the other hand, the simulation of models that count hundreds of equations could last for minutes, especially if the requested operation involves a parallel simulation having hundreds of realizations per equation. This could be the case for the endogenous targeting, the stochastic simulation and the optimal control.
+The iterative simulation procedure is the most time-consuming operation of the **bimets** package. For small models, this operation is quite immediate; on the other hand, the simulation of models that count hundreds of equations could last for minutes, especially if the requested operation involves a parallel simulation having hundreds of realizations per equation. This could be the case for the endogenous targeting, the stochastic simulation and the optimal control. In these cases, a Newton-Raphson algorithm can speed up the execution.
 
 The `SIMULATE` code has been optimized in order to minimize the execution time in these cases.  In terms of computational efficiency, the procedure takes advantage of the fact that multiple datasets are bound together in matrices, therefore in order to achieve a global convergence, the iterative simulation algorithm is executed once for all perturbed datasets. This solution can be viewed as a sort of a SIMD (i.e. Single Instruction Multiple Data) parallel simulation: the `SIMULATE` algorithm transforms time series into matrices and consequently can easily bind multiple datasets by column. At the same time, the single run ensures a fast code execution, while each column in the output matrices represents a stochastic or perturbed realization.
 

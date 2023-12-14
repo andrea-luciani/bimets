@@ -9,7 +9,7 @@ Lag Time Series
 This function lags the input time series  by the specified number of time periods. 
 }
 \usage{
-TSLAG(x = NULL, L = 1, avoidCompliance = FALSE, ...)
+TSLAG(x = NULL, L = 1, avoidCompliance = FALSE, verbose = FALSE, ...)
 }
 
 \arguments{
@@ -21,6 +21,8 @@ Lag. Must be an integer, positive or negative.
 }
   \item{avoidCompliance}{
 If \code{TRUE}, compliance control check of input time series will be skipped. See \code{\link[=is.bimets]{is.bimets}}}
+ \item{verbose}{
+  If \code{TRUE} some verbose output will be activated.}
    \item{...}{
 Backward compatibility.
 }

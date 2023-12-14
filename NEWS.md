@@ -1,3 +1,16 @@
+# bimets 3.0.2
+
+Dec. 2023
+
+* added `quietlyMULTMATRIX` argument in `RENORM`
+* added `verbose` argument in `TSLAG` and `TSLEAD`
+* improved performance on daily time series aggregation functions
+* improved README.md
+* improved error management in IV parsing in `ESTIMATE`
+* fixed `bimets-package.Rd` alias compliance
+* fixed `TARGET` initial check in `RENORM`: the procedure now starts also if `TARGET` are initially verified
+* fixed bug in `SIMULATE`: `NEWTON` algorithm failed in acyclic incidence graph models
+
 # bimets 3.0.1
 
 May. 2023

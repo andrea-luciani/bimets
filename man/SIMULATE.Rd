@@ -118,7 +118,7 @@ As said, the convergence is always tested at each iteration's end on the feedbac
 Newton-Raphson methods on a reordered model require the calculation of the Jacobian matrix on the feedback endogenous variables, i.e. at least \eqn{F+2} iterations per simulation period, with \eqn{F} as the number of feedback variables. For large models (i.e. more than 30 feedback variables) if the overall required convergence is greater than \eqn{10^{-6} \%}{10^(-6) \%} the speedup over the Gauss-Seidel method is small or negative, if the Jacobian matrix is recalculated at each iteration. Moreover, the Gauss-Seidel method does not require a matrix inversion; therefore, it is more robust against algebraical and numerical issues. For small models, both methods are fast on modern computers. On the other hand, Gausse-Seidel fails to find a convergence for a small set of econometric models, even when a convergence exists. In general, given a system of equations \eqn{Ax=b}, with \eqn{x,b \in R^n, n>0} and \eqn{A \in R^{n, n}}, the Gauss-Seidel algorithm is known to converge if either:\cr
 - \eqn{A} is symmetric positive-definite;\cr
 - \eqn{A} is strictly or irreducibly diagonally dominant. \cr\cr
-To improve simulation speed, BIMETS evaluates the Newton-Raphson algorithm performance during simulation, and, at each iteration, a new Jacobian matrix is calculated \emph{only if} the convergence speed is slower than a predefined threshold. In a vectorized simulation (e.g., \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}},  \code{\link[=OPTIMIZE]{OPTIMIZE}},  \code{\link[=RENORM]{RENORM}}), the Jacobian matrix is calculated only on the unperturbed model, then applied to all realizations.\cr\cr The simulation of a non-trivial model, if computed by using the same data but on different hardware, software or numerical libraries, produces numerical differences. Therefore a convergence criterion smaller than \eqn{10^{-7} \%}{10^(-7)} frequently leads to a local solution.\cr\cr See \emph{Numerical methods for simulation and optimal control of large-scale macroeconomic models - Gabay, Nepomiastchy, Rachidi, Ravelli - 1980} for further information.
+To improve simulation speed, BIMETS evaluates the Newton-Raphson algorithm performance during simulation, and, at each iteration, a new Jacobian matrix is calculated \emph{only if} the convergence speed is slower than a predefined threshold. In a vectorized simulation (e.g., \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}},  \code{\link[=OPTIMIZE]{OPTIMIZE}},  \code{\link[=RENORM]{RENORM}}), if \code{simAlgo="NEWTON"} the Jacobian matrix is calculated only on the unperturbed model, then applied to all realizations; if \code{simAlgo="FULLNEWTON"} a new Jacobian matrix is calculated for each realization.\cr\cr The simulation of a non-trivial model, if computed by using the same data but on different hardware, software or numerical libraries, produces numerical differences. Therefore a convergence criterion smaller than \eqn{10^{-7} \%}{10^(-7)} frequently leads to a local solution.\cr\cr See \emph{Numerical methods for simulation and optimal control of large-scale macroeconomic models - Gabay, Nepomiastchy, Rachidi, Ravelli - 1980} for further information.
 
 
 
@@ -174,8 +174,8 @@ The options are:\cr
 \bold{GAUSS-SEIDEL}: (default) the Gauss-Seidel algorithm is simple, robust, and works well for many backward-looking macro-econometric models. Equations are evaluated as-is in a proper order until the convergence, if any, is verified on feedback variables (see \emph{THE SIMULATION ALGORITHMS} section up here). It is slower than Newton-Raphson algorithms for a very low convergence criterion, and fails to find a convergence for a small set of econometric models, even when a convergence exists. In general, given a system of equations \eqn{Ax=b}, with \eqn{x,b \in R^n, n>0} and \eqn{A \in R^{n, n}}, the Gauss-Seidel algorithm is known to converge if either:\cr
 - \eqn{A} is symmetric positive-definite;\cr
 - \eqn{A} is strictly or irreducibly diagonally dominant. \cr
-\bold{NEWTON}: the Newton-Raphson algorithm allows users to solve a broader set of macro-econometric models than the Gauss-Seidel algorithm. Moreover, it is faster than the Gauss-Seidel algorithm in most cases (on modern computers, users must simulate an extensive econometric model with a low convergence criterion to appreciate the speedup). This type of algorithm requires the construction and the inversion of the Jacobian matrix for the feedback variables; thus, in some scenarios (e.g., equations with unverified \code{IF>} condition, implicit exogenizations, etc.), numerical issues can arise, and users are required to manually exclude some feedback variables from the Jacobian matrix by using the \code{JacobianDrop} argument.  To improve simulation speed, BIMETS evaluates the Newton-Raphson algorithm performance during simulation, and, at each iteration, a new Jacobian matrix is calculated \emph{only if} the convergence speed is slower than a predefined threshold. In a vectorized simulation (e.g., \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}},  \code{\link[=OPTIMIZE]{OPTIMIZE}},  \code{\link[=RENORM]{RENORM}}), the Jacobian matrix is calculated only on the unperturbed model, then applied to all realizations. As in the Gauss-Seidel algorithm, the convergence is evaluated on feedback variables\cr
-\bold{FULLNEWTON}: similar to the "base" Newton case, but when using this option, a different Jacobian matrix is calculated for each stochastic realization in a vectorized simulation (e.g., \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}},  \code{\link[=OPTIMIZE]{OPTIMIZE}},  \code{\link[=RENORM]{RENORM}}). All the Jacobian matrices are referred to as the Jacobian array. Generally, a "full" Newton simulation requires more computational time, mainly due to the increased number of Jacobian matrices to be calculated. However, the "base" Newton algorithm fails to converge when the model is highly non-linear and perturbances are significant (see examples in \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} help page). Therefore, a  "full" Newton algorithm is required in these cases. \cr
+\bold{NEWTON}: the Newton-Raphson algorithm allows users to solve a broader set of macro-econometric models than the Gauss-Seidel algorithm. Moreover, it is faster than the Gauss-Seidel algorithm in most cases (on modern computers, users must simulate an extensive econometric model with a low convergence criterion to appreciate the speedup). This type of algorithm requires the construction and the inversion of the Jacobian matrix for the feedback variables; thus, in some scenarios (e.g., equations with unverified \code{IF>} condition, implicit exogenizations, etc.), numerical issues can arise, and users are required to manually exclude some feedback variables from the Jacobian matrix by using the \code{JacobianDrop} argument.  To improve simulation speed, BIMETS evaluates the Newton-Raphson algorithm performance during simulation, and, at each iteration, a new Jacobian matrix is calculated \emph{only if} the convergence speed is slower than a predefined threshold. In a vectorized simulation (e.g., \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}},  \code{\link[=OPTIMIZE]{OPTIMIZE}},  \code{\link[=RENORM]{RENORM}}), if \code{simAlgo="NEWTON"} the Jacobian matrix is calculated only on the unperturbed model, then applied to all realizations; if \code{simAlgo="FULLNEWTON"} a new Jacobian matrix is calculated for each realization.. As in the Gauss-Seidel algorithm, the convergence is evaluated on feedback variables\cr
+\bold{FULLNEWTON}: similar to the "base" Newton case, but when using this option, a different Jacobian matrix is calculated for each stochastic realization in a vectorized simulation (e.g., \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}},  \code{\link[=OPTIMIZE]{OPTIMIZE}},  \code{\link[=RENORM]{RENORM}}). The collection of all the Jacobian matrices is referred to as the 3-dimensional "Jacobian array". Generally, a "full" Newton simulation requires more computational time, mainly due to the increased number of Jacobian matrices to be calculated. However, the "base" Newton algorithm fails to converge when the model is highly non-linear and perturbances are significant (see examples in \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} help page). Therefore, a  "full" Newton algorithm is required in these cases. \cr
 
 }
   \item{TSRANGE}{
@@ -355,7 +355,7 @@ myModel<-LOAD_MODEL(modelText=myModelDefinition)
 myModel<-LOAD_MODEL_DATA(myModel,myModelData)
 
 #estimate model
-myModel<-ESTIMATE(myModel)
+myModel<-ESTIMATE(myModel, quietly = TRUE)
  
 #DYNAMIC SIMULATION
  
@@ -446,10 +446,10 @@ TABIT(myModel$simulation$cn-myModel$modelData$cn)
 #FORECAST GNP in 1942 and 1943 
  
 #we need to extend exogenous variables in 1942 and 1943
-myModel$modelData$w2   = TSEXTEND(myModel$modelData$w2,  UPTO=c(1943,1))
-myModel$modelData$t    = TSEXTEND(myModel$modelData$t,   UPTO=c(1943,1))
-myModel$modelData$g    = TSEXTEND(myModel$modelData$g,   UPTO=c(1943,1))
-myModel$modelData$time = TSEXTEND(myModel$modelData$time,UPTO=c(1943,1)
+myModel$modelData$w2   <- TSEXTEND(myModel$modelData$w2,  UPTO=c(1943,1))
+myModel$modelData$t    <- TSEXTEND(myModel$modelData$t,   UPTO=c(1943,1))
+myModel$modelData$g    <- TSEXTEND(myModel$modelData$g,   UPTO=c(1943,1))
+myModel$modelData$time <- TSEXTEND(myModel$modelData$time,UPTO=c(1943,1)
                                      ,EXTMODE='LINEAR')
  
 #simulate model
@@ -485,37 +485,6 @@ myModel<-SIMULATE(myModel
                   ,verboseSincePeriod=19
                   ,verboseVars=c('cn')
  )
-#CHECK_MODEL_DATA(): warning, there are missing values in series "time".
-#
-#Simulation:      5.26%
-#Prd.    1 convergence reached in iter 34
-#Simulation:     10.53%
-#Prd.    2 convergence reached in iter 42
-#Simulation:     15.79%
-#Prd.    3 convergence reached in iter 40
-#Simulation:     21.05%
-#
-#... 
-#
-#Prd.   17 convergence reached in iter 40
-#Simulation:     94.74%
-#Prd.   18 convergence reached in iter 37
-#Simulation:    100.00%
-#VPRE eval
-#Prd.   19 Iter    0         cn            69.7
-#VSIM eval
-#Prd.   19 Iter    1         cn     71.7197097805143
-#VSIM eval
-#Prd.   19 Iter    2         cn     72.7386970702054
-#... etc etc
-#Prd.   19 Iter   39         cn     75.4510243396176
-#VSIM eval
-#Prd.   19 Iter   40         cn     75.4510298916399
-#VPOST eval
-#Prd.   19 Iter   40         cn      75.4510299
-#Prd.   19 convergence reached in iter 40
-#
-#...SIMULATE OK
 
 
 ########################################################
@@ -546,10 +515,10 @@ myModel<-SIMULATE(myModel
                   ,Exogenize=exogenizeList
                   ,ConstantAdjustment=constantAdjList 
  )
-#SIMULATE(): endogenous variable "cn" has been exogenized from year-period 1923-1 to 1925-1
-#SIMULATE(): endogenous variable "i" has been exogenized from year-period 1923-1 to 1941-1
-#SIMULATE(): endogenous variable "cn" has a constant adjustment from year-period 1923-1 to 1924-1
-#SIMULATE(): endogenous variable "y" has a constant adjustment from year-period 1926-1 to 1928-1
+#SIMULATE(): endogenous variable "cn" has been exogenized from (trunc) ...
+#SIMULATE(): endogenous variable "i" has been exogenized from (trunc) ...
+#SIMULATE(): endogenous variable "cn" has a constant adjustment from (trunc) ...
+#SIMULATE(): endogenous variable "y" has a constant adjustment from (trunc) ...
 #
 #Simulation:    100.00%
 #...SIMULATE OK
@@ -605,20 +574,18 @@ myNewtonModel<-LOAD_MODEL(modelText=myNewtonModelDefinition)
 myNewtonModel<-LOAD_MODEL_DATA(myNewtonModel,myModelData)
 
 #estimate model
-myNewtonModel<-ESTIMATE(myNewtonModel)
+myNewtonModel<-ESTIMATE(myNewtonModel, quietly = TRUE)
 
 #GAUSS simulation fails to converge...
 myNewtonModel <- SIMULATE(myNewtonModel,
                        TSRANGE = c(1921, 1, 1930, 1),
-                       simConvergence = 1e-7,
-                       verbose=TRUE)
+                       simConvergence = 1e-7)
                        
-#...while NEWTON converge
+#...while NEWTON converges
 myNewtonModel <- SIMULATE(myNewtonModel,
                        simAlgo='NEWTON',
                        TSRANGE = c(1921, 1, 1930, 1),
-                       simConvergence = 1e-7,
-                       verbose=TRUE)
+                       simConvergence = 1e-7)
                        
 ########################################################
 #EXAMPLE OF MODEL THAT REQUIRES 
@@ -673,17 +640,173 @@ myNewtonModel <- LOAD_MODEL(modelText=myNewtonWithDropModelDefinition)
 myNewtonModel <- LOAD_MODEL_DATA(myNewtonModel,myModelData)
 
 #estimate model
-myNewtonModel <- ESTIMATE(myNewtonModel)
+myNewtonModel <- ESTIMATE(myNewtonModel, quietly = TRUE)
 
-#"p" variable must be removed from Jacobian beacuse of unverified IF>
+#"p" variable must be removed from Jacobian because of unverified IF>
 myNewtonModel <- SIMULATE(myNewtonModel,
                        simAlgo='NEWTON',
                        JacobianDrop='p',
                        TSRANGE = c(1921, 1, 1930, 1),
-                       simConvergence = 1e-7,
-                       verbose=TRUE)
+                       simConvergence = 1e-7)
     
 
+########################################################
+#COMPARE FORECAST IN 3 ALTERNATIVE 
+#EXOGENOUS SCENARIOS
 
+#define model
+myModelDefinition <-
+"MODEL 
+COMMENT> Klein Model 1 of the U.S. Economy 
+
+COMMENT> Consumption
+BEHAVIORAL> cn
+TSRANGE 1921 1 1941 1
+EQ> cn =  a1 + a2*p + a3*TSLAG(p,1) + a4*(w1+w2) 
+COEFF> a1 a2 a3 a4
+
+COMMENT> Investment
+BEHAVIORAL> i
+TSRANGE 1921 1 1941 1
+EQ> i = b1 + b2*p + b3*TSLAG(p,1) + b4*TSLAG(k,1)
+COEFF> b1 b2 b3 b4
+
+COMMENT> Demand for Labor
+BEHAVIORAL> w1 
+TSRANGE 1921 1 1941 1
+EQ> w1 = c1 + c2*(y+t-w2) + c3*TSLAG(y+t-w2,1) + c4*time
+COEFF> c1 c2 c3 c4
+
+COMMENT> Gross National Product
+IDENTITY> y
+EQ> y = cn + i + g - t
+
+COMMENT> Profits
+IDENTITY> p
+EQ> p = y - (w1+w2)
+
+COMMENT> Capital Stock
+IDENTITY> k
+EQ> k = TSLAG(k,1) + i
+
+END"
+
+#define model data
+myModelData<-list(
+  cn
+  =TIMESERIES(39.8,41.9,45,49.2,50.6,52.6,55.1,56.2,57.3,57.8,55,50.9,
+              45.6,46.5,48.7,51.3,57.7,58.7,57.5,61.6,65,69.7,
+              START=c(1920,1),FREQ=1),
+  g
+  =TIMESERIES(4.6,6.6,6.1,5.7,6.6,6.5,6.6,7.6,7.9,8.1,9.4,10.7,10.2,9.3,10,
+              10.5,10.3,11,13,14.4,15.4,22.3,
+              START=c(1920,1),FREQ=1),
+  i
+  =TIMESERIES(2.7,-.2,1.9,5.2,3,5.1,5.6,4.2,3,5.1,1,-3.4,-6.2,-5.1,-3,-1.3,
+              2.1,2,-1.9,1.3,3.3,4.9,
+              START=c(1920,1),FREQ=1),
+  k
+  =TIMESERIES(182.8,182.6,184.5,189.7,192.7,197.8,203.4,207.6,210.6,215.7,
+              216.7,213.3,207.1,202,199,197.7,199.8,201.8,199.9,
+              201.2,204.5,209.4,
+              START=c(1920,1),FREQ=1),
+  p
+  =TIMESERIES(12.7,12.4,16.9,18.4,19.4,20.1,19.6,19.8,21.1,21.7,15.6,11.4,
+              7,11.2,12.3,14,17.6,17.3,15.3,19,21.1,23.5,
+              START=c(1920,1),FREQ=1),
+  w1
+  =TIMESERIES(28.8,25.5,29.3,34.1,33.9,35.4,37.4,37.9,39.2,41.3,37.9,34.5,
+              29,28.5,30.6,33.2,36.8,41,38.2,41.6,45,53.3,
+              START=c(1920,1),FREQ=1),
+  y
+  =TIMESERIES(43.7,40.6,49.1,55.4,56.4,58.7,60.3,61.3,64,67,57.7,50.7,41.3,
+              45.3,48.9,53.3,61.8,65,61.2,68.4,74.1,85.3,
+              START=c(1920,1),FREQ=1),
+  t
+  =TIMESERIES(3.4,7.7,3.9,4.7,3.8,5.5,7,6.7,4.2,4,7.7,7.5,8.3,5.4,6.8,7.2,
+              8.3,6.7,7.4,8.9,9.6,11.6,
+              START=c(1920,1),FREQ=1),
+  time 
+  =TIMESERIES(NA,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9,10,
+              START=c(1920,1),FREQ=1),
+  w2
+  =TIMESERIES(2.2,2.7,2.9,2.9,3.1,3.2,3.3,3.6,3.7,4,4.2,4.8,5.3,5.6,6,6.1,
+              7.4,6.7,7.7,7.8,8,8.5,
+              START=c(1920,1),FREQ=1)
+)
+
+#load model and model data
+myModel <- LOAD_MODEL(modelText=myModelDefinition)
+myModel <- LOAD_MODEL_DATA(myModel,myModelData)
+
+#estimate model
+myModel <- ESTIMATE(myModel, quietly = TRUE)
+
+#create 3 new models for the 3 scenarios
+modelScenario1 <- myModel
+modelScenario2 <- myModel
+modelScenario3 <- myModel
+
+#scenario 1, define exogenous paths
+modelScenario1$modelData <- within(modelScenario1$modelData,{
+              w2   = TSEXTEND(w2,  UPTO=c(1943,1))
+              t    = TSEXTEND(t,   UPTO=c(1943,1))
+              g    = TSEXTEND(g,   UPTO=c(1943,1))
+              time = TSEXTEND(time,UPTO=c(1943,1)
+                                  ,EXTMODE='LINEAR')
+})
+
+#scenario 2, define exogenous paths
+modelScenario2$modelData <- within(modelScenario2$modelData,{
+              w2   = TSEXTEND(w2,  UPTO=c(1943,1))
+              t    = TSEXTEND(t,   UPTO=c(1943,1))
+              g    = TSEXTEND(g,   UPTO=c(1943,1)
+                            ,EXTMODE='LINEAR')
+              time = TSEXTEND(time,UPTO=c(1943,1)
+                            ,EXTMODE='LINEAR')
+})
+
+#scenario 3, define exogenous paths
+#we also change consumption cn add-factor
+modelScenario3$modelData <- within(modelScenario3$modelData,{
+              w2   = TSEXTEND(w2,  UPTO=c(1943,1)
+                              ,EXTMODE='MEAN4')
+              t    = TSEXTEND(t,   UPTO=c(1943,1))
+              g    = TSEXTEND(g,   UPTO=c(1943,1)
+                              ,EXTMODE='LINEAR')
+              time = TSEXTEND(time,UPTO=c(1943,1)
+                              ,EXTMODE='LINEAR')
+})
+constantAdjListScenario3 <- constantAdjList
+constantAdjListScenario3$cn[[1941,1]] <- c(1,2,3)
+
+#simulate the 3 models
+modelScenario1 <- SIMULATE(modelScenario1
+                            ,simAlgo='NEWTON'
+                            ,simType='FORECAST'
+                            ,TSRANGE=c(1940,1,1943,1)
+                            ,simConvergence=1e-5
+                            ,simIterLimit=20)
+
+modelScenario2 <- SIMULATE(modelScenario2
+                            ,simAlgo='NEWTON'
+                            ,simType='FORECAST'
+                            ,TSRANGE=c(1940,1,1943,1)
+                            ,simConvergence=1e-5
+                            ,simIterLimit=20)
+
+modelScenario3 <- SIMULATE(modelScenario3
+                            ,simAlgo='NEWTON'
+                            ,simType='FORECAST'
+                            ,TSRANGE=c(1940,1,1943,1)
+                            ,simConvergence=1e-5
+                            ,simIterLimit=20
+                            ,ConstantAdjustment = constantAdjListScenario3
+                            )
+
+#compare results on GNP
+TABIT(modelScenario1$simulation$y, 
+      modelScenario2$simulation$y, 
+      modelScenario3$simulation$y)
 
 }
