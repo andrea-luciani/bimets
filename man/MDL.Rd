@@ -8,7 +8,9 @@ BIMETS Model Description Language
 \description{
 
 BIMETS provides a language to unambiguously specify an econometric model. This page describes how to create a model and its general structure. The specification of an econometric model is translated and identified by keyword statements which are grouped in a model file, i.e. a plain text file or a \code{character} variable with a specific syntax. Collectively, these keyword statements constitute the BIMETS Model Description Language (from now on \code{MDL}). The model specifications consist of groups of statements. Each statement begins with a keyword. The keyword classifies the component of the model which is being specified.\cr\cr
-Below is an example of a Klein's model  with an \code{MDL} compliant syntax which can either be stored in a \code{character} variable or in a plain text file.\cr\cr The content of the \emph{klein1.txt} variable  is:
+Below is an example of a Klein's model  with an \code{MDL} compliant syntax which can either be stored in a \code{character} variable or in a plain text file.\cr\cr 
+For more realistic scenarios, several advanced econometric exercises on the US Federal Reserve FRB/US econometric model (e.g., dynamic simulation in a monetary policy shock, rational expectations, endogenous targeting, stochastic simulation, etc.) are available in the \href{https://cran.r-project.org/package=bimets/vignettes/frb2bimets.pdf}{"US Federal Reserve quarterly model (FRB/US) in R with bimets"} vignette. \cr \cr
+The content of the \emph{klein1.txt} variable  is:
 \preformatted{
 R> klein1.txt="
 MODEL 
@@ -46,7 +48,7 @@ EQ> k = TSLAG(k,1) + i
 END
 "
 }
-Please note that there are circular dependencies between equations of the model, e.g. \code{p <- w1 <- y <- p} as shown in the \code{\link[=bimets]{"BIMETS package"}} section figure in the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{pdf version} of the manual. Circular dependencies imply that the model simulation must be solved with an iterative algorithm.\cr\cr
+Please note that there are circular dependencies between equations of the model, e.g. \code{p <- w1 <- y <- p} as shown in the \code{\link[=bimets]{"BIMETS package"}} section figure in the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{pdf version} of this reference manual. Circular dependencies imply that the model simulation must be solved with an iterative algorithm.\cr\cr
 As shown, the model definition is quite intuitive. The first keyword is \code{MODEL}, while at the end of the model definition we can find the \code{END} keyword. Available tags in the definition of a generic BIMETS model are: 
 \cr\cr
 - \bold{EQUATION>} or \bold{BEHAVIORAL>} indicate the beginning of a series of keyword statements describing a behavioral equation. The behavioral statement general form is: \cr
@@ -70,6 +72,7 @@ The following \code{MDL} functions can be used in the \code{LHS} left-hand side 
 - \code{EXP(name)} - exponential of the \code{name} time series. \cr \cr
 On the other side, the mathematical expression available for use in the \code{RHS} right-hand side of the \code{EQ>} equation and in the \code{IV>} expression described later in this page (i.e. \code{f1, f2, f3, ...}) can include the standard arithmetic operators, parentheses and the following \code{MDL} functions:\cr \cr
 - \code{TSLAG(ts,i)} - lag the \code{ts} time series by \code{i}-periods;\cr \cr
+- \code{TSLEAD(ts,i)} - lead the \code{ts} time series by \code{i}-periods;\cr \cr
 - \code{TSDELTA(ts,i)} - \code{i}-periods difference of the \code{ts} time series;\cr \cr
 - \code{TSDELTAP(ts,i)} - \code{i}-periods percentage difference of the \code{ts} time series;\cr \cr
 - \code{TSDELTALOG(ts,i)} - \code{i}-periods logarithmic difference of the \code{ts} time series;\cr \cr
@@ -78,6 +81,7 @@ On the other side, the mathematical expression available for use in the \code{RH
 - \code{LOG(ts)} - log of the \code{ts} time series;\cr \cr
 - \code{EXP(ts)} - exponential of the \code{ts} time series; \cr \cr
 - \code{ABS(ts)} - absolute values of the \code{ts} time series.\cr \cr
+Note that BIMETS classifies a model as a forward-looking model if any model equation contains the \code{TSLEAD} time series function. More details about forward-looking models are available in the "Rational Expectations Models" section of the \code{\link[=SIMULATE]{SIMULATE}} help pages.\cr \cr
 \code{MDL} function names are reserved names. They cannot be used as variable or coefficient names. The coefficient names are specified in a subsequent \code{COEFF>} keyword statement within a behavioral equation. By definition, identities do not have any coefficient that must be assessed. Any name not specified as a coefficient name or mentioned on the list of the available \code{MDL} functions is assumed to be a variable.\cr\cr
 - \bold{COEFF>} specifies the coefficient names used in the EQ> keyword statement of a behavioral equation. The coefficients statement general form is:\cr
 \code{COEFF> coeff0 coeff1 coeff2 ... coeffn}. \cr The coefficients order in this statement must be the same as it appears in the behavioral equation.\cr\cr

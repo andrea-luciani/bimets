@@ -32,6 +32,7 @@ MULTMATRIX(model=NULL,
            simConvergence=0.01,
            simIterLimit=100,
            ZeroErrorAC=FALSE,
+           BackFill=0,
            Exogenize=NULL,
            ConstantAdjustment=NULL,
            verbose=FALSE,
@@ -43,6 +44,7 @@ MULTMATRIX(model=NULL,
            quietly=FALSE,
            JACOBIAN_SHOCK=1e-4,
            JacobianDrop=NULL,
+           forceForwardLooking=FALSE,
            avoidCompliance=FALSE,
            ...)		   
 
@@ -56,6 +58,7 @@ MULTMATRIX(model=NULL,
    \item{simConvergence}{see \code{\link[=SIMULATE]{SIMULATE}}}
    \item{simIterLimit}{see \code{\link[=SIMULATE]{SIMULATE}}}
    \item{ZeroErrorAC}{see \code{\link[=SIMULATE]{SIMULATE}}}
+   \item{BackFill}{see \code{\link[=SIMULATE]{SIMULATE}}}
    \item{Exogenize}{see \code{\link[=SIMULATE]{SIMULATE}}}
    \item{ConstantAdjustment}{see \code{\link[=SIMULATE]{SIMULATE}}}
    \item{verbose}{see \code{\link[=SIMULATE]{SIMULATE}}}
@@ -70,6 +73,7 @@ MULTMATRIX(model=NULL,
    \item{quietly}{see \code{\link[=SIMULATE]{SIMULATE}}}
    \item{JACOBIAN_SHOCK}{see \code{\link[=SIMULATE]{SIMULATE}}}
    \item{JacobianDrop}{see \code{\link[=SIMULATE]{SIMULATE}}}
+   \item{forceForwardLooking}{see \code{\link[=SIMULATE]{SIMULATE}}}
    \item{avoidCompliance}{see \code{\link[=SIMULATE]{SIMULATE}}}
    \item{...}{see \code{\link[=SIMULATE]{SIMULATE}}}
 

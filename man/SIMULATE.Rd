@@ -7,7 +7,7 @@ Simulation of a BIMETS model
 }
 \description{
 
-The simulation of an econometric model basically consists in solving the system of the equations describing the model for each time period in the specified time interval. Since the equations may not be linear in the variables, and since the graph derived from the incidence matrix may be cyclic, the usual methods based on linear algebra are not applicable. The simulation must be solved by using an iterative algorithm.\cr\cr
+The simulation of an econometric model basically consists in solving the system of the equations describing the model for each time period in the specified time interval. Since the equations may not be linear in the variables, and since the graph derived from the "incidence matrix" may be cyclic, the usual methods based on linear algebra are not applicable. The simulation must be solved by using an iterative algorithm (Users can find the "indicence matrix" definition in the following section "The Optimal Reordering").\cr\cr
 BIMETS simulation capabilities support:\cr\cr
 - \emph{Static simulations}: a static multiple equation simulation, in which the historical values for the lagged endogenous variables are used in the solutions of subsequent periods; \cr\cr
 - \emph{Dynamic simulations}: a dynamic simulation, in which the simulated values for the lagged endogenous variables are used in the solutions of subsequent periods;\cr\cr
@@ -16,7 +16,7 @@ BIMETS simulation capabilities support:\cr\cr
 - \emph{Stochastic Simulation}: see \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}};\cr\cr
 - \emph{Partial or total exogenization of endogenous variables}: in the provided time interval (i.e. partial exog.) or in whole simulation time range (i.e. total exog.), the values of the selected endogenous variables can be definitely set equal to their historical values, by excluding their equations from the iterative algorithm of simulation;\cr\cr
 - \emph{Constant adjustment of endogenous variables (add-factors)}: adds up a new exogenous time series - the "constant adjustment" - in the equation of the selected endogenous variables.\cr\cr
-- \emph{Gauss-Seidel} and \emph{Newton-Raphson} simulation algorithms: the Gauss-Seidel algorithm is simple, robust, and works well for many backward-looking macro-econometric models. Equations are evaluated as-is in a proper order until the convergence, if any, is verified on feedback variables. It is slower than Newton-Raphson algorithms for a very low convergence criterion, and fails to find a convergence for a small set of econometric models, even when a convergence exists. The Newton-Raphson algorithm allows users to solve a broader set of macro-econometric models than the Gauss-Seidel algorithm. Moreover, it is usually faster than the Gauss-Seidel algorithm (on modern computers, users must simulate an extensive econometric model with a low convergence criterion to appreciate the speedup). This type of algorithm requires the construction and the inversion of the Jacobian matrix for the feedback variables; thus, in some scenarios, numerical issues can arise, and users are required to manually exclude some feedback variables from the Jacobian matrix by using the \code{JacobianDrop} argument of the \code{\link[=SIMULATE]{SIMULATE}} procedure.\cr\cr
+- \emph{Gauss-Seidel} and \emph{Newton-Raphson} simulation algorithms: the Gauss-Seidel algorithm is simple, robust, and works well for many backward-looking macro-econometric models. Equations are evaluated as-is in a proper order until the convergence, if any, is verified on the so called "feedback variables" (Users can find the "feedback variable" definition in the next section "The Optimal Reordering"). It is slower than Newton-Raphson algorithms for a very low convergence criterion, and fails to find a convergence for a small set of econometric models, even when a convergence exists. The Newton-Raphson algorithm allows users to solve a broader set of macro-econometric models than the Gauss-Seidel algorithm. Moreover, it is usually faster than the Gauss-Seidel algorithm (on modern computers, users must simulate an extensive econometric model with a low convergence criterion to appreciate the speedup). This type of algorithm requires the construction and the inversion of the Jacobian matrix for the feedback variables; thus, in some scenarios, numerical issues can arise, and users are required to manually exclude some feedback variables from the Jacobian matrix by using the \code{JacobianDrop} argument of the \code{\link[=SIMULATE]{SIMULATE}} procedure.\cr\cr
 In details, the generic model suitable for simulation in BIMETS can be written as: \cr
 
 \eqn{y_1=f_1(\bar{x},\bar{y}) } \cr
@@ -44,23 +44,18 @@ In the "dynamic" simulations (i.e. simulations performed by using either the def
 As an alternative, the actual historical values can be used in the "static" simulations (i.e. simulations performed by using \code{simType='STATIC'}) rather than simulated values whenever lagged endogenous variables are needed in the computations. In this case, the simulation results in a given time period do not depend on the simulation results in the previous time periods. This kind of simulation is defined as "multiple equation, single period".\cr\cr
 The last simulation type available is the residual check (\code{simType='RESCHECK'}). With this option, a "single equation, single period" simulation is performed. In this case, no iteration must be carried out. The endogenous variables are assessed for each time period by using historical values for each variable on the right-hand side of the equation, for both lagged and current periods. This kind of simulation helps debug and check of the logical coherence of the equations and the data, and can be used as a simple tool to compute the add-factors.\cr\cr The debugging of the logical coherence of equations and data is carried out through a \emph{Residual Check} procedure.\cr\cr
 It consists of the following steps:\cr\cr
-1. add another exogenous variable - the constant adjustment - to every equation of the model, both behavioral and technical identity (i.e. by using the \code{ConstantAdjustment} argument of the \code{SIMULATE} function);\cr
-2. fill in with the estimated residuals all the constant adjustments for the behavioral equations; \cr
-3. fill in with zeroes the constant adjustments for the technical identities;\cr
-4. perform a simulation of the model with the \code{simType='RESCHECK'} option;\cr
-5. compute the difference between the historical and the simulated values for all the endogenous variables;\cr
-6. check whether all the differences assessed in step 5 are zero in whole time range;\cr\cr
+1. add another exogenous variable - the constant adjustment - to every equation of the model, both behavioral and technical identity: that can be done in BIMETS by using the \code{ConstantAdjustment} argument of the \code{SIMULATE} function, as in step 3;\cr
+2. fill in with the estimated residuals all the constant adjustments for the behavioral equations, and fill in with zeroes the constant adjustments for the technical identities: that can be done in BIMETS by using the \code{SIMULATE} procedure with the option \code{simType='RESCHECK'}, then by analyzing and using the \cr \code{ConstantAdjustmentRESCHECK} attribute of the simulated model, as in the following simulation in step 3.\cr
+3. perform a simulation of the model: that can be done in BIMETS by using the \code{SIMULATE} procedure with the option \cr \code{ConstantAdjustment=ConstantAdjustmentRESCHECK};\cr
+4. compute the difference between the historical and the simulated values for all the endogenous variables;\cr
+5. check whether all the differences assessed in step 4 are zero in whole time range, eventually accounting for the error autocorrelation in behaviorals.\cr\cr
+An example on \code{ConstantAdjustmentRESCHECK} usage is available at the end of the \code{SIMULATE} help page;\cr\cr
 If a perfect tracking of the history is obtained, then the equations have been written coherently with the data, otherwise a simulated equation not tracking the historical values is an unambiguous symptom of data inconsistent with the model definition.\cr\cr
 Aside from the residual check, the add-factors constitute an important tool to significantly improve the accuracy of forecasts made through an econometric model. Considering the following model: \cr\cr
 \eqn{y_1=f_1(\bar{x},\bar{y}) + z_1}{y_1=f_1(x,y) + z_1} \cr
 \eqn{...} \cr
 \eqn{y_n=f_n(\bar{x},\bar{y}) + z_n}{y_n=f_n(x,y) + z_n} \cr\cr
-the add-factors \eqn{\bar{z}=[z_1, ... ,z_n]}{z=[z_1, ... ,z_n]} can be interpreted as estimates of the disturbance terms' future values or as adjustments of the intercepts in each equation. These add-factors round out the forecasts, by summarizing the effects of all the systematic factors not included in the model. One choice for the computation of the add-factors is given by past estimation residuals and past forecast errors or by an average of these errors. This consideration suggests an easy way of computing the add-factors:\cr\cr
-1. add the constant adjustments to every equation of the model, both behavioral and technical identity;\cr
-2. fill in with zeroes all the constant adjustments;\cr
-3. solve the model, with the \code{simType='RESCHECK'} option, in a time interval including some periods beyond the estimation sample;\cr
-4. compute the difference between the historical and the simulated values for each the endogenous variables;\cr
-5. average, or process in a suitable way, the difference arising from point 4 in the time periods beyond the estimation sample to compute the constant value to be used as an add-factor in the following forecasting exercises;\cr\cr
+the add-factors \eqn{\bar{z}=[z_1, ... ,z_n]}{z=[z_1, ... ,z_n]} can be interpreted as estimates of the disturbance terms' future values or as adjustments of the intercepts in each equation. These add-factors round out the forecasts, by summarizing the effects of all the systematic factors not included in the model. One choice for the computation of the add-factors is given by past estimation residuals and past forecast errors or by an average of these errors. \cr\cr
 Please note that, in the case of equation that presents an LHS function, the add-factor will be added before the application of the inverse function, i.e., during the simulation, the following:\cr\cr
 \eqn{g_1(y_1)=f_1(\bar{x},\bar{y}) + z_1}{g_1(y_1)=f_1(x,y) + z_1} \cr
 \eqn{...} \cr
@@ -77,48 +72,83 @@ can be replaced by:\cr\cr
 During the simulation, the add-factors (if requested by the user) will be applied as in the following:\cr\cr
 \eqn{w_i=f_i(\bar{x},\bar{y}) + v_i}{w_i=f_i(x,y) + v_i} \cr
 \eqn{y_i=g_{i}^{-1}(w_i) + z_i}{y_i=g_i^(-1)(w_i) + z_i} \cr\cr
-given \eqn{v_i, z_i} as add-factors and the linear dependence from \eqn{z_i} and \eqn{y_i}.\cr\cr
-\tabular{c}{THE OPTIMAL REORDERING}
-In fact, the simulation process takes advantage of an appropriate ordering of the equations to increase the performances by iteratively solving only one subset of equations, while the others are solved straightforwardly. \emph{"...a different ordering of the equations can substantially affect the speed of convergence of the algorithm; indeed some orderings may produce divergence. The less feedback there is, the better the chances for fast convergence..."} - Don, Gallo - Solving large sparse systems of equations in econometric models - Journal of Forecasting 1987.\cr\cr
-The \code{\link[=LOAD_MODEL]{LOAD_MODEL}} function builds the model's incidence matrix, then defines the proper equation reordering. The incidence matrix is built from the equations of the model; it is a square matrix in which each row and each column represent an endogenous variable. If the \code{(i,j)} element is equal to 1 then in the model definition the current value of the endogenous variable referred by the \code{i}-row depends directly from the current value of the endogenous variable referred by the \code{j}-column. The reader can see an incidence matrix example in the section \code{\link[=bimets]{"BIMETS package"}} of this manual wherein the content of the \code{kleinModel$incidence_matrix} variable is printed out.\cr\cr
-In econometric models, the incidence matrix is usually very sparse. Only a few of the total set of endogenous variables are used in each equation. In this situation, ordering the equation in a particular sequence will lead to a sensible reduction of the number of iterations needed to achieve convergence. Reordering the equations is equivalent to rearranging rows and columns of the incidence matrix. In this way, the incidence matrix might be made lower triangular for a subset of the equations.
-For this subset, an endogenous variable determined in a specific equation has no \emph{incidence} in any equation above it, although the same variable might have incidence in equations below it. Such a subset of equations is called recursive. Recursive systems are easy to solve. It is only necessary to solve each equation once if this is done in the proper order. On the other hand, it is unlikely for whole model to be recursive. Indeed the incidence graph is often cyclic, as in the Klein's model that presents the following circular dependecies in the incidence matrix: \code{p <- w1 <- y <- p} as shown in the \code{\link[=bimets]{"BIMETS package"}} section figure.\cr\cr
-For a subset of the equations, some 1's will occur in the upper triangle of the incidence matrix for all possible orderings. Such subset of equations is called \emph{simultaneous}. To solve the endogenous variables in the simultaneous block of equations, an iterative algorithm has to be used. Nevertheless, the equations in the simultaneous block may be ordered so that the pattern of the 1's in the upper triangle of the incidence matrix forms a spike. The variables corresponding to the 1's in the upper triangle are called \emph{feedback} variables.\cr\cr
+given \eqn{v_i, z_i} as add-factors and the linear dependence from \eqn{z_i} and \eqn{y_i}. 
+\tabular{c}{RATIONAL EXPECTATIONS MODELS}
+BIMETS classifies a model as a forward-looking model if any model equation contains the \code{TSLEAD} time series function. Forward-looking models assume that economic agents have complete knowledge of an economic system and calculate the future value of economic variables correctly according to that knowledge. Thus, forward-looking models are called also rational expectations models and, in macro-econometric models, model-consistent expectations.\cr\cr
+In forward-looking models, simulation complexity arises, and all simulation periods must be solved simultaneously because equations can contain references to past and future values. Thus, given \code{N} simulation periods requested by the user, each model equation must be replicated \code{N-1} times and modified before the simulation takes place, accounting for lead transformations. Finally, the extended model must be simulated as a single block of equations. \cr\cr
+Internal data structures too, such as the incidence and the Jacobian matrix, and the reordering arrays \code{vpre} and \code{vblocks} (described later in the "The Optimal Reordering" section), grow with the number of simulation periods requested by the user. Therefore, they can only be calculated when a new simulation is requested rather than when the model \code{MDL} definition is parsed, further extending computational time in simulation.\cr\cr
+A simulation that spans several decades in a forward-looking models with hundreds of equations is not feasible in BIMETS. For a real scenario in a rational expectations model, see "Computational details and capabilities" section in the \href{https://cran.r-project.org/package=bimets/vignettes/frb2bimets.pdf}{"US Federal Reserve quarterly model (FRB/US) in R with bimets"} vignette.\cr \cr
+To understand BIMETS internals when dealing with forward-looking models, please consider the following simple example of a forward-looking model having a single identity:
+\preformatted{
+IDENTITY> Y
+EQ> Y = TSLEAD(Y) - TSLAG(Y) + X
+}
 
-A qualitative graphical example of an ordered incidence matrix is given in the following figure. The white areas are all 0's, the gray areas contain 0's and 1's. The 1's in the light gray areas refer to variables already evaluated in previous blocks, therefore they are known terms within the block. The 1's in the dark gray areas refer to variables evaluated within the block.\cr\cr
+Given \code{X} as an exogenous variable, if the requested simulation has a \code{TSRANGE} that spans two periods, then the model will be internally transformed into something like:
+\preformatted{
+IDENTITY> Y
+EQ> Y = Y__LEAD__1 - TSLAG(Y) + X
+
+IDENTITY> Y__LEAD__1
+EQ> Y__LEAD__1 = TSLEAD(Y,2) - Y + TSLEAD(X)
+}
+Accordingly, the model will be simulated only on the first period of the \code{TSRANGE}. Please note that \code{TSLAG(Y)} in the first equation, and \code{TSLEAD(Y,2)} in the second equation, are a kind of exogenous variables and must be defined in order for the simulation to be completed. Moreover, \code{Y} and \code{Y__LEAD__1} are simultaneously involved in the iterative simulation algorithm, and both depend on each other, as also stated in the incidence matrix for the extended model:
+\preformatted{
+$incidence_matrix
+
+           Y Y__LEAD__1
+Y          0          1
+Y__LEAD__1 1          0
+}
+Due to the mechanism described above, only \code{DYNAMIC} simulations are allowed in forward-looking models. See examples below, for a Klein-like forward-looking model simulation.
+\tabular{c}{THE OPTIMAL REORDERING}
+In fact, the simulation process takes advantage of an appropriate equations reordering to increase the performances by iteratively solving only one subset of equations, while the others are solved straightforwardly. \emph{"...a different ordering of the equations can substantially affect the speed of convergence of the algorithm; indeed some orderings may produce divergence. The less feedback there is, the better the chances for fast convergence..."} - Don, Gallo - Solving large sparse systems of equations in econometric models - Journal of Forecasting 1987.\cr\cr
+For backward-looking models, the \code{\link[=LOAD_MODEL]{LOAD_MODEL}} function builds the model's incidence matrix, then defines the proper equations reordering. The incidence matrix is built from the equations of the model; it is a square matrix in which each row and each column represent an endogenous variable. If the \code{(i,j)} element is equal to 1 then in the model definition the current value of the endogenous variable referred by the \code{i}-row depends directly from the current value of the endogenous variable referred by the \code{j}-column. The reader can see an incidence matrix example in the section \code{\link[=bimets]{"BIMETS package"}} of this manual wherein the content of the \code{kleinModel$incidence_matrix} variable is printed out.\cr\cr
+In econometric models, the incidence matrix is usually very sparse. Only a few of the total set of endogenous variables are used in each equation. In this situation, ordering the equation in a particular sequence will lead to a sensible reduction of the number of iterations needed to achieve convergence. Reordering the equations is equivalent to rearranging rows and columns of the incidence matrix. In this way, the incidence matrix might be made lower triangular for a subset of the equations.
+For this subset, an endogenous variable determined in a specific equation has no \emph{incidence} in any equation above it, although the same variable might have incidence in equations below it. Such a subset of equations is called recursive. Recursive systems are easy to solve. It is only necessary to solve each equation once if this is done in the proper order. On the other hand, it is unlikely for whole model to be recursive. Indeed the incidence graph is often cyclic, as in the Klein's model that presents the following circular dependecies in the incidence matrix: \code{p <- w1 <- y <- i <- p} as shown in the \code{\link[=bimets]{"BIMETS package"}} section figure.\cr\cr
+For some subsets of the equations, some 1's will occur in the upper triangle of the incidence matrix for all possible orderings. Such subsets of equations are called \emph{simultaneous}. To solve the endogenous variables in the simultaneous subset of equations, an iterative algorithm has to be used. Nevertheless, the equations in a simultaneous subset may be ordered so that the pattern of the 1's in the upper triangle forms a spike. The variables corresponding to the 1's in the upper triangle are called \emph{feedback} variables.\cr\cr
+A qualitative graphical example of an ordered incidence matrix is given in the following figure. The white areas are all 0's, the gray areas contain 0's and 1's. The 1's in the light gray areas refer to variables already evaluated in previous subset of equations, therefore they are known terms within the current subset. The 1's in the dark gray areas refer to variables evaluated within the subset.\cr\cr
+
 \figure{Reordering.png}
 
-The final pattern of an incidence matrix after the equation reordering generally features three blocks: \cr\cr
-1. a recursive block (the pre-recursive block);\cr
-2. a simultaneous block;\cr
-3. another recursive block (the post-recursive block);\cr\cr
-As said, the pre-recursive and the post-recursive blocks are lower triangular. Therefore the corresponding equations are solvable with a cascade substitution with no iteration. Just the simultaneous equations set needs an iterative algorithm to be solved. It is important to say that the convergence criterion may also be applied to these variables only: when the feedback variables converge, the rest of the simultaneous variables also do.\cr\cr BIMETS builds and analyzes the model's incidence matrix, and then it orders the equations in pre-recursive, post-recursive and simultaneous blocks. The simultaneous block is then analyzed in order to find a minimal set of feedback variables. This last problem is known to be NP-complete (Ref: Garey, Johnson - \emph{Computers and Intractability: a Guide to the Theory of NP-completeness} - San Francisco, Freeman 1979).\cr\cr
-The optimal reordering of the model equations is programmatically achieved through the use of an iterative algorithm applied to the incidence matrix that can produce 4 ordered lists of endogenous variables:\cr\cr
-1. \code{vpre} is the ordered list containing the names of the endogenous pre-recursive variables to be sequentially computed (once per simulation period, by using their \code{EQ>} definition in the \code{MDL}) before the simulation iterative algorithm takes place;\cr
-2. \code{vsim} (the simultaneous block) is the ordered list containing the names of the endogenous variables to be sequentially computed during each iteration of the simulation iterative algorithm; \cr
-3. \code{vfeed} is the list containing the names of the endogenous feedback variables; generally \code{vfeed} are the last variables of the ordered \code{vsim} list; \cr
-4. \code{vpost} is the ordered list containing the names of the endogenous post-recursive variables to be sequentially computed (once per simulation period, by using their \code{EQ>} definition in the \code{MDL}) after the simulation iterative algorithm has found a solution in the simultaenous block;\cr\cr
-If equations are reordered, the previous conceptual scheme is modified as follows:\cr\cr
-- initialize the solution for the current simulation period;\cr
-- compute the pre-recursive equations (i.e. the equation of the endogenous variables in the \code{vpre} ordered list);\cr
-- iteratively compute the system of simultaneous equations (i.e. the equation of the endogenous variables in the \code{vsim} ordered list); for each iteration update the values of the current endogenous variables and verify that the convergence criterion is satisfied on the feedback variables \code{vfeed} or that the maximum number of iterations has been reached;\cr
-- compute the post-recursive equations (i.e. the equation of the endogenous variables in the \code{vpost} ordered list);\cr
-- save the solutions;\cr\cr
+In BIMETS, the final pattern of an incidence matrix after the equations reordering generally features \code{N+1} blocks: \cr\cr
+- One recursive subset of equation, i.e. the pre-recursive \code{VPRE} in image;\cr
+- \code{N} blocks of equations, \code{VBLOCK} in image, each built with a simultaneous \code{VSIM} and a post-recursive \code{VPOST} subset of equations;\cr\cr
+As said, the pre-recursive and the post-recursive subsets are lower triangular. Therefore the corresponding equations are solvable with a cascade substitution with no iteration. Only the simultaneous subsets need an iterative algorithm to be solved. It is important to say that the convergence criterion may also be applied to feedback variables only: when the feedback variables converge, the rest of the simultaneous variables also do.\cr\cr BIMETS builds and analyzes the model's incidence matrix, and then it i) computes the strongly connected component of the related incidence graph by using the Tarjan algorithm (Ref: Tarjan, Robert - \emph{Depth-first search and linear graph algorithms} - SIAM Journal on Computing - June 1972), and ii) orders the equations in pre-recursive and, for each block of equations, in simultaneous and post-recursive subsets. The simultaneous subsets are then analyzed in order to find a minimal set of feedback variables. This last problem is known to be NP-complete (Ref: Garey, Johnson - \emph{Computers and Intractability: a Guide to the Theory of NP-completeness} - San Francisco, Freeman 1979).\cr\cr
+The optimal reordering of the model equations is programmatically achieved through the use of an iterative algorithm applied to the incidence matrix that can produce \code{1+3*N} ordered lists of endogenous variables, respectively:\cr\cr
+1. One  list \code{vpre} that is the ordered list containing the names of the endogenous pre-recursive variables to be sequentially computed (once per simulation period) before the simulation iterative algorithm takes place;\cr
+2. For each of the \code{N} elements in the \code{vblocks} list: \cr
+2.1 One list \code{vsim} (the simultaneous subset) that is the ordered list containing the names of the endogenous variables to be sequentially computed during each iteration of the simulation iterative algorithm;\cr
+2.2 One list \code{vfeed} that is the list containing the names of the endogenous feedback variables; generally \code{vfeed} are the last variables in the ordered \code{vsim} list in the sambe block; \cr
+2.3. One list \code{vpost} that is the ordered list containing the names of the endogenous post-recursive variables to be sequentially computed (once per simulation period) after the simulation iterative algorithm has found a solution in the previous simultaneous subset in the same block;\cr\cr
+Once equations are reordered, the previous conceptual scheme is modified as follows:\cr\cr
+1. initialize the solution for the current simulation period;\cr
+2. compute the pre-recursive equations (i.e. the equation of the endogenous variables in the \code{vpre} ordered list);\cr
+For each block in \code{vblocks}:\cr
+3.1 iteratively compute the system of simultaneous equations (i.e. the equation of the endogenous variables in the \code{vsim} ordered list): for each iteration: i) update the values of the current endogenous variables, ii) update the feedback variables accordingly to the simulation algorithm in use (see next section for details on simulation algorithms) and iii) verify that the convergence criterion is satisfied on the feedback variables \code{vfeed} or that the maximum number of iterations has been reached;\cr
+3.2 compute the post-recursive equations (i.e. the equation of the endogenous variables in the \code{vpost} ordered list);\cr
+Finally:\cr
+4. save the solutions;\cr\cr
+Clearly, each endogenous variable is updated accordingly to its related equation \code{EQ>} in the \code{MDL} model definition.\cr \cr
+In forward-looking models, the incidence matrix and the equations reordering depend on the simulation periods count, therefore the model attributes \code{incidence_matrix}, \code{vblocks}, and \code{vpre} are calculated only after a simulation has been initialized, and will be available to users in the \code{model$simulation[['__SIM_PARAMETERS__']]} lists.\cr\cr
+The reader can see an equations reordering example in the section \code{\link[=bimets]{"BIMETS package"}} of this manual wherein the content of the \code{kleinModel$vpre} and \code{kleinModel$vblocks} variables are printed out.\cr\cr
 \tabular{c}{THE SIMULATION ALGORITHMS}
-Given \eqn{x_{j}}{x_(j)} the \eqn{j}-exogenous variable, \eqn{j=1..m}, and \eqn{y_{i,k}}{y_(i,k)}  the \eqn{i}-endogenous variable in the simultaneous block, at the iteration \eqn{k}, with \eqn{i=1..n} the position of the equation in a reordered model, the modified Gauss-Seidel method takes for the approximation of the endogenous variable \eqn{y_{i,k}}{y_(i,k)} the solution of the following:\cr\cr
+Given \eqn{x_{j}}{x_(j)} the \eqn{j}-exogenous variable, \eqn{j=1..m}, and \eqn{y_{i,k}}{y_(i,k)}  the \eqn{i}-endogenous variable in a simultaneous subset, at the iteration \eqn{k}, with \eqn{i=1..n} the position of the equation in a reordered model, the modified Gauss-Seidel method takes for the approximation of the endogenous variable \eqn{y_{i,k}}{y_(i,k)} the solution of the following:\cr\cr
 \eqn{y_{i,k}=f_i(x_1, ..., x_m, y_{1,k}, ..., y_{i-1,k}, y_{i,k-1},..., y_{n,k-1})}{y_(i,k)=f_i(x_1, ..., x_m, y_(1,k), ..., y_(i-1,k), y_(i,k-1),..., y_(n,k-1)}\cr\cr
 Newton-Raphson's methods can be seen as an extension of the modified Gauss-Seidel algorithm, and a further step is required: in Newton-Raphson, feedback variables are updated not by using their model equations, but by using the inverse of the Jacobian matrix and the following assignment:\cr\cr
 \eqn{\bar{y}^F_{k} \leftarrow \bar{y}^F_{k-1}+(I-J)^{-1}[\bar{y}^F_{k}-\bar{y}^F_{k-1}]}\cr\cr
-given the vector of feedback variables values  \eqn{\bar{y}^F_{k}=[y_{n-F+1,k},...,y_{n,k}]} at iteration \eqn{k}, the identity matrix \eqn{I}, and the Jacobian matrix \eqn{J}, with \eqn{I,J \in R^{F,F}} and \eqn{F} equal to the number of feedback variables for the given model. Please note that the modified Gauss-Seidel algorithm can be seen as a reduced form of a Netwotn algorithm, given \eqn{J=0}.\cr\cr In Newton-Raphson methods, the Jacobian matrix \eqn{J} is calculated as follows:\cr
+given the vector of feedback variables values  \eqn{\bar{y}^F_{k}=[y_{n-F+1,k},...,y_{n,k}]} at iteration \eqn{k}, the identity matrix \eqn{I}, and the Jacobian matrix \eqn{J}, with \eqn{I,J \in R^{F,F}} and \eqn{F} equal to the number of feedback variables for the given block of equations. Please note that the modified Gauss-Seidel algorithm can be seen as a reduced form of a Netwotn algorithm, given \eqn{J=0}.\cr\cr In Newton-Raphson methods, the Jacobian matrix \eqn{J} is calculated as follows:\cr
 1 - shock the feedback variables one at a time by a small amount;\cr
-2 - for each shocked feedback variable, evaluate the shocked solution of the simultaneous block;\cr
-3 - calculate the derivatives (i.e. the column in the Jacobian matrix related to the shocked feedback variable) using the difference quotients between the shocked and the base solution of the simultaneous block.
+2 - for each shocked feedback variable, evaluate the shocked solution of the simultaneous subset in the current block;\cr
+3 - calculate the derivatives (i.e. the column in the Jacobian matrix related to the shocked feedback variable) using the difference quotients between the shocked and the base solution of the simultaneous subset.
 \cr\cr
 As said, the convergence is always tested at each iteration's end on the feedback variables.\cr\cr
 Newton-Raphson methods on a reordered model require the calculation of the Jacobian matrix on the feedback endogenous variables, i.e. at least \eqn{F+2} iterations per simulation period, with \eqn{F} as the number of feedback variables. For large models (i.e. more than 30 feedback variables) if the overall required convergence is greater than \eqn{10^{-6} \%}{10^(-6) \%} the speedup over the Gauss-Seidel method is small or negative, if the Jacobian matrix is recalculated at each iteration. Moreover, the Gauss-Seidel method does not require a matrix inversion; therefore, it is more robust against algebraical and numerical issues. For small models, both methods are fast on modern computers. On the other hand, Gausse-Seidel fails to find a convergence for a small set of econometric models, even when a convergence exists. In general, given a system of equations \eqn{Ax=b}, with \eqn{x,b \in R^n, n>0} and \eqn{A \in R^{n, n}}, the Gauss-Seidel algorithm is known to converge if either:\cr
 - \eqn{A} is symmetric positive-definite;\cr
 - \eqn{A} is strictly or irreducibly diagonally dominant. \cr\cr
-To improve simulation speed, BIMETS evaluates the Newton-Raphson algorithm performance during simulation, and, at each iteration, a new Jacobian matrix is calculated \emph{only if} the convergence speed is slower than a predefined threshold. In a vectorized simulation (e.g., \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}},  \code{\link[=OPTIMIZE]{OPTIMIZE}},  \code{\link[=RENORM]{RENORM}}), if \code{simAlgo="NEWTON"} the Jacobian matrix is calculated only on the unperturbed model, then applied to all realizations; if \code{simAlgo="FULLNEWTON"} a new Jacobian matrix is calculated for each realization.\cr\cr The simulation of a non-trivial model, if computed by using the same data but on different hardware, software or numerical libraries, produces numerical differences. Therefore a convergence criterion smaller than \eqn{10^{-7} \%}{10^(-7)} frequently leads to a local solution.\cr\cr See \emph{Numerical methods for simulation and optimal control of large-scale macroeconomic models - Gabay, Nepomiastchy, Rachidi, Ravelli - 1980} for further information.
+To improve simulation speed, BIMETS evaluates the Newton-Raphson algorithm's performance during simulation, and, at each iteration, a new Jacobian matrix is calculated \emph{only if} the convergence speed is slower than a predefined threshold. In a vectorized simulation (e.g., \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}},  \code{\link[=OPTIMIZE]{OPTIMIZE}},  \code{\link[=RENORM]{RENORM}}), if \code{simAlgo="NEWTON"} the Jacobian matrix is calculated only on the unperturbed model, then applied to all realizations; if \code{simAlgo="FULLNEWTON"} a new Jacobian matrix is calculated for each realization.\cr\cr The simulation of a non-trivial model, if computed by using the same data but on different hardware, software or numerical libraries, produces numerical differences. Therefore a convergence criterion smaller than \eqn{10^{-7} \%}{10^(-7)} frequently leads to a local solution.\cr\cr See \emph{Numerical methods for simulation and optimal control of large-scale macroeconomic models - Gabay, Nepomiastchy, Rachidi, Ravelli - 1980} for further information. \cr \cr
+
+For more realistic scenarios, several advanced econometric exercises on the US Federal Reserve FRB/US econometric model (e.g., dynamic simulation in a monetary policy shock, rational expectations, endogenous targeting, stochastic simulation, etc.) are available in the \href{https://cran.r-project.org/package=bimets/vignettes/frb2bimets.pdf}{"US Federal Reserve quarterly model (FRB/US) in R with bimets"} vignette. \cr \cr
 
 
 
@@ -159,6 +189,7 @@ SIMULATE( model=NULL,
           RESCHECKeqList=NULL,
           JACOBIAN_SHOCK=1e-4,
           JacobianDrop=NULL,
+          forceForwardLooking=FALSE,
           avoidCompliance=FALSE,
           ...)
 
@@ -171,11 +202,11 @@ SIMULATE( model=NULL,
   \item{simAlgo}{
   The simulation algorithm to be used to solve the system of model equations for each time period in the simulation \code{TSRANGE}.\cr
 The options are:\cr
-\bold{GAUSS-SEIDEL}: (default) the Gauss-Seidel algorithm is simple, robust, and works well for many backward-looking macro-econometric models. Equations are evaluated as-is in a proper order until the convergence, if any, is verified on feedback variables (see \emph{THE SIMULATION ALGORITHMS} section up here). It is slower than Newton-Raphson algorithms for a very low convergence criterion, and fails to find a convergence for a small set of econometric models, even when a convergence exists. In general, given a system of equations \eqn{Ax=b}, with \eqn{x,b \in R^n, n>0} and \eqn{A \in R^{n, n}}, the Gauss-Seidel algorithm is known to converge if either:\cr
+\bold{GAUSS-SEIDEL}: (default) the Gauss-Seidel algorithm is simple, robust, and works well for many backward-looking macro-econometric models. Equations are evaluated as-is in a proper order until the convergence, if any, is verified on feedback variables (see "The Simulation Algorithms") section up here). It is slower than Newton-Raphson algorithms for a very low convergence criterion, and fails to find a convergence for a small set of econometric models, even when a convergence exists. In general, given a system of equations \eqn{Ax=b}, with \eqn{x,b \in R^n, n>0} and \eqn{A \in R^{n, n}}, the Gauss-Seidel algorithm is known to converge if either:\cr
 - \eqn{A} is symmetric positive-definite;\cr
 - \eqn{A} is strictly or irreducibly diagonally dominant. \cr
-\bold{NEWTON}: the Newton-Raphson algorithm allows users to solve a broader set of macro-econometric models than the Gauss-Seidel algorithm. Moreover, it is faster than the Gauss-Seidel algorithm in most cases (on modern computers, users must simulate an extensive econometric model with a low convergence criterion to appreciate the speedup). This type of algorithm requires the construction and the inversion of the Jacobian matrix for the feedback variables; thus, in some scenarios (e.g., equations with unverified \code{IF>} condition, implicit exogenizations, etc.), numerical issues can arise, and users are required to manually exclude some feedback variables from the Jacobian matrix by using the \code{JacobianDrop} argument.  To improve simulation speed, BIMETS evaluates the Newton-Raphson algorithm performance during simulation, and, at each iteration, a new Jacobian matrix is calculated \emph{only if} the convergence speed is slower than a predefined threshold. In a vectorized simulation (e.g., \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}},  \code{\link[=OPTIMIZE]{OPTIMIZE}},  \code{\link[=RENORM]{RENORM}}), if \code{simAlgo="NEWTON"} the Jacobian matrix is calculated only on the unperturbed model, then applied to all realizations; if \code{simAlgo="FULLNEWTON"} a new Jacobian matrix is calculated for each realization.. As in the Gauss-Seidel algorithm, the convergence is evaluated on feedback variables\cr
-\bold{FULLNEWTON}: similar to the "base" Newton case, but when using this option, a different Jacobian matrix is calculated for each stochastic realization in a vectorized simulation (e.g., \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}},  \code{\link[=OPTIMIZE]{OPTIMIZE}},  \code{\link[=RENORM]{RENORM}}). The collection of all the Jacobian matrices is referred to as the 3-dimensional "Jacobian array". Generally, a "full" Newton simulation requires more computational time, mainly due to the increased number of Jacobian matrices to be calculated. However, the "base" Newton algorithm fails to converge when the model is highly non-linear and perturbances are significant (see examples in \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} help page). Therefore, a  "full" Newton algorithm is required in these cases. \cr
+\bold{NEWTON}: the Newton-Raphson algorithm allows users to solve a broader set of macro-econometric models than the Gauss-Seidel algorithm. Moreover, it is faster than the Gauss-Seidel algorithm in most cases (on modern computers, users must simulate an extensive econometric model with a low convergence criterion to appreciate the speedup). This type of algorithm requires the construction and the inversion of the Jacobian matrix for the feedback variables; thus, in some scenarios (e.g., equations with unverified \code{IF>} condition, implicit exogenizations, etc.), numerical issues can arise, and users are required to manually exclude some feedback variables from the Jacobian matrix by using the \code{JacobianDrop} argument.  To improve simulation speed, BIMETS evaluates the Newton-Raphson algorithm performance during simulation, and, at each iteration, a new Jacobian matrix is calculated \emph{only if} the convergence speed is slower than a predefined threshold. In a vectorized simulation (e.g., \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}},  \code{\link[=OPTIMIZE]{OPTIMIZE}},  \code{\link[=RENORM]{RENORM}}), if \code{simAlgo="NEWTON"} the Jacobian matrix is calculated only on the unperturbed model, then applied to all realizations; if \code{simAlgo="FULLNEWTON"} a new Jacobian matrix is calculated for each realization. As in the Gauss-Seidel algorithm, the convergence is evaluated on feedback variables.\cr
+\bold{FULLNEWTON}: similar to the "base" Newton case, but when using this option, a different Jacobian matrix is calculated for each stochastic realization in a vectorized simulation (e.g., \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}},  \code{\link[=OPTIMIZE]{OPTIMIZE}},  \code{\link[=RENORM]{RENORM}}). The collection of all the Jacobian matrices is referred to as the 3-dimensional "Jacobian array". Generally, a "full" Newton simulation requires more computational time, mainly due to the increased number of Jacobian matrices to be calculated. However, the "base" Newton algorithm fails to converge when the model is highly non-linear and perturbances are significant (see examples in \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} help page). Therefore, a "full" Newton algorithm is required in these cases. \cr
 
 }
   \item{TSRANGE}{
@@ -191,64 +222,66 @@ The options are:\cr
 \item{simConvergence}{
    The percentage convergence value requested for the iterative process, which stops when the percentage difference of all the feedback variables between iterations is less than \code{simConvergence} in absolute value
    }
-  \item{simIterLimit}{
-  The value representing the maximum number of iterations to be performed. The iterative procedure will stop when \code{simIterLimit} is reached or the feedback variables satisfy the \code{simConvergence} criterion
-  }
-  \item{ZeroErrorAC}{
-  If \code{TRUE} it zeroes out all the autoregressive terms, if any, in the behavioral equations
-  }
-  \item{BackFill}{
-  Defined as an \code{integer}, it is the length of historical data prior to the simulation \code{TSRANGE} to be saved along with the solutions
-  }
-  \item{Exogenize}{
-  A named list that specifies the endogenous variables to be exogenized. During the simulation and inside the provided time range, the exogenized endogenous variables will be assigned to their historical values. List names must be the names of the endogenous variables to be exogenized; each element of this list contains the time range of the exogenization for the related endogenous variable, in the form of a 4-dimensional integer array, i.e. start_year, start_period, end_year, end_period. A list element can also be assigned \code{TRUE}: in this case the related endogenous variable will be exogenized in whole simulation \code{TSRANGE} (see example)
-  }
-  \item{ConstantAdjustment}{
-  A named list that specifies the constant adjustments (i.e. add factors) to be added to the selected equations of the model. Each constant adjustment can be see as a new exogenous variable added to the equation of the specified endogenous variable. The list names are the names of the involved endogenous variables; each element of this is list contains the time series to be added to the equation of the related endogenous variable. Each provided time series must verify the compliance control check defined in \code{\link[=is.bimets]{is.bimets}} (see example)
-  }
-  \item{verbose}{
-  If \code{TRUE} some verbose output will be activated. Moreover the values of all endogenous variables will be printed out during each iteration of the convergence algorithm for all time periods in the simulation \code{TSRANGE}
-  }
-  \item{verboseSincePeriod}{
-  An integer that activates the verbose output, during the iterative process, only after the provided number of simulation periods
-  }
-  \item{verboseVars}{
-  A \code{character} array with the names of the endogenous variables for which the verbose output will be activated in the iterative process
-  }
-  \item{MULTMATRIX}{It is \code{TRUE} when the parent call is a multiplier matrix operation requested by a \code{\link[=MULTMATRIX]{MULTMATRIX}} procedure}
-   \item{RENORM}{It is \code{TRUE} when the parent call is an endogenous targeting operation requested by a \code{\link[=RENORM]{RENORM}} procedure}
-  \item{TARGET}{see \code{\link[=MULTMATRIX]{MULTMATRIX}}}
-   \item{INSTRUMENT}{see \code{\link[=MULTMATRIX]{MULTMATRIX}}}
-   \item{MM_SHOCK}{see \code{\link[=MULTMATRIX]{MULTMATRIX}}}
-  \item{STOCHSIMULATE}{It is \code{TRUE} when the parent call is a stochastic simulation requested by a \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} operation}
-  \item{StochStructure}{The \code{list()} that defines the disturbance structure applied to the model. See \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}}
-  \item{StochReplica}{An integer value that sets the number of stochastic simulation replications to be performed. See \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}}
-  \item{StochSeed}{A number used to initialize the pseudo-random number generator. It can be useful in order to replicate stochastic results. See \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}}
-  \item{OPTIMIZE}{It is \code{TRUE} when the parent call is an optimize operation requested by a  procedure}
-  \item{OptimizeBounds}{see \code{\link[=OPTIMIZE]{OPTIMIZE}}}
-  \item{OptimizeRestrictions}{see \code{\link[=OPTIMIZE]{OPTIMIZE}}}
-  \item{OptimizeFunctions}{see \code{\link[=OPTIMIZE]{OPTIMIZE}}}
- \item{quietly}{ If \code{TRUE}, information messages will be suppressed, e.g. an information message will be printed out if any time series has a missing value in the extended \code{TSRANGE}, that is the simulation \code{TSRANGE} backward extended by \code{model$max_lag} periods (See \code{\link[=LOAD_MODEL]{LOAD_MODEL}} for info on model max lag)
-  } 
+\item{simIterLimit}{
+The value representing the maximum number of iterations to be performed. The iterative procedure will stop when \code{simIterLimit} is reached or the feedback variables satisfy the \code{simConvergence} criterion
+}
+\item{ZeroErrorAC}{
+If \code{TRUE} it zeroes out all the autoregressive terms, if any, in the behavioral equations
+}
+\item{BackFill}{
+Defined as an \code{integer}, it is the length of historical data prior to the simulation \code{TSRANGE} to be saved along with the solutions
+}
+\item{Exogenize}{
+A named list that specifies the endogenous variables to be exogenized. During the simulation and inside the provided time range, the exogenized endogenous variables will be assigned to their historical values. List names must be the names of the endogenous variables to be exogenized; each element of this list contains the time range of the exogenization for the related endogenous variable, in the form of a 4-dimensional integer array, i.e. start_year, start_period, end_year, end_period. A list element can also be assigned \code{TRUE}: in this case the related endogenous variable will be exogenized in whole simulation \code{TSRANGE} (see example)
+}
+\item{ConstantAdjustment}{
+A named list that specifies the constant adjustments (i.e. add-factors) to be added to the selected equations of the model. Each constant adjustment can be see as a new exogenous variable added to the equation of the specified endogenous variable. The list names are the names of the involved endogenous variables; each element of this is list contains the time series to be added to the equation of the related endogenous variable. Each provided time series must verify the compliance control check defined in \code{\link[=is.bimets]{is.bimets}} (see example)
+}
+\item{verbose}{
+If \code{TRUE} some verbose output will be activated. Moreover the values of all endogenous variables will be printed out during each iteration of the convergence algorithm for all time periods in the simulation \code{TSRANGE}
+}
+\item{verboseSincePeriod}{
+An integer that activates the verbose output, during the iterative process, only after the provided number of simulation periods
+}
+\item{verboseVars}{
+A \code{character} array with the names of the endogenous variables for which the verbose output will be activated in the iterative process
+}
+\item{MULTMATRIX}{It is \code{TRUE} when the parent call is a multiplier matrix operation requested by a \code{\link[=MULTMATRIX]{MULTMATRIX}} procedure}
+\item{RENORM}{It is \code{TRUE} when the parent call is an endogenous targeting operation requested by a \code{\link[=RENORM]{RENORM}} procedure}
+\item{TARGET}{see \code{\link[=MULTMATRIX]{MULTMATRIX}}}
+\item{INSTRUMENT}{see \code{\link[=MULTMATRIX]{MULTMATRIX}}}
+\item{MM_SHOCK}{see \code{\link[=MULTMATRIX]{MULTMATRIX}}}
+\item{STOCHSIMULATE}{It is \code{TRUE} when the parent call is a stochastic simulation requested by a \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}} operation}
+\item{StochStructure}{The \code{list()} that defines the disturbance structure applied to the model. See \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}}
+\item{StochReplica}{An integer value that sets the number of stochastic simulation replications to be performed. See \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}}
+\item{StochSeed}{A number used to initialize the pseudo-random number generator. It can be useful in order to replicate stochastic results. See \code{\link[=STOCHSIMULATE]{STOCHSIMULATE}}}
+\item{OPTIMIZE}{It is \code{TRUE} when the parent call is an optimize operation requested by a  procedure}
+\item{OptimizeBounds}{see \code{\link[=OPTIMIZE]{OPTIMIZE}}}
+\item{OptimizeRestrictions}{see \code{\link[=OPTIMIZE]{OPTIMIZE}}}
+\item{OptimizeFunctions}{see \code{\link[=OPTIMIZE]{OPTIMIZE}}}
+\item{quietly}{ If \code{TRUE}, information messages will be suppressed, e.g. an information message will be printed out if any time series has a missing value in the extended \code{TSRANGE}, that is the simulation \code{TSRANGE} backward extended by \code{model$max_lag} periods (See \code{\link[=LOAD_MODEL]{LOAD_MODEL}} for info on model max lag)
+} 
 \item{RESCHECKeqList}{ If \code{simType=RESCHECK}, by using this argument users can select a subset of target endogenous variables: the simulation will be performed only for the selected variables. It must be provided as an array of endogenous names, e.g. \code{c('endo1','endo2',...)}
-  } 
-  \item{JACOBIAN_SHOCK}{
-  The value of the shock added to feedback variables in the derivative calculation of the Jacobian matrix. The default value is \code{1e-4} times the value of the feedback variable
-  }
-  \item{JacobianDrop}{
-  The array built with feedback variables names to be excluded from the Jacobian matrix calulation
-  }
-    \item{avoidCompliance}{
-  If \code{TRUE}, compliance control check of model time series will be skipped. See \code{\link[=is.bimets]{is.bimets}}
-  }
- \item{...}{
+} 
+\item{JACOBIAN_SHOCK}{
+The value of the shock added to feedback variables in the derivative calculation of the Jacobian matrix. The default value is \code{1e-4} times the value of the feedback variable
+}
+\item{JacobianDrop}{
+The array built with feedback variables names to be excluded from the Jacobian matrix calulation
+}
+\item{forceForwardLooking}{If \code{TRUE}, a backward-looking model will be simulated considering it such as a forward-looking model. This argument is for internal testing purposes, and there is no advantage for users to use it. See the "Rational expectations models" section here above in the \code{\link[=SIMULATE]{SIMULATE}} help page.}
+\item{avoidCompliance}{
+If \code{TRUE}, compliance control check of model time series will be skipped. See \code{\link[=is.bimets]{is.bimets}}
+}
+\item{...}{
 Backward compatibility
 }
   }
 
 \value{
-This function will add a new element named \code{simulation} into the output BIMETS model object.\cr\cr
-The new \code{simulation} element is a named list; the names of the \code{simulation} list are the names of the endogenous variables of the model; each element of the \code{simulation} list contains the simulated time series of the related endogenous variable (see example). \cr\cr The \code{simulation} list also contains the \code{'__SIM_PARAMETERS__'} element that contains the arguments passed to the function call during the latest \code{SIMULATE} run, e.g. \code{TSRANGE}, \code{symType}, \code{simConvergence}, \code{symIterLimit}, \code{Exogenize}, etc.: this data can be helpful in order to replicate the simulation results. 
+This function will add a new named element \code{simulation} into the output BIMETS model object.\cr\cr
+The new \code{simulation} element is a named list; the names of the \code{simulation} list are the names of the endogenous variables of the model; each element of the \code{simulation} list contains the simulated time series of the related endogenous variable (see example). \cr\cr The \code{simulation} list also contains the \code{'__SIM_PARAMETERS__'} element that contains the arguments passed to the function call during the latest \code{SIMULATE} run, e.g. \code{TSRANGE}, \code{symType}, \code{simConvergence}, \code{symIterLimit}, \code{Exogenize}, etc.: this data can be helpful in order to replicate the simulation results. \cr\cr
+In case of a \code{simType='RESCHECK'} simulation, a new named element \code{ConstantAdjustmentRESCHECK} will be added to the output model. This new element is populated with a list of time series that contains, for each endogenous variable, the tracking residuals time series such that, when using this tracking residuals as add-factors in simulation, the related equation will solve to the trajectory given, for that variable, by its historical data (see example).
 
 
 }
@@ -499,7 +532,7 @@ exogenizeList<-list(
                 i  = TRUE
 )
  
-#define add factor list
+#define add-factors list
 constantAdjList<-list(
                cn = TIMESERIES(1,-1,START=c(1923,1),FREQ='A'),
                y  = TIMESERIES(0.1,-0.1,-0.5,START=c(1926,1),FREQ='A')
@@ -808,5 +841,232 @@ modelScenario3 <- SIMULATE(modelScenario3
 TABIT(modelScenario1$simulation$y, 
       modelScenario2$simulation$y, 
       modelScenario3$simulation$y)
+      
+########################################################
+#EXAMPLE OF MODEL'S TRACKING RESIDUALS INITIALIZATION BY USING 
+#THE RESCHECK SIMULATION'S OUTPUT VALUE "ConstantAdjusmentRESCHECK"
+
+#define the model with LHS funs
+myModel<-'MODEL
+
+COMMENT> Modified Klein Model 1 of the U.S. Economy with PDL,
+COMMENT> autocorrelation on errors, restrictions and conditional evaluations
+COMMENT> LHS functions on EQ
+
+COMMENT> Exp Consumption
+BEHAVIORAL> cn
+TSRANGE 1925 1 1941 1
+EQ> EXP(cn) = a1 + a2*p + a3*TSLAG(p,1) + a4*(w1+w2)
+COEFF> a1 a2 a3 a4
+ERROR> AUTO(2)
+
+COMMENT> Log Investment
+BEHAVIORAL> i
+TSRANGE 1925 1 1941 1
+EQ> LOG(i) = b1 + b2*p + b3*TSLAG(p,1) + b4*TSLAG(k,1)
+COEFF> b1 b2 b3 b4
+RESTRICT> b2 + b3 = 1
+
+COMMENT> Demand for Labor
+BEHAVIORAL> w1
+TSRANGE 1925 1 1941 1
+EQ> w1 = c1 + c2*(TSDELTA(y)+t-w2) + c3*TSLAG(TSDELTA(y)+t-w2,1)+c4*time
+COEFF> c1 c2 c3 c4
+PDL> c3 1 3
+
+COMMENT> Delta Gross National Product
+IDENTITY> y
+EQ> TSDELTA(y) = EXP(cn) + LOG(i) + g - t
+
+COMMENT> Profits
+IDENTITY> p
+EQ> p = TSDELTA(y) - (w1+w2)
+
+COMMENT> Capital Stock with switches
+IDENTITY> k
+EQ> k = TSLAG(k,1) + LOG(i)
+IF> LOG(i) > 0
+IDENTITY> k
+EQ> k = TSLAG(k,1)
+IF> LOG(i) <= 0
+
+END'
+
+
+#define model data
+modelData<-list(
+  cn=TSERIES(39.8,41.9,45,49.2,50.6,52.6,55.1,56.2,57.3,
+             57.8,55,50.9,45.6,46.5,48.7,51.3,57.7,58.7,57.5,61.6,65,69.7,
+             START=c(1920,1),FREQ=1),
+  g=TSERIES(4.6,6.6,6.1,5.7,6.6,6.5,6.6,7.6,7.9,8.1,9.4,
+            10.7,10.2,9.3,10,10.5,10.3,11,13,14.4,15.4,22.3,
+            START=c(1920,1),FREQ=1),
+  i=TSERIES(2.7,-.2,1.9,5.2,3,5.1,5.6,4.2,3,5.1,1,-3.4,
+            -6.2,-5.1,-3,-1.3,2.1,2,-1.9,1.3,3.3,4.9,
+            START=c(1920,1),FREQ=1),
+  k=TSERIES(182.8,182.6,184.5,189.7,192.7,197.8,203.4,
+            207.6,210.6,215.7,216.7,213.3,207.1,202,
+            199,197.7,199.8,201.8,199.9,201.2,204.5,209.4,
+            START=c(1920,1),FREQ=1),
+  p=TSERIES(12.7,12.4,16.9,18.4,19.4,20.1,19.6,19.8,21.1,
+            21.7,15.6,11.4,7,11.2,12.3,14,17.6,17.3,15.3,19,21.1,23.5,
+            START=c(1920,1),FREQ=1),
+  w1=TSERIES(28.8,25.5,29.3,34.1,33.9,35.4,37.4,37.9,39.2,
+             41.3,37.9,34.5,29,28.5,30.6,33.2,36.8,41,38.2,41.6,45,53.3,
+             START=c(1920,1),FREQ=1),
+  y=TSERIES(43.7,40.6,49.1,55.4,56.4,58.7,60.3,61.3,64,67,
+            57.7,50.7,41.3,45.3,48.9,53.3,61.8,65,61.2,68.4,74.1,85.3,
+            START=c(1920,1),FREQ=1),
+  t=TSERIES(3.4,7.7,3.9,4.7,3.8,5.5,7,6.7,4.2,4,7.7,7.5,
+            8.3,5.4,6.8,7.2,8.3,6.7,7.4,8.9,9.6,11.6,
+            START=c(1920,1),FREQ=1),
+  time=TSERIES(NA,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,
+               3,4,5,6,7,8,9,10,  
+               START=c(1920,1),FREQ=1),   
+  w2=TSERIES(2.2,2.7,2.9,2.9,3.1,3.2,3.3,3.6,3.7,4,4.2,
+             4.8,5.3,5.6,6,6.1,7.4,6.7,7.7,7.8,8,8.5,
+             START=c(1920,1),FREQ=1)
+)
+
+
+#example data transformation
+modelData<-within(modelData,{
+  i=exp(i);     #we have LOG(i)     in the model MDL definition
+  cn=log(cn);   #we have EXP(cn)    in the model MDL definition
+  y=CUMSUM(y)   #we have TSDELTA(y) in the model MDL definition
+})
+
+#load model and model data
+model<-LOAD_MODEL(modelText=myModel)
+model<-LOAD_MODEL_DATA(model,modelData)
+
+#estimate model
+model<-ESTIMATE(model)
+
+#get initial tracking residuals in range 1925-1935
+#we need to set ZeroErrorAC to TRUE due to error autocorrelation 
+#in Consumption MDL definition
+model<-SIMULATE(model,
+                TSRANGE=c(1925,1,1935,1),
+                simType='RESCHECK',
+                ZeroErrorAC=TRUE)
+
+#get init trac
+initTrac<-model$ConstantAdjustmentRESCHECK
+
+#dynamic simulation using initTrac as constant adjustments
+#we remove first two periods from simulation range
+#due to error autocorrelation in Consumption MDL equation
+model<-SIMULATE(model,
+                TSRANGE=c(1927,1,1935,1),
+                ConstantAdjustment=initTrac)
+
+#check simulated values are equals to historical ones in simulation range
+for (idxV in model$vendog)
+{
+  print(max(abs(model$simulation[[idxV]]-
+                  TSPROJECT(model$modelData[[idxV]],TSRANGE=c(1927,1,1935,1)))))
+}
+
+########################################################
+#EXAMPLE OF FORWARD-LOOKING KLEIN-LIKE MODEL 
+#HAVING RATIONAL EXPECTATION ON INVESTMENTS
+
+#define model
+kleinLeadModelDefinition<-
+"MODEL 
+COMMENT> Klein Model 1 of the U.S. Economy 
+
+COMMENT> Consumption
+BEHAVIORAL> cn
+TSRANGE 1921 1 1941 1
+EQ> cn =  a1 + a2*p + a3*TSLAG(p,1) + a4*(w1+w2) 
+COEFF> a1 a2 a3 a4
+
+COMMENT> Investment with TSLEAD
+IDENTITY> i
+EQ> i = (MOVAVG(i,2)+TSLEAD(i))/2
+
+COMMENT> Demand for Labor
+BEHAVIORAL> w1 
+TSRANGE 1921 1 1941 1
+EQ> w1 = c1 + c2*(y+t-w2) + c3*TSLAG(y+t-w2,1) + c4*time
+COEFF> c1 c2 c3 c4
+
+COMMENT> Gross National Product
+IDENTITY> y
+EQ> y = cn + i + g - t
+
+COMMENT> Profits
+IDENTITY> p
+EQ> p = y - (w1+w2)
+
+COMMENT> Capital Stock
+IDENTITY> k
+EQ> k = TSLAG(k,1) + i
+
+END"
+
+#define model data
+kleinLeadModelData<-list(
+  cn
+  =TIMESERIES(39.8,41.9,45,49.2,50.6,52.6,55.1,56.2,57.3,57.8,55,50.9,
+              45.6,46.5,48.7,51.3,57.7,58.7,57.5,61.6,65,69.7,
+              START=c(1920,1),FREQ=1),
+  g
+  =TIMESERIES(4.6,6.6,6.1,5.7,6.6,6.5,6.6,7.6,7.9,8.1,9.4,10.7,10.2,9.3,10,
+              10.5,10.3,11,13,14.4,15.4,22.3,
+              START=c(1920,1),FREQ=1),
+  i
+  =TIMESERIES(2.7,-.2,1.9,5.2,3,5.1,5.6,4.2,3,5.1,1,-3.4,-6.2,-5.1,-3,-1.3,
+              2.1,2,-1.9,1.3,3.3,4.9,
+              START=c(1920,1),FREQ=1),
+  k
+  =TIMESERIES(182.8,182.6,184.5,189.7,192.7,197.8,203.4,207.6,210.6,215.7,
+              216.7,213.3,207.1,202,199,197.7,199.8,201.8,199.9,
+              201.2,204.5,209.4,
+              START=c(1920,1),FREQ=1),
+  p
+  =TIMESERIES(12.7,12.4,16.9,18.4,19.4,20.1,19.6,19.8,21.1,21.7,15.6,11.4,
+              7,11.2,12.3,14,17.6,17.3,15.3,19,21.1,23.5,
+              START=c(1920,1),FREQ=1),
+  w1
+  =TIMESERIES(28.8,25.5,29.3,34.1,33.9,35.4,37.4,37.9,39.2,41.3,37.9,34.5,
+              29,28.5,30.6,33.2,36.8,41,38.2,41.6,45,53.3,
+              START=c(1920,1),FREQ=1),
+  y
+  =TIMESERIES(43.7,40.6,49.1,55.4,56.4,58.7,60.3,61.3,64,67,57.7,50.7,41.3,
+              45.3,48.9,53.3,61.8,65,61.2,68.4,74.1,85.3,
+              START=c(1920,1),FREQ=1),
+  t
+  =TIMESERIES(3.4,7.7,3.9,4.7,3.8,5.5,7,6.7,4.2,4,7.7,7.5,8.3,5.4,6.8,7.2,
+              8.3,6.7,7.4,8.9,9.6,11.6,
+              START=c(1920,1),FREQ=1),
+  time 
+  =TIMESERIES(NA,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9,10,
+              START=c(1920,1),FREQ=1),
+  w2
+  =TIMESERIES(2.2,2.7,2.9,2.9,3.1,3.2,3.3,3.6,3.7,4,4.2,4.8,5.3,5.6,6,6.1,
+              7.4,6.7,7.7,7.8,8,8.5,
+              START=c(1920,1),FREQ=1)
+)
+
+#load model and model data
+kleinLeadModel<-LOAD_MODEL(modelText=kleinLeadModelDefinition)
+kleinLeadModel<-LOAD_MODEL_DATA(kleinLeadModel,kleinLeadModelData)
+
+#estimate model
+kleinLeadModel<-ESTIMATE(kleinLeadModel, quietly = TRUE)
+
+#set expected value of 2 for Investment in 1931
+#(note that simulation TSRANGE spans up to 1930)
+kleinLeadModel$modelData$i[[1931,1]]<-2 
+
+#simulate model
+kleinLeadModel<-SIMULATE(kleinLeadModel
+                  ,TSRANGE=c(1924,1,1930,1))
+                  
+#print simulated investments
+TABIT(kleinLeadModel$simulation$i)
 
 }

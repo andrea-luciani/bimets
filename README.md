@@ -1,6 +1,5 @@
 # bimets - Time Series And Econometric Modeling In R
 
-
 **bimets** is an R package developed with the aim to ease time series analysis and to build up a framework that facilitates the definition, estimation, and simulation of simultaneous equation models.
 
 **bimets** does not depend on compilers or third-party software so it can be freely downloaded and installed on Linux, MS Windows(R) and Mac OsX(R), without any further requirements. 
@@ -20,10 +19,10 @@ If you have general questions about using **bimets**, or for bug reports, please
 **TIME SERIES**
 
 - supports daily, weekly, monthly, quarterly, semiannual, yearly time series, and frequency of 24 and 36 periods per year.
+- indexing *by year-period* - users can select and modify observations by providing two scalar or two two-dimensional numerical array composed by the year and the period, e.g. `ts[[year,period]]` or `ts[[start]]` or `ts[[start,end]]`, given `start<-c(year1,period1)` and `end<-c(year2,period2)` and `ts` as a time series.
 - indexing *by date* - users can select and modify a single observation by using the syntax `ts['Date']`, or multiple observations by using `ts['StartDate/EndDate']`.
-- indexing *by year-period* - users can select and modify observations by providing a two-dimensional numerical array composed by the year and the period, e.g. `ts[[Year,Period]]`.
 - indexing *by observation index* - users can select and modify observations by providing the array of requested indices (core R), e.g. `ts[indices]`.
-- *Aggregation/Disaggregation* - the package provides advanced (dis)aggregation capabilities, having linear interpolation capabilities in disaggregation, and aggregation functions (e.g. `STOCK`, `SUM`, `AVE`, etc.) while reducing the time series frequency.
+- *Aggregation/Disaggregation* - the package provides advanced (dis)aggregation capabilities, having linear interpolation capabilities in disaggregation, and several aggregation functions (e.g. `STOCK`, `SUM`, `AVE`, etc.) while reducing the time series frequency.
 - *Manipulation* - the package provides, among others, the following time series manipulation capabilities: 
 time series extension `TSEXTEND()`, 
 time series merging `TSMERGE()`, 
@@ -43,15 +42,27 @@ Example:
 myTS=TIMESERIES((1:100),START=c(2000,1),FREQ='D')
  
 myTS[1:3]                         #get first three obs.
-myTS['2000-01-12']                #get Jan 12, 2000
-myTS['2000-02-03/2000-03-04']     #get Feb 3 up to Mar 4
 myTS[[2000,14]]                   #get year 2000 period 14
 myTS[[2032,1]]                    #get year 2032 period 1 (out of range)
+
+start <- c(2000,20)
+end   <- c(2000,30)
+myTS[[start]]                     #get year 2000 period 20
+myTS[[start,end]]                 #get from year-period 2000-20 to 2000-30
+
+myTS['2000-01-12']                #get Jan 12, 2000
+myTS['2000-02-03/2000-03-04']     #get Feb 3 up to Mar 4
     
-myTS['2000-01-15'] <- 42          #assign to Jan 15, 2000
 myTS[[2000,3]]     <- pi          #assign to Jan 3, 2000
 myTS[[2000,42]]    <- NA          #assign to Feb 11, 2000
 myTS[[2000,100]]   <- c(-1,-2,-3) #assign array starting from period 100 (i.e. extend series)
+
+myTS[[start]]     <- NA           #assign to year-period 2000-20
+myTS[[start,end]] <- 3.14         #assign from year-period 2000-20 to 2000-30
+myTS[[start,end]] <- -(1:11)      #assign multiple values 
+                                  #from year-period 2000-20 to 2000-30
+                                   
+myTS['2000-01-15'] <- 42          #assign to Jan 15, 2000
                               
 #aggregation/disaggregation
 myMonthlyTS <- TIMESERIES(1:100,START=c(2000,1),FREQ='M')
@@ -117,15 +128,17 @@ More details are available in the [reference manual](https://CRAN.R-project.org/
 
 **bimets** econometric modeling capabilities comprehend: 
 
-- *Model Definition Language* - the specification of an econometric model is translated and identified by keyword statements which are grouped in a model file, i.e. a plain text file or a `character` R variable with a specific syntax. Collectively, these keyword statements constitute a kind of a **bimets** Model Description Language (i.e. `MDL`). The MDL syntax allows the definition of behavioral equations, technical equations, conditional evaluations during the simulation, and other model properties. 
+- *Model Description Language* - the specification of an econometric model is translated and identified by keyword statements which are grouped in a model file, i.e. a plain text file or a `character` R variable with a specific syntax. Collectively, these keyword statements constitute a kind of a **bimets** Model Description Language (i.e. `MDL`). The MDL syntax allows the definition of behavioral equations, technical equations, conditional evaluations during the simulation, and other model properties. 
 - *Estimation* - the estimation function `ESTIMATE()` supports Ordinary Least Squares, Instrumental Variables, deterministic linear restrictions on the coefficients, Almon Polynomial Distributed Lags (i.e. `PDL`), autocorrelation of the errors, structural stability analysis (Chow tests).
 - *Simulation* - the simulation function `SIMULATE()` supports static, dynamic and forecast simulations, residuals check, partial or total exogenization of endogenous variables, constant adjustment of endogenous variables (i.e. add-factors).
+- *Rational Expectations* - **bimets** supports forward-looking models, i.e. models having a `TSLEAD` function in theirs equations applied to an endogenous variable; Forward-looking models assume that economic agents have complete knowledge of an economic system and calculate the future value of economic variables correctly according to that knowledge. Thus, forward-looking models are called also rational expectations models and, in macro-econometric models, model-consistent expectations.
 - *Stochastic Simulation* - in the stochastic simulation function `STOCHSIMULATE()` the structural disturbances are given values that have specified stochastic properties. The error terms of the estimated behavioral equation of the model are appropriately perturbed. Identity equations and exogenous variables can be as well perturbed by disturbances that have specified stochastic properties. The model is then solved for each data set with different values of the disturbances. Finally, mean and standard deviation are computed for each simulated endogenous variable.
 - *Multipliers Evaluation* - the multipliers evaluation function `MULTMATRIX()` computes the matrix of both impact and interim multipliers for a selected set of endogenous variables, i.e. the `TARGET`, with respect to a selected set of exogenous variables, i.e. the `INSTRUMENT`.
 - *Endogenous Targeting* - the "renormalization" function `RENORM()` performs the endogenous targeting of econometric models, which consists of solving the model while interchanging the role of one or more endogenous variables with an equal number of exogenous variables. The procedure determines the values for the `INSTRUMENT` exogenous variables that allow achieving the desired values for the `TARGET` endogenous variables, subject to the constraints given by the equations of the model. This is an approach to economic and monetary policy analysis.
 - *Optimal Control* - The optimization consists of maximizing a social welfare function, i.e. the objective-function, depending on exogenous and (simulated) endogenous variables, subject to user constraints plus the constraints imposed by the econometric model equations. Users are allowed to define constraints and objective-functions of any degree, and are allowed to provide different constraints and objective-functions in different optimization time periods.
 
-A Klein's model example, having restrictions, error autocorrelation, and conditional evaluations, follows:
+A Klein's model example, having restrictions, error autocorrelation, and conditional evaluations, follows. For more realistic scenarios, several advanced econometric exercises on the US Federal Reserve FRB/US econometric model (e.g., dynamic simulation in a monetary policy shock, rational expectations, endogenous targeting, stochastic simulation, etc.) are available in the ["US Federal Reserve quarterly model (FRB/US) in R with bimets"](https://cran.r-project.org/package=bimets/) vignette: 
+
 
 ```r
 
@@ -539,13 +552,13 @@ myOptimizeFunctions <- list(
         ,FUNCTION = '(y-110)+(cn-90)*ABS(cn-90)-(g-20)^0.5')
 )
 
-#Monte-Carlo optimization by using 50.000 stochastic realizations
+#Monte-Carlo optimization by using 10.000 stochastic realizations
 #and 1E-7 convergence criterion 
 kleinModel <- OPTIMIZE(kleinModel
                         ,simType = 'FORECAST'
                         ,TSRANGE=c(1942,1,1942,1)
                         ,simConvergence= 1E-7
-                        ,simIterLimit  = 1000
+                        ,simIterLimit  = 100
                         ,StochReplica  = 10000
                         ,StochSeed = 123
                         ,OptimizeBounds = myOptimizeBounds
@@ -574,15 +587,133 @@ kleinModel$optimize$INSTRUMENT
 #[1] 24.89773
 
 ```
- 
 ![](https://github.com/andrea-luciani/bimets/blob/master/man/figures/OptKlein.png?raw=true)
+
+```
+
+# RATIONAL EXPECTATIONS ########################################################
+
+# EXAMPLE OF FORWARD-LOOKING KLEIN-LIKE MODEL 
+# HAVING RATIONAL EXPECTATION ON INVESTMENTS
+
+#define model
+kleinLeadModelDefinition<-
+"MODEL 
+COMMENT> Klein Model 1 of the U.S. Economy 
+
+COMMENT> Consumption
+BEHAVIORAL> cn
+TSRANGE 1921 1 1941 1
+EQ> cn =  a1 + a2*p + a3*TSLAG(p,1) + a4*(w1+w2) 
+COEFF> a1 a2 a3 a4
+
+COMMENT> Investment with TSLEAD
+IDENTITY> i
+EQ> i = (MOVAVG(i,2)+TSLEAD(i))/2
+
+COMMENT> Demand for Labor
+BEHAVIORAL> w1 
+TSRANGE 1921 1 1941 1
+EQ> w1 = c1 + c2*(y+t-w2) + c3*TSLAG(y+t-w2,1) + c4*time
+COEFF> c1 c2 c3 c4
+
+COMMENT> Gross National Product
+IDENTITY> y
+EQ> y = cn + i + g - t
+
+COMMENT> Profits
+IDENTITY> p
+EQ> p = y - (w1+w2)
+
+COMMENT> Capital Stock
+IDENTITY> k
+EQ> k = TSLAG(k,1) + i
+
+END"
+
+#define model data
+kleinLeadModelData<-list(
+  cn
+  =TIMESERIES(39.8,41.9,45,49.2,50.6,52.6,55.1,56.2,57.3,57.8,55,50.9,
+              45.6,46.5,48.7,51.3,57.7,58.7,57.5,61.6,65,69.7,
+              START=c(1920,1),FREQ=1),
+  g
+  =TIMESERIES(4.6,6.6,6.1,5.7,6.6,6.5,6.6,7.6,7.9,8.1,9.4,10.7,10.2,9.3,10,
+              10.5,10.3,11,13,14.4,15.4,22.3,
+              START=c(1920,1),FREQ=1),
+  i
+  =TIMESERIES(2.7,-.2,1.9,5.2,3,5.1,5.6,4.2,3,5.1,1,-3.4,-6.2,-5.1,-3,-1.3,
+              2.1,2,-1.9,1.3,3.3,4.9,
+              START=c(1920,1),FREQ=1),
+  k
+  =TIMESERIES(182.8,182.6,184.5,189.7,192.7,197.8,203.4,207.6,210.6,215.7,
+              216.7,213.3,207.1,202,199,197.7,199.8,201.8,199.9,
+              201.2,204.5,209.4,
+              START=c(1920,1),FREQ=1),
+  p
+  =TIMESERIES(12.7,12.4,16.9,18.4,19.4,20.1,19.6,19.8,21.1,21.7,15.6,11.4,
+              7,11.2,12.3,14,17.6,17.3,15.3,19,21.1,23.5,
+              START=c(1920,1),FREQ=1),
+  w1
+  =TIMESERIES(28.8,25.5,29.3,34.1,33.9,35.4,37.4,37.9,39.2,41.3,37.9,34.5,
+              29,28.5,30.6,33.2,36.8,41,38.2,41.6,45,53.3,
+              START=c(1920,1),FREQ=1),
+  y
+  =TIMESERIES(43.7,40.6,49.1,55.4,56.4,58.7,60.3,61.3,64,67,57.7,50.7,41.3,
+              45.3,48.9,53.3,61.8,65,61.2,68.4,74.1,85.3,
+              START=c(1920,1),FREQ=1),
+  t
+  =TIMESERIES(3.4,7.7,3.9,4.7,3.8,5.5,7,6.7,4.2,4,7.7,7.5,8.3,5.4,6.8,7.2,
+              8.3,6.7,7.4,8.9,9.6,11.6,
+              START=c(1920,1),FREQ=1),
+  time 
+  =TIMESERIES(NA,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9,10,
+              START=c(1920,1),FREQ=1),
+  w2
+  =TIMESERIES(2.2,2.7,2.9,2.9,3.1,3.2,3.3,3.6,3.7,4,4.2,4.8,5.3,5.6,6,6.1,
+              7.4,6.7,7.7,7.8,8,8.5,
+              START=c(1920,1),FREQ=1)
+)
+
+#load model and model data
+kleinLeadModel<-LOAD_MODEL(modelText=kleinLeadModelDefinition)
+kleinLeadModel<-LOAD_MODEL_DATA(kleinLeadModel,kleinLeadModelData)
+
+#estimate model
+kleinLeadModel<-ESTIMATE(kleinLeadModel, quietly = TRUE)
+
+#set expected value of 2 for Investment in 1931
+#(note that simulation TSRANGE spans up to 1930)
+kleinLeadModel$modelData$i[[1931,1]]<-2 
+
+#simulate model
+kleinLeadModel<-SIMULATE(kleinLeadModel
+                  ,TSRANGE=c(1924,1,1930,1))
+                  
+#print simulated investments
+TABIT(kleinLeadModel$simulation$i)
+
+#Date, Prd., kleinLeadModel$simulation$i
+#
+#      1924, 1   ,  3.594946      
+#      1925, 1   ,  2.792062      
+#      1926, 1   ,  2.390277      
+#      1927, 1   ,  2.189125      
+#      1928, 1   ,  2.08838       
+#      1929, 1   ,  2.037915      
+#      1930, 1   ,  2.012644   
+
  
-**MODEL DEFINITION LANGUAGE SYNTAX**
+```
+ 
+ 
+**MODEL DESCRIPTION LANGUAGE SYNTAX**
 
 The mathematical expression available for use in model equations can include the standard arithmetic operators, parentheses and the
 following MDL functions:
 
 - `TSLAG(ts,i)`: lag the ts time series by i-periods;
+- `TSLEAD(ts,i)`: lead the ts time series by i-periods;
 - `TSDELTA(ts,i)`: i-periods difference of the ts time series;
 - `TSDELTAP(ts,i)`: i-periods percentage difference of the ts time series;
 - `TSDELTALOG(ts,i)`: i-periods logarithmic difference of the ts time series;
@@ -620,6 +751,8 @@ The models used in the comparison have more than:
 In these models, we can find equations with restricted coefficients, polynomial distributed lags, error autocorrelation, and conditional evaluation of technical identities; all models have been simulated in static, dynamic, and forecast mode, with exogenization and constant adjustments of endogenous variables, through the use of **bimets** capabilities.
 
 In the +800 endogenous simulated time series over the +20 simulated periods (i.e. more than 16.000 simulated observations), the average percentage difference between **bimets** and leading commercial software results has a magnitude of `10E-7 %`. The difference between results calculated by using different commercial software has the same average magnitude.
+
+Several advanced econometric exercises on the US Federal Reserve FRB/US econometric model (e.g., dynamic simulation in a monetary policy shock, rational expectations, endogenous targeting, stochastic simulation, etc.) are available in the ["US Federal Reserve quarterly model (FRB/US) in R with bimets"](https://cran.r-project.org/package=bimets/) vignette.
 
 ## Installation
 

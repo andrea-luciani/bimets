@@ -48,6 +48,7 @@ OPTIMIZE( model=NULL,
           simConvergence=0.01,
           simIterLimit=100,
           ZeroErrorAC=FALSE,
+          BackFill=0,
           Exogenize=NULL,
           ConstantAdjustment=NULL,
           verbose=FALSE,
@@ -62,6 +63,7 @@ OPTIMIZE( model=NULL,
           RESCHECKeqList=NULL,
           JACOBIAN_SHOCK=1e-4,
           JacobianDrop=NULL,
+          forceForwardLooking=FALSE,
           avoidCompliance=FALSE,
           ...)
 
@@ -75,6 +77,7 @@ OPTIMIZE( model=NULL,
 \item{simConvergence}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{simIterLimit}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{ZeroErrorAC}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{BackFill}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{Exogenize}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{ConstantAdjustment}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{verbose}{see \code{\link[=SIMULATE]{SIMULATE}}}
@@ -107,6 +110,7 @@ Two different \code{OptimizeFunctions} list element can not have overlapping \co
 \item{RESCHECKeqList}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{JACOBIAN_SHOCK}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{JacobianDrop}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{forceForwardLooking}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{avoidCompliance}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{...}{see \code{\link[=SIMULATE]{SIMULATE}}}
   }
@@ -241,7 +245,7 @@ kleinModelData <- list(
     w2  =TIMESERIES(2.2,2.7,2.9,2.9,3.1,3.2,3.3,3.6,3.7,4,4.2,4.8,
                     5.3,5.6,6,6.1,7.4,6.7,7.7,7.8,8,8.5,	
                     START=c(1920,1),FREQ=1)
-);
+)
 
 #load time series into the model object
 advancedKleinModel <- LOAD_MODEL_DATA(advancedKleinModel,kleinModelData)
@@ -373,7 +377,7 @@ abs(sum(TSPROJECT(optFunTest
 #the objective function
 
 #get realization index that maximizes the objective function
-maximizingRealizationIdx=with(advancedKleinModel$optimize,
+maximizingRealizationIdx <- with(advancedKleinModel$optimize,
                               which.max(optFunResults[realizationsToKeep]))
 
 #get stochastic realizations unfiltered

@@ -1,3 +1,22 @@
+# bimets 4.0.1
+
+Jun. 2024
+
+* added support to forward-looking rational expectations models, i.e. `TSLEAD` function now available for use in `MDL` model description
+* added new indexing methods, see `BIMETS Indexing` in reference manual
+* improved `print.BIMETS_MODEL` and `summary.BIMETS_MODEL`
+* improved verbose management in `SIMULATE`, `STOCHSIMULATE`, `OPTIMIZE`, `RENORM`
+* fixed bug in `LOAD_MODEL` in case of duplicated coefficient name in `MDL` linear restriction
+* added global attribute `BIMETS_VERSION`: models built with an outdated `bimets` version must be re-created via the `LOAD_MODEL()` function
+* fixed bug in `SIMULATE` with `BackFill` active and `BIMETS_CONF_CCT` set to `XTS`
+* added `ConstantAdjustmentRESCHECK` output attribute in `SIMULATE` of type `RESCHECK` 
+* fixed bug in `MDL` equations' LHS syntax check and in related error messages: having multiple but similar LHS functions in the same equation now throws an error in `LOAD_MODEL`
+* added `ignoreNA` argument in `MOVAVG`, `MOVSUM`, `CUMSUM`, `CUMPROD`
+* optimized compliance check and reduced execution time in `SIMULATE`
+* fixed bug in `SIMULATE` in `JacobianDrop` argument error message
+* fixed bug in `RENORM` with `BackFill` and zeros on `TARGET`
+* added `verbose` messages to `RESCHECK` simulation
+
 # bimets 3.0.2
 
 Dec. 2023
@@ -10,6 +29,7 @@ Dec. 2023
 * fixed `bimets-package.Rd` alias compliance
 * fixed `TARGET` initial check in `RENORM`: the procedure now starts also if `TARGET` are initially verified
 * fixed bug in `SIMULATE`: `NEWTON` algorithm failed in acyclic incidence graph models
+* added `headers` to `TABIT`
 
 # bimets 3.0.1
 

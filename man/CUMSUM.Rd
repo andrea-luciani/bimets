@@ -12,8 +12,8 @@ This function returns the cumulative sum of the elements of the input array or t
 
 }
 \usage{
-CUMSUM(x=NULL, TSRANGE=NULL, MODE=NULL, avoidCompliance=FALSE,...)
-CUMULO(x=NULL, TSRANGE=NULL, avoidCompliance=FALSE,...)
+CUMSUM(x=NULL, TSRANGE=NULL, MODE=NULL, ignoreNA=FALSE, avoidCompliance=FALSE,...)
+CUMULO(x=NULL, TSRANGE=NULL, ignoreNA=FALSE, avoidCompliance=FALSE,...)
 }
 
 \arguments{
@@ -26,6 +26,7 @@ Optional date range of operations that process time series. \code{TSRANGE} must 
 \item{MODE}{
 When selecting \code{MODE='YEARLY'} or \code{MODE='MONTHLY'} the sum is reset to zero when a new year or a new month starts.
 }
+\item{ignoreNA}{Ignore missing values.}
   \item{avoidCompliance}{
 If \code{TRUE}, compliance control check of input time series will be skipped. See \code{\link[=is.bimets]{is.bimets}}
 }

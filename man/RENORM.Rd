@@ -19,6 +19,7 @@ Given a list of exogenous \code{INSTRUMENT} variables and a list of \code{TARGET
 3. Simulation of the model with the new set of exogenous variables computed in step 2, then a convergence check by comparing the subset of endogenous variables arising from this simulation and the related time series in \code{TARGET} list. If the convergence condition is satisfied, or the maximum number of iterations is reached, the algorithm will stop, otherwise it will go back to step 1;\cr\cr
 Users can also declare an endogenous variable as an \code{INSTRUMENT} variable. In this case, the constant adjustment (see \code{\link[=SIMULATE]{SIMULATE}}) related to the provided endogenous variable will be used as the instrument exogenous variable. This procedure is particularly suited for the automatic computation of the add-factors needed to fine tune the model into a baseline path and to improve the forecasting accuracy.\cr\cr
 If the convergence condition is satisfied, the \code{RENORM} procedure will return the \code{INSTRUMENT} time series allowing us to achieve the desired values for the endogenous variables designated as \code{TARGET}.\cr\cr
+For more realistic scenarios, several advanced econometric exercises on the US Federal Reserve FRB/US econometric model (e.g., dynamic simulation in a monetary policy shock, rational expectations, endogenous targeting, stochastic simulation, etc.) are available in the \href{https://cran.r-project.org/package=bimets/vignettes/frb2bimets.pdf}{"US Federal Reserve quarterly model (FRB/US) in R with bimets"} vignette. \cr \cr
 
 
 
@@ -32,6 +33,7 @@ RENORM(model=NULL,
        simConvergence=0.01,
        simIterLimit=100,
        ZeroErrorAC=FALSE,
+       BackFill=0,
        Exogenize=NULL,
        ConstantAdjustment=NULL,
        verbose=FALSE,
@@ -47,6 +49,7 @@ RENORM(model=NULL,
        tol=1e-28,
        JACOBIAN_SHOCK=1e-4,
        JacobianDrop=NULL,
+       forceForwardLooking=FALSE,
        avoidCompliance=FALSE,
        ...
        )
@@ -60,6 +63,7 @@ RENORM(model=NULL,
 \item{simConvergence}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{simIterLimit}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{ZeroErrorAC}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{BackFill}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{Exogenize}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{ConstantAdjustment}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{verbose}{see \code{\link[=SIMULATE]{SIMULATE}}}
@@ -79,6 +83,7 @@ RENORM(model=NULL,
 \item{quietlyMULTMATRIX}{If \code{TRUE}, information messages related to the underlying \code{\link[=MULTMATRIX]{MULTMATRIX}} operation will be suppressed. If \code{quietly} argument is set to \code{TRUE}, then \code{quietlyMULTMATRIX} will be set to \code{TRUE}.}
 \item{JACOBIAN_SHOCK}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{JacobianDrop}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{forceForwardLooking}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{avoidCompliance}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{...}{see \code{\link[=SIMULATE]{SIMULATE}}}
 }

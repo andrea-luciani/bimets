@@ -10,7 +10,7 @@ Cumulative Product
 This function returns the cumulative product of the elements of the input array or time series. The result is an object of the same class of the input, and its elements are the cumulative product of the current and the previous elements of the input. \cr If the input is a time series, users can provide the argument \code{TSRANGE} in order to project the input time series before the cumulative product.
 }
 \usage{
-CUMPROD(x=NULL, TSRANGE=NULL, avoidCompliance=FALSE, ...)
+CUMPROD(x=NULL, TSRANGE=NULL, ignoreNA=FALSE, avoidCompliance=FALSE, ...)
 }
 
 \arguments{
@@ -20,6 +20,7 @@ Input numerical array or time series that must satisfy the compliance control ch
 \item{TSRANGE}{
 Optional date range of operations that process the input time series. \code{TSRANGE} must be specified as an array composed by starting year, starting period, ending year and ending period, i.e. \code{TSRANGE=c(START_Y,START_P,END_Y,END_P)}. The projection into the time interval specified in \code{TSRANGE} takes place before the cumulative product.
 }
+\item{ignoreNA}{Ignore missing values.}
   \item{avoidCompliance}{
 If \code{TRUE}, compliance control check of input time series will be skipped. See \code{\link[=is.bimets]{is.bimets}}
 }

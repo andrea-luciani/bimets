@@ -18,7 +18,8 @@ By using the \code{StochStructure} argument of this function, users can define a
 In the following figure, the advanced Klein model (see code example), has been perturbed during the forecast operation by applying a normal disturbance to the endogenous \emph{Consumption} behavioral \code{cn} add-factor in year 1942, and a uniform disturbance to the exogenous \emph{Government Expenditure} time series \code{g} along all the simulation \code{TSRANGE}. The normal disturbance applied to the \code{cn} behavioral has a zero mean and a standard deviation equal to the behavioral regression standard error,\cr i.e. \code{advancedKleinModel$behaviorals$cn$statistics$StandardErrorRegression}, thus roughly replicating the \code{\link[=ESTIMATE]{ESTIMATE}} regression error during the current perturbation (not accounting for inter-equations cross-covariance).\cr \cr 
 \figure{StochKleinGNP.png} \cr \cr
 
-At the moment, all the disturbances are i.i.d. and are not transformed into a congruent autoregressive scheme in the case the related perturbed endogenous behavioral presents an autocorrelation for the errors in its \code{\link[=MDL]{MDL}} definition, e.g. \code{ERROR> AUTO(n)}
+At the moment, all the disturbances are i.i.d. and are not transformed into a congruent autoregressive scheme in the case the related perturbed endogenous behavioral presents an autocorrelation for the errors in its \code{\link[=MDL]{MDL}} definition, e.g. \code{ERROR> AUTO(n)} \cr \cr
+For more realistic scenarios, several advanced econometric exercises on the US Federal Reserve FRB/US econometric model (e.g., dynamic simulation in a monetary policy shock, rational expectations, endogenous targeting, stochastic simulation, etc.) are available in the \href{https://cran.r-project.org/package=bimets/vignettes/frb2bimets.pdf}{"US Federal Reserve quarterly model (FRB/US) in R with bimets"} vignette. \cr \cr
 } 
 \usage{
 STOCHSIMULATE(model=NULL,
@@ -28,6 +29,7 @@ STOCHSIMULATE(model=NULL,
               simConvergence=0.01,
               simIterLimit=100,
               ZeroErrorAC=FALSE,
+              BackFill=0,
               Exogenize=NULL,
               ConstantAdjustment=NULL,
               verbose=FALSE,
@@ -40,6 +42,7 @@ STOCHSIMULATE(model=NULL,
               RESCHECKeqList=NULL,
               JACOBIAN_SHOCK=1e-4,
               JacobianDrop=NULL,
+              forceForwardLooking=FALSE,
               avoidCompliance=FALSE,
               ...)		   
 
@@ -53,22 +56,112 @@ STOCHSIMULATE(model=NULL,
 \item{simConvergence}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{simIterLimit}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{ZeroErrorAC}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{BackFill}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{Exogenize}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{ConstantAdjustment}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{verbose}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{verboseSincePeriod}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{verboseVars}{see \code{\link[=SIMULATE]{SIMULATE}}}
 
-\item{StochStructure}{the named \code{list()} that defines the disturbance structure applied to the model. Each list element must have a name equal to an endogenous or an exogenous model variable. List names define the \code{INSTRUMENT}.\cr \cr 
-If a list element name is equal to an exogenous variable, the disturbance will be applied to the related exogenous time series values. If a list element name is equal to an endogenous variable, the disturbance will be applied to the constant adjustment time series (see \code{\link[=SIMULATE]{SIMULATE}}) of the related endogenous variable. \cr\cr
-Each list element must be a named list built with the following three element: \cr \cr 
-- \code{TSRANGE}: the time range  wherein the disturbance is active and additive to the related model variable. The \code{TSRANGE} must be a 4 numerical array, i.e. \code{TSRANGE=c(start_year, start_period, end_year, end_period)} or \code{TSRANGE=TRUE} in order to apply the provided disturbance to whole \code{STOCHSIMULATE} \code{TSRANGE}. \cr \cr  
-- \code{TYPE}: the type of disturbance distribution. At the moment, only normal, i.e. \code{TYPE='NORM'}, and uniform, i.e. \code{TYPE='UNIF'}, disturbance distributions are allowed; \cr \cr
-- \code{PARS}: the parameters that shape the disturbance. \cr\cr In the case of a \code{TYPE='NORM'} distribution, these parameters must contain the mean and the standard deviation of the normal distribution, i.e. \code{PARS=c(mean,sd)}; \cr\cr  in the case of a \code{TYPE='UNIF'} distribution, these parameters must contain the lower and upper bound of the uniform distribution, i.e. \code{PARS=c(min,max)}; \cr\cr in the case of a \code{TYPE='MATRIX'}, these parameters must contain the user-built matrix of realized disturbances, i.e. \code{PARS=matrix}, with \code{matrix} as a \code{[ TSRANGE x StochReplica ]} matrix. User-built provided matrix data will replace model data in specified \code{TSRANGE} if this list element name refers to an exogenous variable; otherwise, matrix data will be added-up to the related pre-defined add-factor, if any, in case this element list name refers to an endogenous variable.\cr \cr 
-See example in order to learn how to build a compliant stochastic structure.
+\item{StochStructure}{
+the named \code{list()} that defines the disturbance structure applied to the model. Each list element must have a name equal to an endogenous or an exogenous model variable. List names define the \code{INSTRUMENT}.\cr \cr Generic syntax:\cr\cr
+\preformatted{
+StochStructure = 
+
+list(
+
+  var_name1 = list(
+      TSRANGE=...,
+      TYPE=...,
+      PARS=...),
+      
+  var_name2 = list(...)
+  
+  ...
+  
+  var_nameN = list(...)
+  
+  )
+  
+  
+} 
+
+ENDOGENOUS REFERENCE.\cr\cr If the generic name \code{var_nameI} refers to an endogenous variable, the disturbance will be additive and applied to the constant adjustment time series (see \code{\link[=SIMULATE]{SIMULATE}}) of the referred endogenous variable. \cr\cr Example:\cr
+\preformatted{
+$MDL Klein GDP equation
+EQ> y = cn + i + g - t
+
+$STOCHSIMULATE argument
+StochStructure = 
+list(
+  y = list(
+      TSRANGE=TRUE,
+      TYPE='NORM',
+      PARS=c(0,1))
+  )
+  
+} 
+
+then, during the stochastic simulation, the following assignment will be evaluated in the whole simulation \code{TSRANGE}:\cr
+\preformatted{
+y <- ( ConstantAdjustment$y + rnorm(...,0,1) ) + cn + i + g - t
+
+
+} 
+
+EXOGENOUS REFERENCE.\cr\cr If the generic name \code{var_nameI} refers to an exogenous variable, and \code{TYPE!='MATRIX'}, the disturbance will be additive and applied to the referred exogenous time series.\cr\cr Example:\cr
+\preformatted{
+$MDL Klein GDP equation
+EQ> y = cn + i + g - t
+
+$STOCHSIMULATE argument
+StochStructure = 
+list(
+  g = list(
+      TSRANGE=TRUE,
+      TYPE='UNIF',
+      PARS=c(-1,1))
+  )
+  
+}
+then, during the stochastic simulation, the following assignment will be evaluated in the whole simulation \code{TSRANGE}:\cr
+\preformatted{
+y <- ConstantAdjustment$y + cn + i + ( g + runif(...,-1,1) ) - t
+
+}
+If the generic name \code{var_nameI} refers to an exogenous variable, and \code{TYPE=='MATRIX'}, the user-defined disturbance will replace the referred exogenous time series values.\cr\cr Example:\cr
+\preformatted{
+$MDL equation
+EQ> y = cn + i + g - t
+
+$STOCHSIMULATE argument
+StochStructure = 
+list(
+  g = list(
+      TSRANGE=myTSRANGE,
+      TYPE='MATRIX',
+      PARS=userMatrix)
+  )
+  
+} 
+then, during the stochastic simulation, the following assignment will be evaluated only in the sub-range \code{myTSRANGE}:\cr
+\preformatted{
+y <- ConstantAdjustment$y + cn + i + ( userMatrix ) - t
+
+}
+with \code{userMatrix} as a \code{[ myTSRANGE x StochReplica ]} matrix.
+\cr \cr 
+Generally, each \code{StochStructure} list element must be a named list built with the following three element: \cr \cr 
+- \code{TSRANGE}: the time range  wherein the disturbance is applied to the referred model variable. The \code{TSRANGE} must be a 4 numerical array, i.e. \code{TSRANGE=c(start_year, start_period, end_year, end_period)} or \code{TSRANGE=TRUE} in order to apply the provided disturbance to whole \code{STOCHSIMULATE} \code{TSRANGE}. \cr \cr  
+- \code{TYPE}: the type of disturbance distribution, .e.g. normal \code{TYPE='NORM'}, or uniform \code{TYPE='UNIF'}, or user-defined \code{TYPE='MATRIX'}; \cr \cr
+
+- \code{PARS}: the parameters that shape the disturbance.\cr In the case of a \code{TYPE='NORM'} distribution, these parameters must contain normal distribution mean and standard deviation, e.g. \code{PARS=c(mean,sd)}; \cr in the case of a \code{TYPE='UNIF'} distribution, these parameters must contain uniform distribution lower and upper bound, e.g. \code{PARS=c(min,max)}; \cr in the case of a \code{TYPE='MATRIX'}, this parameter must contain the user-defined matrix of realized disturbances, e.g. \code{PARS=matrix}, with \code{matrix} as a \code{[ TSRANGE x StochReplica ]} matrix. As said above, if the list element name, e.g. \code{var_nameI}, refers to an exogenous variable, the user-built provided matrix will replace the exogenous values in the specified \code{TSRANGE}; otherwise, if the element name refers to an endogenous variable, matrix data will be additive to the referred add-factor.\cr \cr 
+See examples in order to learn how to build a compliant stochastic structure.
+
+
 }
   
-\item{StochReplica}{an integer value that sets the number of stochastic realizations to be performed}
+\item{StochReplica}{an integer value that sets the number of stochastic realizations to be produced}
   
 \item{StochSeed}{a number used to initialize the pseudo-random number generator. It can be helpful in order to replicate stochastic results}
   
@@ -76,6 +169,7 @@ See example in order to learn how to build a compliant stochastic structure.
 \item{RESCHECKeqList}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{JACOBIAN_SHOCK}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{JacobianDrop}{see \code{\link[=SIMULATE]{SIMULATE}}}
+\item{forceForwardLooking}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{avoidCompliance}{see \code{\link[=SIMULATE]{SIMULATE}}}
 \item{...}{see \code{\link[=SIMULATE]{SIMULATE}}}
    

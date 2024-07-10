@@ -21,7 +21,7 @@
 This package supports daily, weekly, monthly, quarterly, semiannual, and yearly time series. Time series with frequency of 24 and 36 periods per year are also supported. Users can access and modify time series data by date, year-period, and observation index. Advanced time series manipulation and (dis)aggregation capabilities are provided, e.g. time series extension, merging, projection, lag, cumulative and moving product and sum, etc.
 \bigskip
 
-Econometric modeling capabilities comprehend advanced model definition (e.g. conditional evaluation of equations, per-equation estimation method and time range), estimation of equations with instrumental variables, coefficient restrictions and error autocorrelation, structural stability analysis, deterministic and stochastic simulation and forecasting of simultaneous equations with exogenizations and add-factors, interim and impact multipliers analysis, endogenous targeting and optimal control.
+Econometric modeling capabilities comprehend advanced model definition (e.g. conditional evaluation of equations, per-equation estimation method and time range), estimation of equations with instrumental variables, coefficient restrictions and error autocorrelation, structural stability analysis, deterministic and stochastic simulation and forecasting of simultaneous equations with exogenizations and add-factors, interim and impact multipliers analysis, endogenous targeting, optimal control and rational expectations.
 \bigskip
 
 \pkg{bimets} does not depend on compilers or third-party software so it can be freely downloaded and installed on Linux, MS Windows\textsuperscript{\textregistered} and Mac OSX\textsuperscript{\textregistered}, without any further requirements. 
@@ -33,13 +33,13 @@ Econometric modeling capabilities comprehend advanced model definition (e.g. con
   polynomial distributed lag, linear restrictions, incidence matrix,
   model simulation, forecasting, add-factors, exogenization, 
   multipliers, endogenous targeting, model renormalization, 
-  stochastic simulation, optimal control}
+  stochastic simulation, optimal control, rational expectations}
 \Plainkeywords{R, system of simultaneous equations,
   ols, instrumental variables, error autocorrelation, 
   polynomial distributed lag, linear restrictions, incidence matrix,
   model simulation, forecasting, add-factors, exogenization, 
   multipliers, endogenous targeting, model renormalization, 
-  stochastic simulation, optimal control}
+  stochastic simulation, optimal control, rational expectations}
   
 \Address{
    Andrea Luciani\\
@@ -53,20 +53,20 @@ Econometric modeling capabilities comprehend advanced model definition (e.g. con
   
 \begin{document}
 \SweaveOpts{concordance=TRUE}
-%\VignetteIndexEntry{bimets}
+%\VignetteIndexEntry{Getting started with bimets}
 %\VignetteKeywords{R, system of simultaneous equations,
 % estimation, ols, instrumental variables, error autocorrelation,
-% pdl, simulation, multipliers, renormalization, forecasting}
+% pdl, simulation, multipliers, renormalization, forecasting, rational expectations}
 %\VignettePackage{bimets}
 <<echo=FALSE>>=
 options( prompt = "R> ", continue = "   " )
 library(bimets)
 @
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
 \linespread{1.2}
-\pkg{bimets} is a software framework developed by using \proglang{R} language and designed for time series analysis and econometric modeling, which allows creating and manipulating time series, specifying simultaneous equation models of any size by using a kind of high-level description language, and performing model estimation and structural stability analysis, deterministic and stochastic simulation and forecasting, optimal control.\\ \\
+\pkg{bimets} is a software framework developed by using \proglang{R} language and designed for time series analysis and econometric modeling, which allows creating and manipulating time series, specifying simultaneous equation models of any size by using a kind of high-level description language, and performing model estimation and structural stability analysis, deterministic and stochastic simulation and forecasting, also on rational expectations model, and optimal control.\\ \\
 Besides, \pkg{bimets} computational capabilities provide many tools to pre-process data and post-process results, designed for statisticians and economists. These operations are fully integrated with the \proglang{R} environment.\\ \\
 If you have general questions about using \pkg{bimets}, or for bug reports, please use the \href{https://github.com/andrea-luciani/bimets/issues}{git issue tracker} or write to the \href{mailto:andrea.luciani@bancaditalia.it}{maintainer}.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -99,29 +99,37 @@ More details on \pkg{bimets} time series capabilities are available in the \href
 The \pkg{bimets} package extends R indexing capabilities in order to ease time series analysis and manipulation. Users can access and modify time series data:
 
 \begin{itemize}
+\item[--] \emph{by year-period}: users can select and modify observations by providing the requested year and period as scalars or as bidimensional arrays, i.e. \code{ts[[year,period]]}, \code{ts[[start]]} and \code{ts[[start,end]]}, given \code{start <- c(year1,period1); end <- c(year2,period2)};
 \item[--] \emph{by date}:  users can select and modify a single observation by date by using the syntax \code{ts['Date']}, or multiple observations using \code{ts['StartDate/EndDate']}; 
-\item[--] \emph{by year-period}: users can select and modify observations by providing the year and the period, i.e. \code{ts[[Year,Period]]};
 \item[--] \emph{by observation index}: users can select and modify observations by simply providing the array of requested indices, i.e. \code{ts[indices]};
 \end{itemize}
 Example:
 \begin{footnotesize}
 <<>>=
+
 #create a daily time series
 myTS <- TIMESERIES((1:100), START = c(2000,1), FREQ = 'D')
 @
 <<computation,results=hide>>=
 myTS[1:3]                       #get first three obs.
-myTS['2000-01-12']              #get Jan 12, 2000 data
-myTS['2000-02-03/2000-02-14']   #get Feb 3 up to Feb 14
 myTS[[2000,14]]                 #get year 2000 period 14
-
-myTS['2000-01-15'] <- NA        #assign to Jan 15, 2000
+start <- c(2000,20)
+end <- c(2000,30)
+myTS[[start]]                   #get year 2000 period 20
+myTS[[start,end]]               #get from year-period 2000-20 to 2000-30
 myTS[[2000,42]] <- NA           #assign to Feb 11, 2000
 myTS[[2000,100]] <- c(-1,-2,-3) #extend time series starting from period 100
+myTS[[start]] <- NA             #assign to year-period 2000-20
+myTS[[start,end]] <- 3.14       #assign from year-period 2000-20 to 2000-30
+myTS[[start,end]] <- -(1:11)    #assign multiple values 
+                                #from year-period 2000-20 to 2000-30
+myTS['2000-01-12']              #get Jan 12, 2000 data
+myTS['2000-02-03/2000-02-14']   #get Feb 3 up to Feb 14
+myTS['2000-01-15'] <- NA        #assign to Jan 15, 2000
 @
 \end{footnotesize}
 \subsection{Time Series Aggregation / Disaggregation}  \label{ssts:2}
-The \pkg{bimets} package provides advanced (dis)aggregation capabilities, having linear interpolation capabilities in disaggregation, and aggregation functions (e.g. \code{STOCK}, \code{SUM}, \code{AVE}, etc.) while reducing the time series frequency. 
+The \pkg{bimets} package provides advanced (dis)aggregation capabilities, having linear interpolation capabilities in disaggregation, and several aggregation functions (e.g. \code{STOCK}, \code{SUM}, \code{AVE}, etc.) while reducing the time series frequency. 
 \bigskip
 
 Example:
@@ -146,6 +154,7 @@ The \pkg{bimets} package provides, among others, the following time series manip
 \item[--]  Time series merging \code{TSMERGE()} 
 \item[--]  Time series projection \code{TSPROJECT()} 
 \item[--]  Lag \code{TSLAG()}
+\item[--]  Lead \code{TSLEAD()}
 \item[--]  Lag differences: standard, percentage and logarithmic, i.e. \code{TSDELTA()} \code{TSDELTAP()} \code{TSDELTALOG()}
 \item[--]  Cumulative product \code{CUMPROD()} 
 \item[--]  Cumulative sum \code{CUMSUM()} 
@@ -193,25 +202,27 @@ TABIT(myMovAveTS,
 
 \clearpage
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Econometric Modeling} 
 
 \pkg{bimets} econometric modeling capabilities comprehend:
 \begin{itemize}
-\item[--] \emph{Model Definition Language}, par. \ref{ssec:1}; 
+\item[--] \emph{Model Description Language}, par. \ref{ssec:1}; 
 \item[--] \emph{Estimation}, par. \ref{ssec:2} 
 \item[--] \emph{Structural Stability}, par. \ref{ssec:4} 
 \item[--] \emph{Simulation}, par. \ref{ssec:5} 
+\item[--] \emph{Rational Expectations}, par. \ref{ssec:11}
 \item[--] \emph{Stochastic Simulation}, par. \ref{ssec:7} 
 \item[--] \emph{Multipliers Analysis}, par. \ref{ssec:8} 
 \item[--] \emph{Endogenous Targeting}, par. \ref{ssec:9} 
 \item[--] \emph{Optimal Control}, par. \ref{ssec:10}
 \end{itemize}
 We will go through each item of the list with a simple Klein\footnote{\emph{"Economic Fluctuations in the United States 1921-1941"} by L. R. Klein, Wiley and Sons Inc., New York, 1950}  model example. \\ \\
+For more realistic scenarios, several advanced econometric exercises on the US Federal Reserve FRB/US econometric model (e.g., dynamic simulation in a monetary policy shock, rational expectations, endogenous targeting, stochastic simulation, etc.) are available in the \href{https://cran.r-project.org/package=bimets/vignettes/frb2bimets.pdf}{"US Federal Reserve quarterly model (FRB/US) in R with bimets"} vignette. \\ \\
 More details on \pkg{bimets} econometric capabilities are available in the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{reference manual}.\\ \\
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
-\subsection{Model Definition Language} \label{ssec:1}
-\pkg{bimets} provides a language to specify an econometric model unambiguously. This section describes how to create a model and its general structure. The specification of an econometric model is translated and identified by keyword statements which are grouped in a model file, i.e. a plain text file or a \code{character} variable with a specific syntax. Collectively, these keyword statements constitute the \pkg{bimets} Model Description Language (from now on "\code{MDL}"). The model specifications consist of groups of statements. Each statement begins with a keyword. The keyword classifies the component of the model which is being specified.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Model Description Language} \label{ssec:1}
+\pkg{bimets} provides a language to specify an econometric model unambiguously. This section describes how to create a model and its general structure. The specification of an econometric model is translated and identified by keyword statements which are grouped in a model file, i.e. a plain text file or a \code{character} variable with a specific syntax. Collectively, these keyword statements constitute the Model Description Language (from now on "\code{MDL}"). The model specifications consist of groups of statements. Each statement begins with a keyword. The keyword classifies the component of the model which is being specified.
 \bigskip
 
 Below is an example of Klein's model, which can either be stored in an \proglang{R} variable of class \code{character} or in a plain text file with an \code{MDL} compliant syntax. 
@@ -312,6 +323,7 @@ The following \code{MDL} functions can be used in the \code{LHS} left-hand side 
 - \code{EXP(name)} - exponential of the \code{name} time series.\\ \\
 On the other side, the mathematical expression available for use in the \code{RHS} right-hand side of the \code{EQ>} equation and in the \code{IV>} expression described later in this page (i.e. \code{f1, f2, f3, ...}) can include the standard arithmetic operators, parentheses and the following \code{MDL} functions:\\ \\
 -  \code{TSLAG(ts,i)}: lag the \code{ts} time series by \code{i}-periods;\\ \\
+-  \code{TSLEAD(ts,i)}: lead the \code{ts} time series by \code{i}-periods;\\ \\
 -  \code{TSDELTA(ts,i)}: \code{i}-periods difference of the \code{ts} time series;\\ \\
 -  \code{TSDELTAP(ts,i)}: \code{i}-periods percentage difference of the \code{ts} time series;\\ \\
 -  \code{TSDELTALOG(ts,i)}: \code{i}-periods logarithmic difference of the \code{ts} time series;\\ \\
@@ -320,6 +332,7 @@ On the other side, the mathematical expression available for use in the \code{RH
 -  \code{LOG(ts)}: log of the \code{ts} time series;\\ \\
 -  \code{EXP(ts)}: exponential of the \code{ts} time series;\\ \\
 -  \code{ABS(ts)}: absolute values of the \code{ts} time series;\\ \\
+Note that \pkg{bimets} classifies a model as a forward-looking model if any model equation contains the \code{TSLEAD} time series function. More details about forward-looking models are available in the \emph{Rational Expecations}, par. \ref{ssec:11}.\\ \\
 \code{MDL} function names are reserved names. They cannot be used as variable or coefficient names. The coefficient names are specified in a subsequent \code{COEFF>} keyword statement within a behavioral equation. By definition, identities do not have any coefficient that must be assessed. Any name not specified as a coefficient name nor mentioned on the list of the available \code{MDL} functions is assumed to be a variable.
 \item[--] \textbf{COEFF>} specifies the coefficient names used in the EQ> keyword statement of a behavioral equation. The coefficients statement general form is:\\
 \code{COEFF> coeff0 coeff1 coeff2 ... coeffn}. \\ The coefficients order in this statement must be the same as it appears in the behavioral equation.
@@ -489,7 +502,11 @@ As shown in the output, \pkg{bimets} counted 3 behavioral equations, 3 identitie
 For example, to gather information on the "\code{cn}" \textit{Consumption} behavioral equation: 
 \begin{footnotesize}
 <<>>=
-kleinModel$behaviorals$cn
+kleinModel$behaviorals$cn$eq
+kleinModel$behaviorals$cn$tsrange
+kleinModel$behaviorals$cn$eqCoefficientsNames
+kleinModel$behaviorals$cn$eqRegressorsNames
+kleinModel$behaviorals$cn$eqSimExp
 @
 \end{footnotesize}
 Users can always read (or carefully change) any model parameters. The \code{LOAD_MODEL()} function parses behavioral and identity expressions of the \code{MDL} definition, but it also does a significant optimization. Properly reordering the model equations is a key preparatory step in the later phase of simulation, in order to guarantee performance and convergence, if any, with the aim of minimizing the number of \emph{feedback} endogenous variables (see the \emph{The Optimal Reordering}, par. \ref{ssec:6}).\\ \\
@@ -498,13 +515,12 @@ The \code{LOAD_MODEL()} function builds the model's incidence matrix, and uses t
 <<>>=
 kleinModel$incidence_matrix
 kleinModel$vpre
-kleinModel$vsim
-kleinModel$vfeed
-kleinModel$vpost
+kleinModel$vblocks[[1]]$vsim
+kleinModel$vblocks[[1]]$vfeed
+kleinModel$vblocks[[1]]$vpost
 @
 \end{footnotesize}
-While simulating the Klein's model, \pkg{bimets} will iterate on the computation of, in order, \code{w1 -> p -> cn -> i -> y} (the \code{vsim} variables), by looking for convergence on \code{y} (the \code{vfeed} variable, only one in this example) that is the feedback variable. If the convergence is achieved, it will calculate \code{k} (the \code{vpost} variable). The \code{vpre} array in this example is empty; therefore, no equation has to be evaluated before the iterative algorithm.
-\bigskip
+While simulating the Klein's model, \pkg{bimets} will iterate on the computation of, in order, \code{w1 -> p -> i -> cn -> y} (the \code{vsim} variables in the single block of equations \code{vblocks[[1]]}), by looking for convergence on \code{y} (the \code{vfeed} variable, only one in this example) that is the feedback variable for the block. If the convergence in the block is achieved, it will calculate \code{k} (the \code{vpost} variable). The \code{vpre} array in this example is empty; therefore, no equation has to be evaluated before the iterative algorithm is applied to each block of equations.\bigskip
 
 Once the model has been parsed, users need to load the data of all the time series involved in the model, by using the \code{LOAD_MODEL_DATA()} function. In the following example, the code defines a list of time series and loads this list into the Klein's model previously defined:
 \begin{footnotesize}
@@ -625,8 +641,9 @@ lhsKleinModel <- SIMULATE(lhsKleinModel, TSRANGE = c(1925,1,1930,1))
 @
 \end{footnotesize}
 
+\clearpage
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Estimation} \label{ssec:2}
 
 
@@ -668,7 +685,7 @@ kleinModel$behaviorals$cn$statistics$AdjustedRSquared
 kleinModel$behaviorals$cn$statistics$LogLikelihood
 @
 \end{footnotesize}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Advanced Estimation} \label{ssec:3}
 Below is an example of a model estimation that presents coefficient restrictions, PDL, error autocorrelation, and conditional equation evaluations:
 
@@ -731,7 +748,7 @@ advancedKleinModel <- LOAD_MODEL_DATA(advancedKleinModel, kleinModelData)
 advancedKleinModel <- ESTIMATE(advancedKleinModel)
 @
 \end{footnotesize}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Structural Stability} \label{ssec:4}
 One of the main purposes of econometric modeling is its use for forecast and policy evaluation and, to this end, the stability of any behavioral equation parameters over time should be verified. In order to check for structural stability two different procedures, which can be derived from the so-called Chow-tests\footnote{G. C. Chow, \textit{ Tests of equality between sets of coefficients in two linear regressions}. Econometrica, Vol 28, 4. July 1960}, are applied.\\
  \\
@@ -773,7 +790,10 @@ kleinModelChow <- ESTIMATE(kleinModel
                        ,CHOWTEST = TRUE)
 @
 \end{footnotesize}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+
+\clearpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Simulation} \label{ssec:5}
 The simulation of an econometric model basically consists in solving the system of the equations describing the model for each time period in the specified time interval. Since the equations may not be linear in the variables, and since the graph derived from the incidence matrix may be cyclic, the usual methods based on linear algebra are not applicable. The simulation must be solved by using an iterative algorithm. \\ \\
 \pkg{bimets} simulation capabilities support:
@@ -819,6 +839,15 @@ The initial solution for the iterative process (step 1) can be given alternative
 In the "dynamic" simulations (i.e. simulations performed by using either the default \\ \code{simType = 'DYNAMIC'} or the \code{simType = 'FORECAST'}), whenever lagged endogenous variables are needed in the computation, the simulated values of the endogenous variables \({\bar{y}}\) assessed in the previous time periods are used. In this case, the simulation results in a given time period depend on the simulation results in the previous time periods. This kind of simulation is defined as "multiple equation, multiple period".\\ \\
 As an alternative, the actual historical values can be used in the "static" simulations (i.e. simulations performed by using \code{simType = 'STATIC'}) rather than simulated values whenever lagged endogenous variables are needed in the computations. In this case, the simulation results in a given time period do not depend on the simulation results in the previous time periods. This kind of simulation is defined as "multiple equation, single period".\\ \\
 The last simulation type available is the residual check (\code{simType = 'RESCHECK'}). With this option, a "single equation, single period" simulation is performed. In this case, no iteration must be carried out. The endogenous variables are assessed for each time period by using historical values for each variable on the right-hand side of their equation, for both lagged and current periods. This kind of simulation helps debug and check of the logical coherence of the equations and the data, and can be used as a simple tool to compute the add-factors.\\ \\ 
+The debugging of the logical coherence of equations and data is carried out through a \emph{Residual Check} procedure.\\ \\
+It consists of the following steps:\\ \\
+1. add another exogenous variable - the constant adjustment - to every equation of the model, both behavioral and technical identity: that can be done in \pkg{bimets} by using the \code{ConstantAdjustment} argument of the \code{SIMULATE} function, as in step 3;\\ \\
+2. fill in with the estimated residuals all the constant adjustments for the behavioral equations, and fill in with zeroes the constant adjustments for the technical identities: that can be done in \pkg{bimets} by using the \code{SIMULATE} procedure with the option \code{simType='RESCHECK'}, then by analyzing and using the \code{ConstantAdjustmentRESCHECK} attribute of the simulated model, as in the following simulation in step 3.\\
+3. perform a simulation of the model: that can be done in \pkg{bimets} by using the \code{SIMULATE} procedure  with the option \code{ConstantAdjustment=ConstantAdjustmentRESCHECK};\\
+4. compute the difference between the historical and the simulated values for all the endogenous variables;\\
+5. check whether all the differences assessed in step 4 are zero in whole time range, eventually accounting for the error autocorrelation in behaviorals.\\ \\
+An example on \code{ConstantAdjustmentRESCHECK} usage is available at the end of the \code{SIMULATE} help page in the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{reference manual};\\ \\
+If a perfect tracking of the history is obtained, then the equations have been written coherently with the data, otherwise a simulated equation not tracking the historical values is an unambiguous symptom of data inconsistent with the model definition.\\ \\
 Back to Kelin's model example, let's forecast the GNP\footnote{originally referred as "Net national income, measured in billions of 1934 dollars", pag. 141 in \emph{"Economic Fluctuations in the United States 1921-1941"} by L. R. Klein, Wiley and Sons Inc., New York, 1950} (i.e. the "\code{y}" endogenous variable) up to 1944: \\
 \begin{footnotesize}
 <<>>=
@@ -846,44 +875,81 @@ kleinModel <- SIMULATE(kleinModel
 TABIT(kleinModel$simulation$y)
 @
 \end{footnotesize}
+
+\clearpage
+
 \includegraphics[width=6in]{KleinGNP.png}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Rational Expectations} \label{ssec:11}
+\pkg{bimets} classifies a model as a forward-looking model if any model equation contains the \code{TSLEAD} time series function. Forward-looking models assume that economic agents have complete knowledge of an economic system and calculate the future value of economic variables correctly according to that knowledge. Thus, forward-looking models are called also rational expectations models and, in macro-econometric models, model-consistent expectations. \\\\
+In forward-looking models, simulation complexity arises, and all simulation periods must be solved simultaneously because equations can contain references to past and future values. Thus, given \code{N} simulation periods requested by the user, each model equation must be replicated \code{N-1} times and modified before the simulation takes place, accounting for lead transformations. Finally, the extended model must be simulated as a single block of equations.  \\ \\
+Internal data structures too, such as the incidence and the Jacobian matrix, and the reordering arrays \code{vpre} and \code{vblocks} (described later in the \emph{The Optimal Reordering}, par. \ref{ssec:6}) section), grow with the number of simulation periods requested by the user. Therefore, they can only be calculated when a new simulation is requested rather than when the model \code{MDL} definition is parsed, further extending computational time in simulation. \\  \\
+To understand \pkg{bimets} internals when dealing with forward-looking models, please consider the following simple example of a forward-looking model having a single identity: \\ \\
+\code{
+IDENTITY> Y \\
+EQ> Y = TSLEAD(Y) - TSLAG(Y) + X \\ \\
+}
+Given \code{X} as an exogenous variable, if the requested simulation has a \code{TSRANGE} that spans two periods, then the model will be internally transformed into something like: \\ \\
+\code{
+IDENTITY> Y \\
+EQ> Y = Y__LEAD__1 - TSLAG(Y) + X \\ \\
+IDENTITY> Y__LEAD__1 \\
+EQ> Y__LEAD__1 = TSLEAD(Y,2) - Y + TSLEAD(X) \\ \\
+}
+Accordingly, the model will be simulated only on the first period of the \code{TSRANGE}. Please note that \code{TSLAG(Y)} in the first equation, and \code{TSLEAD(Y,2)} in the second equation, are a kind of exogenous variables and must be defined in order for the simulation to be completed. Moreover, \code{Y} and \code{Y__LEAD__1} are simultaneously involved in the iterative simulation algorithm, and both depend on each other, as also stated in the incidence matrix for the extended model:\\ \\
+\code{$incidence_matrix} \\
+\begin{tabular}{ l r r }
+                    & \code{Y}  & \code{Y__LEAD__1} \\
+  \code{Y}          & \code{0}  & \code{1} \\
+  \code{Y__LEAD__1} & \code{1}  & \code{0} \\
+\end{tabular}
+\\ \\
+Due to the mechanism described above, only \code{DYNAMIC} simulations are allowed in forward-looking models. A Klein-like forward-looking model example is available in the \code{SIMULATE} help page of the \href{https://CRAN.R-project.org/package=bimets/bimets.pdf}{reference manual}.\\ \\
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{The Optimal Reordering} \label{ssec:6}
-In fact, the simulation process takes advantage of an appropriate ordering of the equations to increase the performances by iteratively solving only one subset of equations, while the others are solved straightforwardly\footnote{\emph{"...a different ordering of the equations can substantially affect the speed of convergence of the algorithm; indeed some orderings may produce divergence. The less feedback there is, the better the chances for fast convergence..."} - Don, Gallo - Solving large sparse systems of equations in econometric models - Journal of Forecasting 1987.}.\\ \\
-The \code{LOAD_MODEL()} function builds the model's incidence matrix, then defines the proper equation reordering. The incidence matrix is built from the equations of the model; it is a square matrix in which each row and each column represent an endogenous variable. If the \code{(i,j)} element is equal to 1 then in the model definition the current value of the endogenous variable referred by the \code{i}-row depends directly from the current value of the endogenous variable referred by the \code{j}-column. The reader can see an incidence matrix example in the par. \ref{ssec:1} wherein the content of the \code{kleinModel$incidence_matrix} variable is printed out.\\ \\
+In fact, the simulation process takes advantage of an appropriate equations reordering to increase the performances by iteratively solving only one subset of equations, while the others are solved straightforwardly\footnote{\emph{"...a different ordering of the equations can substantially affect the speed of convergence of the algorithm; indeed some orderings may produce divergence. The less feedback there is, the better the chances for fast convergence..."} - Don, Gallo - Solving large sparse systems of equations in econometric models - Journal of Forecasting 1987.}.\\ \\
+For backward-looking models, the \code{LOAD_MODEL()} function builds the model's incidence matrix, then defines the proper equation reordering. The incidence matrix is built from the equations of the model; it is a square matrix in which each row and each column represent an endogenous variable. If the \code{(i,j)} element is equal to 1 then in the model definition the current value of the endogenous variable referred by the \code{i}-row depends directly from the current value of the endogenous variable referred by the \code{j}-column. The reader can see an incidence matrix example in the par. \ref{ssec:1} wherein the content of the \code{kleinModel$incidence_matrix} variable is printed out.\\ \\
 In econometric models, the incidence matrix is usually very sparse. Only a few of the total set of endogenous variables are used in each equation. In this situation, ordering the equation in a particular sequence will lead to a sensible reduction of the number of iterations needed to achieve convergence. Reordering the equations is equivalent to rearranging rows and columns of the incidence matrix. In this way, the incidence matrix might be made lower triangular for a subset of the equations.
 For this subset, an endogenous variable determined in a specific equation has no \emph{incidence} in any equation above it, although the same variable might have incidence in equations below it. Such a subset of equations is called recursive. Recursive systems are easy to solve. It is only necessary to solve each equation once if this is done in the proper order. On the other hand, it is unlikely for the whole model to be recursive. Indeed the incidence graph is often cyclic, as in the Klein's model that presents the following circular dependencies in the incidence matrix: \code{p <- w1 <- y <- i <- p}, as shown in the par. \ref{ssec:1} figure.\\ \\
 For a subset of the equations, some 1's will occur in the upper triangle of the incidence matrix for all possible orderings. Such a subset of equations is called \emph{simultaneous}. To solve the endogenous variables in the simultaneous block of equations, an iterative algorithm has to be used. Nevertheless, the equations in the simultaneous block may be ordered so that the pattern of the 1's in the upper triangle of the incidence matrix forms a spike. The variables corresponding to the 1's in the upper triangle are called \emph{feedback} variables.\\ \\
-A qualitative graphical example of an ordered incidence matrix is given in the following figure. The white areas are all 0's, the gray areas contain both 0's and 1's. The 1's in the light gray areas refer to variables already assessed in previous blocks, therefore they are known terms within the block. The 1's in the dark gray areas refer to variables assessed within the block. \\ \\
+A qualitative graphical example of an ordered incidence matrix is given in the following figure. The white areas are all 0's, the gray areas contain both 0's and 1's. The 1's in the light gray areas refer to variables already assessed in previous subset of equations, therefore they are known terms within the current subset The 1's in the dark gray areas refer to variables assessed within the current subset. \\ \\
 \includegraphics[width=6in]{Reordering.png} \\ \\ 
-The final pattern of an incidence matrix after the equation reordering generally features three blocks: 
+In \pkg{bimets}, the final pattern of an incidence matrix after the equation reordering generally features \code{N+1} blocks: 
 \begin{enumerate}
-\item a recursive block (the pre-recursive block);
-\item a simultaneous block;
-\item another recursive block (the post-recursive block);
+\item One a recursive subset of equations, i.e. the pre-recursive \code{VPRE} in image;
+\item \code{N} blocks of equations, \code{VBLOCK} in image, each built with a simultaneous \code{VSIM} and a post-recursive \code{VPOST} subset of equations;
 \end{enumerate}
-As said, the pre-recursive and the post-recursive blocks are lower triangular. Therefore the corresponding equations are solvable with a cascade substitution with no iteration. Just the simultaneous equations set needs an iterative algorithm to be solved. It is important to say that the convergence criterion may also be applied to these variables only: when the feedback variables converge, the rest of the simultaneous variables also do.\\ \\ \pkg{bimets} builds and analyzes the model's incidence matrix, and then it orders the equations in pre-recursive, simultaneous and post-recursive blocks. The simultaneous block is then analyzed in order to find a minimal set of feedback variables. This last problem is known to be NP-complete\footnote{Garey, Johnson - \emph{Computers and Intractability: a Guide to the Theory of NP-completeness} - San Francisco, Freeman 1979}.\\ \\The optimal reordering of the model equations is programmatically achieved through the use of an iterative algorithm applied to the incidence matrix that can produce 4 ordered lists of endogenous variables:
+As said, the pre-recursive and the post-recursive subsets are lower triangular. Therefore the corresponding equations are solvable with a cascade substitution with no iteration. Only the simultaneous equations subset needs an iterative algorithm to be solved. It is important to say that the convergence criterion may also be applied to feedback variables only: when the feedback variables converge, the rest of the simultaneous variables also do.\\ \\ \pkg{bimets} builds and analyzes the model's incidence matrix, and then it i) computes the strongly connected component of the related incidence graph by using the Tarjan algorithm\footnote{Tarjan, Robert - \emph{Depth-first search and linear graph algorithms} - SIAM Journal on Computing - June 1972}, and ii) orders the equations in pre-recursive and, for each block of equations, in simultaneous and post-recursive subsets. The simultaneous subsets are then analyzed in order to find a minimal set of feedback variables. This last problem is known to be NP-complete\footnote{Garey, Johnson - \emph{Computers and Intractability: a Guide to the Theory of NP-completeness} - San Francisco, Freeman 1979}.\\ \\The optimal reordering of the model equations is programmatically achieved through the use of an iterative algorithm applied to the incidence matrix that can produce \code{1+3*N} ordered lists of endogenous variables:
 \begin{enumerate}
-\item \code{vpre} is the ordered list containing the names of the endogenous pre-recursive variables to be sequentially computed (once per simulation period, using their \code{EQ>} definition in the \code{MDL}) before the simulation iterative algorithm takes place;
-\item \code{vsim} (the simultaneous block) is the ordered list containing the names of the endogenous variables to be sequentially computed during each iteration of the simulation iterative algorithm;
-\item \code{vfeed} is the list containing the names of the endogenous feedback variables; generally \code{vfeed} are the last variables of the ordered \code{vsim} list; 
-\item \code{vpost} is the ordered list containing the names of the endogenous post-recursive variables to be sequentially computed (once per simulation period, using their \code{EQ>} definition in the \code{MDL}) after the simulation iterative algorithm has found a solution in the simultaneous block;
+\item One list \code{vpre} is the ordered list containing the names of the endogenous pre-recursive variables to be sequentially computed (once per simulation period) before the simulation iterative algorithm takes place;
+\item For each of the \code{N} elements in the \code{vblocks} list:
+\begin{enumerate}
+\item One list \code{vsim} (the simultaneous subset) that is the ordered list containing the names of the endogenous variables to be sequentially computed during each iteration of the simulation iterative algorithm;
+\item One list \code{vfeed} that is the list containing the names of the endogenous feedback variables; generally \code{vfeed} are the last variables of the ordered \code{vsim} list in the same block; 
+\item One list \code{vpost} that is the ordered list containing the names of the endogenous post-recursive variables to be sequentially computed (once per simulation period) after the simulation iterative algorithm has found a solution in the previous simultaneous subset in the same block;
 \end{enumerate}
-If equations are reordered, the previous conceptual scheme is modified as follows:
+\end{enumerate}
+Once equations are reordered, the previous conceptual scheme is modified as follows:
 \begin{itemize}
 \item[--] initialize the solution for the current simulation period;
 \item[--] compute the pre-recursive equations (i.e. the equation of the endogenous variables in the \code{vpre} ordered list);
-\item[--] iteratively compute the system of simultaneous equations (i.e. the equation of the endogenous variables in the \code{vsim} ordered list); for each iteration update the values of the current endogenous variables and verify that the convergence criterion is satisfied on the feedback variables or that the maximum number of iterations has been reached;
-\item[--] compute the post-recursive equations (i.e. the equation of the endogenous variables in the \code{vpost} ordered list);
-\item[--] save the solutions;
+\item[--] for each block in \code{vblocks}:
+\begin{itemize}
+\item[---] iteratively compute the system of simultaneous equations (i.e. the equation of the endogenous variables in the \code{vsim} ordered list): for each iteration i) update the values of the current endogenous variables, ii) update the feedback variables accordingly to the simulation algorithm in use (see next section for details on simulation algorithms) and iii) verify that the convergence criterion is satisfied on the feedback variables \code{vfeed} or that the maximum number of iterations has been reached;
+\item[---] compute the post-recursive equations (i.e. the equation of the endogenous variables in the \code{vpost} ordered list);
 \end{itemize}
+\item[--] finally, save the solutions;
+\end{itemize}
+Clearly, each endogenous variable is updated accordingly to its related equation \code{EQ>} in the \code{MDL} model definition.\\ \\
+In forward-looking models, the incidence matrix and the equations reordering depend on the simulation periods count, therefore the model attributes \code{incidence_matrix}, \code{vblocks}, and \code{vpre} are calculated only after a simulation has been initialized, and will be available to users in the \code{model$simulation[['__SIM_PARAMETERS__']]} lists.\\ \\
+The reader can see an equations reordering example in the \emph{Model Description Language}, par. \ref{ssec:1}, wherein the content of the \code{kleinModel$vpre} and \code{kleinModel$vblocks} variables are printed out.\\ \\
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{The Simulation Algorithms} \label{ssec:65}
 Given \({x_{j}}\) the \({j}\)-exogenous variable, \({j=1..m}\), and \({y_{i,k}}\) the value of the \({i}\)-endogenous variable, \({i=1..n}\), in the simultaneous block at the iteration \({k}\), with \({i}\) the position of the equation in a reordered model, the modified Gauss-Seidel method takes for the approximation of the endogenous variable \({y_{i,k}}\) the solution of the following:\\ \\
 \({y_{i,k}=f_i(x_1, ..., x_m, y_{1,k}, ..., y_{i-1,k}, y_{i,k-1},..., y_{n,k-1})}\)\\ \\
 Newton-Raphson methods can be seen as an extension of the modified Gauss-Seidel algorithm, and a further step is required: in Newton-Raphson, feedback variables are updated not by using their model equations, but by using the inverse of the Jacobian matrix and the following assignment:\\ \\
 \({\bar{y}^F_{k} \leftarrow \bar{y}^F_{k-1}+(I-J)^{-1}[\bar{y}^F_{k}-\bar{y}^F_{k-1}]}\)\\ \\
-given the vector of feedback variables values  \({\bar{y}^F_{k}=[y_{n-F+1,k},...,y_{n,k}]}\) at iteration \({k}\), the identity matrix \({I}\), and the Jacobian matrix \({J}\), with \({I,J \in R^{F,F}}\) and \({F}\) equal to the number of feedback variables for the given model. Please note that the modified Gauss-Seidel algorithm can be seen as a reduced form of a Netwotn algorithm, given \({J=0}\).\\ \\ In Newton-Raphson methods, the Jacobian matrix \({J}\) is calculated as follows:\\
+given the vector of feedback variables values  \({\bar{y}^F_{k}=[y_{n-F+1,k},...,y_{n,k}]}\) at iteration \({k}\), the identity matrix \({I}\), and the Jacobian matrix \({J}\), with \({I,J \in R^{F,F}}\) and \({F}\) equal to the number of feedback variables for the given block of equations. Please note that the modified Gauss-Seidel algorithm can be seen as a reduced form of a Netwotn algorithm, given \({J=0}\).\\ \\ In Newton-Raphson methods, the Jacobian matrix \({J}\) is calculated as follows:\\
 1 - shock the feedback variables one at a time by a small amount;\\
 2 - for each shocked feedback variable, evaluate the shocked solution of the simultaneous block;\\
 3 - calculate the derivatives (i.e. the column in the Jacobian matrix related to the shocked feedback variable) using the difference quotients between the shocked and the base solution of the simultaneous block.\\ \\
@@ -1129,9 +1195,9 @@ with(advancedKleinModel$stochastic_simulation,TABIT(y$mean, y$sd))
 @
 \end{footnotesize}
 
-%\clearpage
+\clearpage
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Multipliers Analysis} \label{ssec:8}
 
 The \pkg{bimets} \code{MULTMATRIX()} function computes the matrix of both impact and interim multipliers, for a selected set of endogenous variables (i.e. \code{TARGET}) with respect to a selected set of exogenous variables (i.e. \code{INSTRUMENT}), by subtracting the results from different simulations in each period of the provided time range (i.e. \code{TSRANGE}). The simulation algorithms are the same as those used for the \code{SIMULATE()} operation. \\ \\
@@ -1176,7 +1242,7 @@ kleinModel <- MULTMATRIX(kleinModel
 kleinModel$MultiplierMatrix
 @
 \end{footnotesize}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Endogenous Targeting} \label{ssec:9}
 The endogenous targeting\footnote{On the Theory of Economic Policy - Tinbergen J. 1952} of econometric models consists of solving the model while interchanging the role of one or more endogenous variables with an equal number of exogenous variables.\\ \\ The \pkg{bimets} \code{RENORM()} function determines the values for the \code{INSTRUMENT} exogenous variables that allow the objective \code{TARGET} endogenous values to be achieved, with respect to the constraints given by the model equations.\\ \\
 This is an approach to economic and monetary policy analysis, and is based on two assumptions:
@@ -1269,7 +1335,7 @@ with(kleinRenorm$simulation,
 @
 \end{footnotesize}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Optimal Control} \label{ssec:10}
 An approach to policy evaluation is via a so-called "social welfare function". This approach relaxes the assumptions of the instruments-targets framework, (see \emph{Endogenous Targeting}, par. \ref{ssec:9}) . Rather than assuming specific desired targets for some endogenous variables, it assumes the existence of a social welfare function determining a scalar measure of performance based on both endogenous and policy (exogenous) variables.
 \\ \\
@@ -1438,6 +1504,7 @@ The models used in the comparison have more than:
 \linespread{1.2}
 In these models, there are equations with restricted coefficients, polynomial distributed lags, error autocorrelation, and conditional evaluation of technical identities; all models have been simulated in \emph{static}, \emph{dynamic}, and \emph{forecast} mode, with exogenization and constant adjustments of endogenous variables through the use of \pkg{bimets} capabilities.\\ \\
 In the +800 endogenous simulated time series over the +20 simulated periods (i.e. more than 16.000 simulated observations), the average \emph{percentage} difference between \pkg{bimets} and leading commercial software results has a magnitude of \(10^{-7} \% \). The difference between results calculated by using different commercial software has the same average magnitude.\\ \\
+Several advanced econometric exercises on the US Federal Reserve FRB/US econometric model (e.g., dynamic simulation in a monetary policy shock, rational expectations, endogenous targeting, stochastic simulation, etc.) are available in the \href{https://cran.r-project.org/package=bimets/vignettes/frb2bimets.pdf}{"US Federal Reserve quarterly model (FRB/US) in R with bimets"} vignette. \\ \\
 \pkg{bimets} stands for Bank of Italy Model Easy Time Series; it does not depend on compilers or third-party software so it can be freely downloaded and installed on Linux, MS Windows\textsuperscript{\textregistered} and Mac OSX\textsuperscript{\textregistered}, without any further requirements. \\ \\
 The package can be installed and loaded in \proglang{R} with the following commands (with "\code{R>}" as the \proglang{R} command prompt):
 \begin{footnotesize}
@@ -1458,6 +1525,7 @@ library(bimets)
 \item M. R. Garey, D. S. Johnson \textit{Computers and Intractability: a Guide to the Theory of NP-completeness}. San Francisco, Freeman 1979
 \item G. C. Chow, \textit{ Tests of equality between sets of coefficients in two linear regressions}. Econometrica, Vol 28, 4. July 1960
 \item L. R. Klein \textit{Economic Fluctuations in the United States}. Wiley and Sons Inc., New York, 1950
+\item Board of governors of The Federal Reserve System - \textit{pyfrbus: a Python-based platform to run simulations with the FRB/US model.}. python package version 1.0.0, \href{https://www.federalreserve.gov/econres/us-models-about.htm}{https://www.federalreserve.gov/econres/us-models-about.htm}
 \end{enumerate}
 \end{document}
 

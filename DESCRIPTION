@@ -1,13 +1,13 @@
 Package: bimets
 Type: Package
 Title: Time Series and Econometric Modeling
-Version: 3.0.2
-Date: 2023-12-09
+Version: 4.0.1
+Date: 2024-06-26
 Authors@R: c(person("Andrea", "Luciani", email = "andrea.luciani@bancaditalia.it", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-7372-358X")), person("Roberto", "Stok", email = "roberto.stok@bancaditalia.it", role = c("aut")), person("Bank of Italy",role = c("cph")))
 Maintainer: Andrea Luciani <andrea.luciani@bancaditalia.it>
 Author: Andrea Luciani [aut, cre] (<https://orcid.org/0000-0002-7372-358X>), Roberto Stok [aut], Bank of Italy [cph]
 ByteCompile: no
-Description: Time series analysis, (dis)aggregation and manipulation, e.g. time series extension, merge, projection, lag, lead, delta, moving and cumulative average and product, selection by index, date and year-period, conversion to daily, monthly, quarterly, (semi)annually. Simultaneous equation models definition, estimation, simulation and forecasting with coefficient restrictions, error autocorrelation, exogenization, add-factors, impact and interim multipliers analysis, conditional equation evaluation, endogenous targeting and model renormalization, structural stability, stochastic simulation and forecast, optimal control.
+Description: Time series analysis, (dis)aggregation and manipulation, e.g. time series extension, merge, projection, lag, lead, delta, moving and cumulative average and product, selection by index, date and year-period, conversion to daily, monthly, quarterly, (semi)annually. Simultaneous equation models definition, estimation, simulation and forecasting with coefficient restrictions, error autocorrelation, exogenization, add-factors, impact and interim multipliers analysis, conditional equation evaluation, rational expectations, endogenous targeting and model renormalization, structural stability, stochastic simulation and forecast, optimal control.
 Depends: R (>= 4.0), xts, zoo
 Imports: stats
 LazyData: true
@@ -16,4 +16,4 @@ Encoding: UTF-8
 BugReports: https://github.com/andrea-luciani/bimets/issues
 URL: https://github.com/andrea-luciani/bimets
 NeedsCompilation: no
-Packaged: 2023-12-13 14:43:12 UTC; m025732
+Packaged: 2024-07-10 10:30:55 UTC; m025732

@@ -18,7 +18,7 @@
 #
 # @description: BIMETS - Modeling FUNs 		    
 #
-# @authors: ANDREA LUCIANI, ROBERTO STOK 
+# @authors: ANDREA LUCIANI 
 #
 # @copyright: Bank of Italy
 #
@@ -26,92 +26,297 @@
 #
 #############################################################################
 
+# internal core funs -----------------------------------------------------------
 
-# support FUNs -------------------------------------------
-
-#print verbose stuff during sim
-#do not use this fun outside main simulation cycle
-.printVerboseSim = function(ConstantAdjustment,
-                            verboseVars,
-                            frequency,
-                            TSRANGE,
-                            simIterLoopIdx,
-                            idxIter,
-                            model_max_lag_1,
-                            length_model_vexog,
-                            model_vexog,
-                            replica,
-                            localE,
-                            model_vpre,
-                            model_vsim,
-                            model_vpost)
+#add an integer to var index: varName[i,] -> varName[i+valueToAdd[j],]
+#for each j in valueToAdd
+.addToIndexInString <- function (inputS='',valueToAdd=0,transformLeads=FALSE,baseValue=0)
 {
-  if (length(ConstantAdjustment)>0)
+  #init tmp vars
+  openIdxs=c()
+  closeIdxs=c() 
+  flagInsideSquared=FALSE
+  
+  #cycle in chars and get positions of squared [ and ]
+  for (idxS in 1:nchar(inputS))
   {
-    cat('CONSTANT ADJUSTMENTS:\n') 
-    for (tmpV in names(ConstantAdjustment)) 
-    {  
-      if (tmpV %in% verboseVars)
-      {
-        cat(paste0(
-          'Prd. ',
-          sprintf("%4i",simIterLoopIdx),', ',
-          paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' ',
-          'Iter. ',
-          sprintf("%4i",idxIter),' ',
-          sprintf("%12s CA",tmpV),' ='))
-        
-        for (idxR in 1:replica)
-          cat(sprintf("%20.15g",localE[[paste0(tmpV,'__ADDFACTOR')]][  model_max_lag_1,idxR])) 
-        cat('\n') 
-      }
-    }
-  }
-  if (length_model_vexog>0)
-  {
-    cat('VEXOGS:\n') 
-    for (tmpV in c(model_vexog)) 
-    {  
-      if ( tmpV %in% verboseVars)
-      {
-        cat(paste0(
-          'Prd. ',
-          sprintf("%4i",simIterLoopIdx),', ',
-          paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' ',
-          'Iter. ',
-          sprintf("%4i",idxIter),' ',
-          sprintf("%15s",tmpV),' ='))
-        
-        for (idxR in 1:replica)
-          cat(sprintf("%20.15g",localE[[(tmpV)]][  model_max_lag_1,idxR])) 
-        cat('\n') 
-      }
-    }
-  }
-  cat('VENDOGS:\n') 
-  for (tmpV in c(model_vpre,model_vsim,model_vpost)) 
-  { 
-    if ( tmpV %in% verboseVars)
+    #get current char
+    tmpChar=substr(inputS,idxS,idxS) 
+    
+    if (tmpChar=='[')
     {
-      cat(paste0(
-        'Prd. ',
-        sprintf("%4i",simIterLoopIdx),', ',
-        paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' ',
-        'Iter. ',
-        sprintf("%4i",idxIter),' ',
-        sprintf("%15s",tmpV),' ='))
-      
-      for (idxR in 1:replica)
-        cat(sprintf("%20.15g",localE[[(tmpV)]][  model_max_lag_1,idxR]))  
-      cat('\n') 
+      openIdxs=c(openIdxs,idxS) 
+      flagInsideSquared=TRUE
     }
+    
+    if (tmpChar==']')
+    {
+      flagInsideSquared=FALSE
+    }
+    
+    if (flagInsideSquared && tmpChar==',')
+    {
+      closeIdxs=c(closeIdxs,idxS) 
+    }
+    
+  }
+  
+  if (length(openIdxs)==0) return(inputS) 
+  
+  tmpP=1 
+  length_value=length(valueToAdd)
+  outS=vector('character',length_value) 
+  
+  tryCatch(
+    {
+      #cycle every index []
+      for (idxI in 1:length(openIdxs))
+      { 
+        #get index str
+        tmpS=substr(inputS,openIdxs[idxI]+1,closeIdxs[idxI]-1) 
+      
+        #get index as integer
+        currentI_base=as.integer(tmpS) 
+        
+        if (! is.finite(currentI_base)) stop() 
+        
+        tempSubString=substr(inputS,tmpP,openIdxs[idxI]-1)
+        
+        #add value to current index
+        for (idxV in 1:length_value)
+        {
+          currentI=currentI_base+valueToAdd[idxV] 
+        
+          #replace index in string
+          if (transformLeads && currentI>baseValue)
+          {
+            outS[idxV]=paste0(outS[idxV]
+                              ,tempSubString
+                              ,paste0('__LEAD__',currentI-baseValue,'[',baseValue)
+                              )
+          } else {
+            outS[idxV]=paste0(outS[idxV]
+                              ,tempSubString
+                              ,paste0('[',currentI)
+                              )
+          }
+        }
+        
+        tmpP=closeIdxs[idxI] 
+      }
+    },
+    error=function(e)
+    {stop(paste0('.addToIndexInString(): cannot evaluate index "',tmpS,'" ',e$message))}
+  ) 
+  
+  #...create last output
+  for (idxV in 1:length_value)
+    outS[idxV]=paste0(outS[idxV]
+              ,substr(inputS,tmpP,nchar(inputS)))
+  
+  return(outS) 
+} 
+
+#add _ADDFACTOR to a list of var names, e.g. myVAR -> myVAR_ADDFACTOR
+.appendAFtoEndVars <- function (inputS='',vName=c(),AF='__ADDFACTOR',...)
+{
+  #replace varName with varName_ADDFACTOR, if varName is not a fun call
+  #\\b is required to match whole word, e.g. abc != abc_def
+  for (idxV in 1:length(vName))
+    inputS=gsub(paste0('\\b(',
+                     vName[idxV],
+                     ')\\b($|[^\\(])'),
+              paste0('\\1\\',AF,'\\2'),
+              inputS)
+  
+  return(inputS) 
+  
+}
+
+#add indexes to a list of var names, e.g. myVAR -> myVAR[indexN,]
+.appendIndexToVars <- function (inputS='',vName=c(),indexN='',...)
+{
+  #replace varName with varName[indexN,], if varName is not a fun call
+  for (idxV in 1:length(vName))
+    inputS=gsub(paste0('\\b(',
+                     vName[idxV],
+                     ')\\b($|[^\\(])'),
+              paste0('\\1\\[',indexN,',\\]\\2'),
+              inputS)
+  
+  return(inputS) 
+  
+}
+
+#used in PDL
+.bm_tartaglia_pdl <- function(degree=1)
+{
+  if (degree==0) 
+  {
+    return(c(1,-1))
+  } else 
+  {
+    levelUpResult=.bm_tartaglia_pdl(degree-1)     
+    outF=levelUpResult[1] 
+    
+    for (idx in 1:(length(levelUpResult)-1))
+    {
+      outF=c(outF,abs(levelUpResult[idx])+abs(levelUpResult[idx+1]))
+    }
+    
+    outF=c(outF,1) 
+    
+    for (idx in 1:length(outF))
+    {
+      if (idx %% 2 ==0) outF[idx]=-outF[idx] 
+    } 
+    
+    return(outF) 
   }
 }
 
-#combine list by names
-.combineList = function(list1=NULL,list2=NULL)
+#build reordering blocks from the output of the 
+#Tarjan #strongly connected components algo
+.buildBlocks <- function(incidence_matrix)
 {
+  localT=.TarjanBlocksExtraction(incidence_matrix)
   
+  rownames=rownames(incidence_matrix)
+  
+  vpre=c()
+  vblocks=list()
+  
+  #strongly connected nodes are inverse ordered
+  #in localT
+  for (idx in length(localT$lists):1)
+  {
+    #if single connected component put in vpre
+    #else we are in a simultaneous group
+    if (length(localT$lists[[idx]])==1) 
+    {
+      vpre=c(vpre,localT$lists[[idx]])
+    } else break
+  }
+  
+  #if not in a acyclic graph
+  if (!(length(vpre)>0 && idx==1) )
+  {
+    idxBlock=0
+    
+    for (idx2 in idx:1)
+    {
+      #new simultaneous group for a new block
+      if (length(localT$lists[[idx2]])>1)
+      {
+        idxBlock=idxBlock+1
+        vblocks[[idxBlock]]=list()
+        vblocks[[idxBlock]]$vsim=localT$lists[[idx2]]
+        vblocks[[idxBlock]]$vpost=c()
+      } else
+      {
+        #add to vpost for current block
+        vblocks[[idxBlock]]$vpost=c(vblocks[[idxBlock]]$vpost,localT$lists[[idx2]])
+      }
+    }
+  }
+ 
+  if (length(vblocks)>0)
+    for (idxB in 1:length(vblocks))
+    {
+      #convert indexes to var names
+      if (length(vblocks[[idxB]]$vpost)>0)
+        vblocks[[idxB]]$vpost=rownames[vblocks[[idxB]]$vpost]
+      
+      #split vsim vs vfeed in current block using related zone in incidence matrix
+      tempList=.reorderEquations(incidence_matrix[vblocks[[idxB]]$vsim,vblocks[[idxB]]$vsim] )
+      
+      #export
+      vblocks[[idxB]]$vsim=tempList$vsim
+      vblocks[[idxB]]$vfeed=tempList$vfeed
+      
+    }
+  
+  #convert indexes to name
+  if (length(vpre)>0) vpre=rownames[vpre]
+  
+  return(list(vpre=vpre,vblocks=vblocks))
+  
+}
+
+#check text is single parsable expression
+.checkExpression <- function(inputS)
+{
+  if (is.null(inputS)) return(FALSE)
+  if (length(inputS)!=1) return(FALSE)
+  if (! is.character(inputS)) return(FALSE)
+  if (nchar(inputS)==0) return(FALSE)
+  
+  flagX=TRUE 
+  tryCatch({parse(text=inputS);flagX=FALSE;},error=function(e){})
+  if (flagX) return(FALSE) 
+  
+  return(TRUE)
+}
+
+#chech regressor in behavioral eq
+#must not contain operators outside parenthesis
+.checkExpressionIsAtomic <- function(inputS=NULL,...)
+{
+  if (is.null(inputS)) return(FALSE)
+  if (length(inputS)!=1) return(FALSE)
+  if (! is.character(inputS)) return(FALSE)
+  if (nchar(inputS)==0) return(FALSE)
+  
+  #operators to be checked for atomicity
+  dualOperators=c('\\+','\\-','<','>','<=','>=','!=','==','&','&&','\\|','\\|\\|') 
+  DOcollapse=paste0('(',paste(dualOperators,collapse = '|'),')') 
+  
+  #check operator not in start position
+  if (grepl(paste0('^',DOcollapse),inputS)) return(FALSE)
+  
+  #check operator not in end position
+  if (grepl(paste0(DOcollapse,'$'),inputS)) return(FALSE)
+  
+  #check parentheses
+  inputSnc=nchar(inputS)
+  parCountArray=rep(0,inputSnc)
+  
+  #each "(" is +1 each ")" is -1
+  tmpCounter=0 
+  for (idx in 1:inputSnc)
+  {
+    actualChar=substring(inputS,idx,idx)
+    if (actualChar=="(") tmpCounter=tmpCounter+1
+    if (actualChar==")") tmpCounter=tmpCounter-1
+   
+    parCountArray[idx]=tmpCounter 
+  }
+ 
+  #get position of operators
+  DOpos=as.numeric(gregexpr(DOcollapse,inputS)[[1]])
+  
+  #operators cannot be out of parentheses
+  if (any(DOpos>0) && any(parCountArray[DOpos]==0)) return(FALSE)
+  
+  #check expression 
+  if (! .checkExpression(inputS)) return(FALSE)
+  
+  return(TRUE)
+}
+
+#check bimets version a model has been built with
+#if different from current bimets version issues a warning
+.checkModelBimetsVersion <- function(model,callerName='.checkModelBimetsVersion')
+{
+  if (is.null(model$bimets_version) || model$bimets_version != getOption('BIMETS_VERSION'))
+    warning(paste0(callerName,'(): warning, current model "',model$modelName,'" has been built with an outdated BIMETS version. Please recreate the model via the LOAD_MODEL() function.\n')) 
+  
+  return(NULL)
+}
+
+#combine list by names
+.combineList <- function(list1=NULL,list2=NULL)
+{
   if (is.null(list1)) return(list2) 
   
   if ((!is.list(list1)) || (!is.list(list2))) stop('.combineList(): inputs must be of class list().')  
@@ -123,162 +328,49 @@
   
   if (length(commonIndexes) > 0)
   {
-    # take values from list2 in matching dimension names
-    matchedNames = matchedNames[!is.na(matchedNames)]
+    #give priority to list2 in matched names
+    matchedNames=matchedNames[!is.na(matchedNames)]
     outList[matchedNames] = list2[commonIndexes]
     
-    # append elements of 'list2' with unmatched names
-    outList = c(outList, list2[-commonIndexes])
+    #append elements of 'list2' with unmatched names
+    outList=c(outList, list2[-commonIndexes])
   }
   else
   {
-    outList = c(outList, list2)
+    outList=c(outList, list2)
   }
   
   return(outList)
 }
 
-#rename list items
-.renameListItems = function(inputList=NULL,namesInput=NULL,namesOutput=NULL)
-{
-  #check inputs
-  if (is.null(inputList) || !(inherits(inputList,'list'))) stop(paste0('.renameListItems(): please provide an input list')) 
-  if (length(namesInput) != length(namesOutput)) stop(paste0('.renameListItems(): input and output names array must have the same length.')) 
-  
-  #prepare output
-  outL=inputList 
-  
-  #find indexes to be modified
-  idxs=which(names(outL) %in% namesInput) 
-  names(outL)[idxs]=namesOutput[idxs] 
-  
-  return(outL) 
-}
-
-.extractFunsNames = function(inputS=NULL)
-{
-  if (is.null(inputS)) return(character(0))
-  
-  out=regmatches(inputS,gregexpr('(\\w+)\\(',inputS))
-  out=gsub('\\(','',out[[1]])
-  return(out)
-}
-
-#return list of unkonw fun names case ignored
-.unknownFunsNames = function(inputS=NULL,reservedKeyw)
-{
-  
-  allFunNames=.extractFunsNames(inputS) 
-  
-  return( allFunNames[! (toupper(allFunNames) %in% reservedKeyw)])
-  
-}
-
-.RegExGlobalDefinition = function()
-{
-  #symbols/funcs allowed on EQ
-  reservedKeyw=c('LOG','TSLAG','LAG','MOVAVG','MAVE','EXP','TSDELTA','DEL','ABS','MOVSUM','MTOT','TSDELTAP','TSDELTALOG') 
-  
-  #list of availables lhs funs
-  allowedLhsEQfuns=c('LOG','EXP','TSDELTA','DEL','TSDELTAP','TSDELTALOG') 
-  allowedLhsEQfunsPub=c('LOG','EXP','TSDELTA','TSDELTAP','TSDELTALOG') 
-  
-  #what to remove from equations in order to obtains symbol names
-  #symOnEqCleaner='(\\+|\\-|\\(|\\)|\\*|\\/|\\,|\\=|LOG\\(|LAG\\(|MAVE\\(|EXP\\(|DEL\\(|ABS\\()' 
-  symOnEqCleaner=paste0('(\\+|\\-|\\(|\\)|\\*|\\/|\\,|\\^|\\=|<|>|\\.GE\\.|\\.LE\\.|\\.GT\\.|\\.LT\\.|\\.EQ\\.',paste(paste0('|',reservedKeyw,'\\('),collapse=''),')') 
-  symOnIfCleaner=paste0('(\\&|\\||\\+|\\-|\\(|\\)|\\*|\\/|\\,|\\^|\\=|<|>|\\.GE\\.|\\.LE\\.|\\.GT\\.|\\.LT\\.|\\.EQ\\.',paste(paste0('|',reservedKeyw,'\\('),collapse=''),')') 
-  
-  
-  #regex allowed on symbol names
-  allowedCharOnName='^[a-zA-Z_]+[a-zA-Z0-9_]*$' 
-  
-  #regex allowed on numbers (we use only 'strongCharsOnNumbs')
-  charsOnNumbs='([0-9]+[\\.]?|[\\.]?[0-9]+|[0-9]+\\.[0-9]+|pi)' 
-  charsOnNumWithSign=paste0('(\\+|-)?',charsOnNumbs) 
-  strongCharOnNumbs=paste0('^',charsOnNumbs,'$') 
-  strongCharOnNumbsWithSign=paste0('^',charsOnNumWithSign,'$') 
-  
-  return(list(reservedKeyw=reservedKeyw,
-              symOnEqCleaner=symOnEqCleaner,
-              symOnIfCleaner=symOnIfCleaner,
-              allowedCharOnName=allowedCharOnName,
-              charsOnNumbs=charsOnNumbs,
-              charsOnNumWithSign=charsOnNumWithSign,
-              strongCharOnNumbs=strongCharOnNumbs,
-              strongCharOnNumbsWithSign=strongCharOnNumbsWithSign,
-              allowedLhsEQfuns=allowedLhsEQfuns,
-              allowedLhsEQfunsPub=allowedLhsEQfunsPub))
-}
-
 #move vars from local env localE into global, useful in debugging
-.copyLocalEnvInToGlobal = function(sourceE=NULL,destE=.GlobalEnv,...)
+.copyLocalEnvInToGlobal <- function(sourceE=NULL,destE=.GlobalEnv,...)
 {
   if (is.null(sourceE)) 
   {
     cat('Please provide a valid environment.\n') 
   } else {
-    lapply(names(sourceE),function(n){assign(n,get(n,envir = sourceE),envir = destE) }) 
+    lapply(names(sourceE),function(n){assign(n,get(n,envir=sourceE),envir=destE) }) 
   }
 }
 
-.parseLhsEQ = function (inputS='', allowedLhsEQfuns=NULL, ...)
-{
-  
-  outL=list() 
-  
-  #cycle in available lhs funs
-  
-  for (funName in allowedLhsEQfuns)
-  {
-    
-    #search current fun name in input expression
-    tmpList=.explodeFunctionCall(inputS,funName)
-    
-    #we are looking for first expression
-    if (length(tmpList)>0 && tmpList$firstLoc==1)
-    {
-      outL=tmpList 
-      outL$funName=funName 
-      outL$raw=inputS 
-      
-      return(outL) 
-    }
-    
-  }
-  
-  #no lhs fun found so return identity
-  outL$funName='I' 
-  outL$args=inputS 
-  outL$raw=inputS 
-  
-  return(outL) 
-  
-}
-
-#get text components of a function call, e.g. arguments and stuff
-.explodeFunctionCall = function (inputS='',fName='',...)
-{
-  #check args
-  if (is.null(inputS)) stop(paste0('.explodeFunctionCall(): NULL input string')) 
-  if (is.null(fName)) stop(paste0('.explodeFunctionCall(): NULL function name')) 
-  if ((! is.character(inputS)) || (! is.character(fName)))
-    stop(paste0('.explodeFunctionCall(): inputs need to be strings')) 
-  
-  if (''==(inputS)) stop(paste0('.explodeFunctionCall(): empty input string')) 
-  if (''==(fName)) stop(paste0('.explodeFunctionCall(): empty function name')) 
-  
+#return arguments as text (2 or more) and comma positions for the first 
+#occurrence of function fName in string inputS
+.explodeFunctionCall <- function (inputS='',fName='',...)
+{ 
   outL=list() 
   
   #check fun name exists in string
-  if (grepl("\\.",fName))
+  if (substr(fName,1,1)=='.')
   {
-    fNameEx=paste0('\\.\\b',gsub("\\.","",fName),'\\b\\(') 
+    fNameEx=paste0('\\.\\b(',gsub("\\.","",fName),')\\b\\(') 
   } else {
     #must move dot out of \\b
-    fNameEx=paste0('\\b',fName,'\\b\\(') 
+    fNameEx=paste0('\\b(',fName,')\\b\\(') 
   }
   
   #check function call exists in string
+  #regexpr returns only first occurrence
   firstLoc=regexpr(fNameEx,inputS) 
   
   #if none then exit
@@ -287,9 +379,9 @@
   #remove attributes from regex results
   attributes(firstLoc)=NULL 
   
-  #init tmp vars... consider we start whit one open (
-  openP=1 
-  openSP=0 
+  #init tmp vars... consider we start whit one "("
+  openP=1   #for round () 
+  openSP=0  #for squared [] 
   
   #outputs
   commaPos=c() 
@@ -317,7 +409,7 @@
       }
     } else if (tmpChar==',' && openP==1 && openSP==0)
     {
-      #we are in next argument
+      #we are in comma position separating fName arguments
       commaPos=c(commaPos,idxS) 
       
     } else if (tmpChar=='[')
@@ -332,29 +424,17 @@
     
   }
   
-  #checks
-  if (openP!=0) 
-    stop(paste0('.explodeFunctionCall(): syntax error, wrong parentheses matching.'))
-  
-  #NULL argument
-  if (length(commaPos)>1 && min(diff(commaPos))==1)
-    stop(paste0('.explodeFunctionCall(): syntax error, empty arguments.'))
-  
-  #NULL fun body
-  if (argsEnd-argsStart<0)
-    stop(paste0('.explodeFunctionCall(): syntax error, empty arguments.'))
-  
   #get arguments
   argsCount=length(commaPos)+1
   
   if (argsCount==1)
   {
-    args=c(args,substr(inputS,argsStart,argsEnd))
+    args=substr(inputS,argsStart,argsEnd)
     
   } else
     for (idxA in 1:argsCount)
     {
-      #first argumnet
+      #first argument
       if (idxA==1)
       {
         args=c(args,substr(inputS,argsStart,commaPos[idxA]-1))
@@ -372,8 +452,6 @@
   #trim spaces
   args=gsub("\\s*", "", args) 
   
-  if (any(args=='')) stop(('.explodeFunctionCall(): syntax error, empty arguments.'))
-  
   #results
   outL$firstLoc=firstLoc
   outL$commaPos=commaPos
@@ -383,638 +461,18 @@
   outL$args=args
   
   return(outL)
-  
 }
-
-#add indexes to a list of var names, e.g. myVAR -> myVAR[indexN,]
-.appendIndexToVars = function (inputS='', vName=c(), indexN='', ...)
-{
-  #check args
-  if (is.null(inputS)) stop(paste0('.appendIndexToVars(): NULL input string')) 
-  if (is.null(vName)) stop(paste0('.appendIndexToVars(): NULL variables name')) 
-  if (is.null(indexN)) stop(paste0('.appendIndexToVars(): NULL index name')) 
-  
-  if ((! is.character(inputS)) 
-      || (! is.character(vName))
-      || (! is.character(indexN))
-  )
-    stop(paste0('.appendIndexToVars(): inputs need to be strings')) 
-  
-  if (''==(inputS)) stop(paste0('.appendIndexToVars(): empty input string')) 
-  if (0==any(nchar(vName))) stop(paste0('.appendIndexToVars(): there is an empty variable name')) 
-  if (''==(indexN)) stop(paste0('.appendIndexToVars(): empty index name')) 
-  
-  outS=inputS 
-  
-  #replace varName with varName[indexN,], if varName is not a fun call
-  for (idxV in 1:length(vName))
-    outS=gsub(paste0('\\b(',
-                     vName[idxV],
-                     ')\\b($|[^\\(])'),
-              paste0('\\1\\[',indexN,',\\]\\2'),
-              outS)
-  
-  return(outS) 
-  
-}
-
-#add _ADDFACTOR to a list of var names, e.g. myVAR -> myVAR_ADDFACTOR
-.appendAFtoEndVars = function (inputS='', vName=c(), AF='__ADDFACTOR', ...)
-{
-  #check args
-  if (is.null(inputS)) stop(paste0('.appendAFtoEndVars(): NULL input string')) 
-  if (is.null(vName)) stop(paste0('.appendAFtoEndVars(): NULL variables name')) 
-  if (is.null(AF)) stop(paste0('.appendAFtoEndVars(): NULL AF name')) 
-  
-  if ((! is.character(inputS)) 
-      || (! is.character(vName))
-      || (! is.character(AF))
-  )
-    stop(paste0('.appendAFtoEndVars(): inputs need to be strings')) 
-  
-  if (''==(inputS)) stop(paste0('.appendAFtoEndVars(): empty input string')) 
-  if (0==any(nchar(vName))) stop(paste0('.appendAFtoEndVars(): there is an empty variable name')) 
-  if (''==(AF)) stop(paste0('.appendAFtoEndVars(): empty AF name')) 
-  
-  outS=inputS 
-  
-  #replace varName with varName_ADDFACTOR, if varName is not a fun call
-  for (idxV in 1:length(vName))
-    outS=gsub(paste0('\\b(',
-                     vName[idxV],
-                     ')\\b($|[^\\(])'),
-              paste0('\\1\\',AF,'\\2'),
-              outS)
-  
-  return(outS) 
-  
-}
-
-#add an integer to var index varName[a,] -> varName[a+b,]
-.addToIndexInString = function (inputS='', value=0, ...)
-{
-  #check args
-  if (is.null(inputS)) stop(paste0('.addToIndexInString(): NULL input string')) 
-  if (is.null(value)) stop(paste0('.addToIndexInString(): NULL value')) 
-  
-  if ((! is.character(inputS)) )
-    stop(paste0('.addToIndexInString(): inputs need to be strings')) 
-  
-  if ((! is.numeric(value)) 
-      || (! value %% 1 == 0)
-  )
-    stop(paste0('.addToIndexInString(): value needs to be an integer')) 
-  
-  if (''==(inputS)) stop(paste0('.addToIndexInString(): empty input string')) 
-  
-  #init tmp vars
-  openIdxs=c()
-  closeIdxs=c() 
-  
-  #cycle in chars and get positions of squared
-  for (idxS in 1:nchar(inputS))
-  {
-    #get current char
-    tmpChar=substr(inputS,idxS,idxS) 
-    
-    if (tmpChar=='[')
-    {
-      openIdxs=c(openIdxs,idxS) 
-    }
-    
-    if (tmpChar==']')
-    {
-      closeIdxs=c(closeIdxs,idxS) 
-    }
-    
-  }
-  
-  #same counts check
-  if (length(openIdxs) != length(closeIdxs))
-    stop(paste0('.addToIndexInString(): syntax error on indices')) 
-  
-  #nothing to do
-  if (length(openIdxs) ==0) return(inputS) 
-  
-  #empty indexes
-  if (min(closeIdxs-openIdxs)<2)
-    stop(paste0('.addToIndexInString(): syntax error on indices')) 
-  
-  #no interescting [ [ ] .. [ ] ]
-  if (max(+c(-Inf,closeIdxs)-c(openIdxs,Inf))>=-1)
-    stop(paste0('.addToIndexInString(): syntax error on indices')) 
-  
-  tmpP=1 
-  outS='' 
-  
-  tryCatch(
-    {
-      
-      #cycle every index []
-      for (idxI in 1:length(openIdxs))
-      { 
-        #get index str
-        tmpS=substr(inputS,openIdxs[idxI]+1,closeIdxs[idxI]-1) 
-        tmpS=strsplit(tmpS,',')[[1]][1]
-        
-        
-        #get index as integer
-        currentI=eval(parse(text=tmpS)) 
-        
-        if (! is.finite(currentI)) stop() 
-        
-        
-        
-        #add value to current index
-        currentI=currentI+value 
-        
-        #replace index in string
-        outS=paste0(outS
-                    ,substr(inputS,tmpP,openIdxs[idxI])
-                    ,currentI,',') 
-        
-        tmpP=closeIdxs[idxI] 
-      }
-    },
-    error=function(e)
-    {stop(paste0('.addToIndexInString(): cannot evaluate index "',tmpS,'" ',e$message))}
-  ) 
-  
-  #...create last output
-  outS=paste0(outS
-              ,substr(inputS,tmpP,nchar(inputS)))
-  
-  return(outS) 
-} 
-
-#transform first TSLAG in inputS into exploded expression with related lags
-.explodeSingleTSLAG = function (inputS='',...)
-{
-  #check args
-  if (is.null(inputS)) stop(paste0('.explodeSingleTSLAG(): NULL input string')) 
-  if (! is.character(inputS))
-    stop(paste0('.explodeSingleTSLAG(): inputs need to be strings')) 
-  
-  if (''==(inputS)) stop(paste0('.explodeFunctionCall(): empty input string')) 
-  
-  #init tmp vars
-  outL=list()
-  outL$output=inputS 
-  outL$flag=FALSE 
-  outL$tsLag=0 
-  
-  tryCatch({
-    outSE=.explodeFunctionCall(inputS,'.MODEL_TSLAG') 
-  },error=function(e){stop(paste0('.explodeSingleTSLAG(): ',e$message))}
-  )
-  
-  #no fun call so exit
-  if (length(outSE)==0) return(outL)
-  
-  tsLag=0 
-  
-  #no lag provided so is 1
-  if (outSE$argsCount==1) 
-  {
-    tsLag=1 
-  } else
-  { #otherwise eval
-    tryCatch({
-      tsLag=eval(parse(text=outSE$args[2])) 
-      if (! ( is.finite(tsLag) && tsLag %%1 ==0 && tsLag>=0)) stop()
-    },error=function(e){stop(paste0('.explodeSingleTSLAG(): lag value must be a non-negative integer. ',e$message))}
-    )
-  }
-  
-  #replace varName[a,] -> varName[a-lag,]
-  outL$output=paste0(ifelse(outSE$firstLoc>1,substr(inputS,1,outSE$firstLoc-1),'')
-                     ,'(',
-                     .addToIndexInString(outSE$args[1],-tsLag),
-                     ')',
-                     ifelse(outSE$argsEnd<nchar(inputS)-1,substr(inputS,outSE$argsEnd+2,nchar(inputS)),'')
-  ) 
-  
-  #store flag if mod has been made
-  outL$flag=TRUE 
-  outL$tsLag=tsLag 
-  
-  return(outL)
-}
-
-#explode all TSLAG()
-.explodeTSLAG = function (inputS='',...)
-{
-  #check args
-  if (is.null(inputS)) stop(paste0('.explodeTSLAG(): NULL input string')) 
-  if (! is.character(inputS))
-    stop(paste0('.explodeTSLAG(): inputs need to be strings')) 
-  
-  if (''==(inputS)) stop(paste0('.explodeTSLAG(): empty input string')) 
-  
-  #init tmp var
-  outL=list()
-  outL$output=inputS 
-  outL$flag=FALSE 
-  
-  tryCatch({
-    
-    #explode first TSLAG
-    tmpL=.explodeSingleTSLAG(inputS) 
-    
-    #while found a TSLAG()...
-    while(tmpL$flag)
-    {
-      outL$output=tmpL$output 
-      outL$flag=TRUE 
-      tmpL=.explodeSingleTSLAG(tmpL$output) 
-    }
-  },error=function(e){stop(paste0('.explodeTSLAG(): ',e$message))})
-  return(outL) 
-  
-}
-
-#transform first DELTA in inputS into exploded expression with related lags
-.explodeSingleTSDELTA = function (inputS='',...)
-{
-  #check args
-  if (is.null(inputS)) stop(paste0('.explodeSingleTSDELTA(): NULL input string')) 
-  if (! is.character(inputS))
-    stop(paste0('.explodeSingleTSDELTA(): inputs need to be strings')) 
-  
-  if (''==(inputS)) stop(paste0('.explodeSingleTSDELTA(): empty input string')) 
-  
-  #init tmp var
-  outL=list()
-  outL$output=inputS 
-  outL$flag=FALSE 
-  outL$tsLag=0 
-  
-  tryCatch({
-    outSE=.explodeFunctionCall(inputS,'.MODEL_TSDELTA') 
-  },error=function(e){stop(paste0('.explodeSingleTSDELTA(): ',e$message))}
-  )
-  
-  #no fun call so exit
-  if (length(outSE)==0) return(outL)
-  
-  tsLag=0 
-  
-  #if no specified lag=1
-  if (outSE$argsCount==1) 
-  {
-    tsLag=1 
-  } else
-  {
-    tryCatch({
-      tsLag=eval(parse(text=outSE$args[2])) 
-      if (! ( is.finite(tsLag) && tsLag %%1 ==0 && tsLag>0)) stop()
-    },error=function(e){stop(paste0('.explodeSingleTSDELTA(): DELTA value must be a positive integer. ',e$message))}
-    )
-  }
-  
-  #DELTA(varName[a,],b)=((varName[a,])-(varName[a-b,]))
-  outL$output=paste0(ifelse(outSE$firstLoc>1,substr(inputS,1,outSE$firstLoc-1),'')
-                     ,'((',
-                     outSE$args[1],
-                     ')-(',
-                     .addToIndexInString(outSE$args[1],-tsLag),
-                     '))',
-                     ifelse(outSE$argsEnd<nchar(inputS)-1,substr(inputS,outSE$argsEnd+2,nchar(inputS)),'')
-  ) 
-  
-  #store flag if mod has been made
-  outL$flag=TRUE 
-  outL$tsLag=tsLag 
-  
-  return(outL)
-}
-
-#explode all DELTA()
-.explodeTSDELTA = function (inputS='',...)
-{
-  #check args
-  if (is.null(inputS)) stop(paste0('.explodeTSDELTA(): NULL input string')) 
-  if (! is.character(inputS))
-    stop(paste0('.explodeTSDELTA(): inputs need to be strings')) 
-  
-  if (''==(inputS)) stop(paste0('.explodeTSDELTA(): empty input string')) 
-  
-  #init tmp var
-  outL=list()
-  outL$output=inputS 
-  outL$flag=FALSE 
-  
-  tryCatch({
-    
-    tmpL=.explodeSingleTSDELTA(inputS) 
-    
-    #while we have more DELTA()
-    while(tmpL$flag)
-    {
-      outL$output=tmpL$output 
-      outL$flag=TRUE 
-      tmpL=.explodeSingleTSDELTA(tmpL$output) 
-    }
-  },error=function(e){stop(paste0('.explodeTSDELTA(): ',e$message))})
-  
-  return(outL) 
-  
-}
-
-#transform first DELTAP in inputS into exploded expression with related lags
-.explodeSingleTSDELTAP = function (inputS='',...)
-{
-  #check args
-  if (is.null(inputS)) stop(paste0('.explodeSingleTSDELTAP(): NULL input string')) 
-  if (! is.character(inputS))
-    stop(paste0('.explodeSingleTSDELTAP(): inputs need to be strings')) 
-  
-  if (''==(inputS)) stop(paste0('.explodeSingleTSDELTAP(): empty input string')) 
-  
-  #init tmp var
-  outL=list()
-  outL$output=inputS 
-  outL$flag=FALSE 
-  outL$tsLag=0 
-  
-  tryCatch({
-    outSE=.explodeFunctionCall(inputS,'.MODEL_TSDELTAP') 
-  },error=function(e){stop(paste0('.explodeSingleTSDELTAP(): ',e$message))}
-  )
-  
-  #no fun call so exit
-  if (length(outSE)==0) return(outL)
-  
-  tsLag=0 
-  
-  #if no specified lag=1
-  if (outSE$argsCount==1) 
-  {
-    tsLag=1 
-  } else
-  {
-    tryCatch({
-      tsLag=eval(parse(text=outSE$args[2])) 
-      if (! ( is.finite(tsLag) && tsLag %%1 ==0 && tsLag>0)) stop()
-    },error=function(e){stop(paste0('.explodeSingleTSDELTAP(): DELTAP value must be a positive integer. ',e$message))}
-    )
-  }
-  
-  
-  
-  #DELTAP(varName[a,],b)=(100*((varName[a,])-(varName[a-b,]))/(varName[a-b,]))
-  outL$output=paste0(ifelse(outSE$firstLoc>1,substr(inputS,1,outSE$firstLoc-1),'')
-                     ,'(100*((',
-                     outSE$args[1],
-                     ')-(',
-                     .addToIndexInString(outSE$args[1],-tsLag),
-                     '))/(',.addToIndexInString(outSE$args[1],-tsLag),'))',
-                     ifelse(outSE$argsEnd<nchar(inputS)-1,substr(inputS,outSE$argsEnd+2,nchar(inputS)),'')
-  ) 
-  
-  #store flag if mod has been made
-  outL$flag=TRUE 
-  outL$tsLag=tsLag 
-  
-  return(outL)
-}
-
-#explode all DELTAP()
-.explodeTSDELTAP = function (inputS='',...)
-{
-  #check args
-  if (is.null(inputS)) stop(paste0('.explodeTSDELTAP(): NULL input string')) 
-  if (! is.character(inputS))
-    stop(paste0('.explodeTSDELTAP(): inputs need to be strings')) 
-  
-  if (''==(inputS)) stop(paste0('.explodeTSDELTAP(): empty input string')) 
-  
-  #init tmp var
-  outL=list()
-  outL$output=inputS 
-  outL$flag=FALSE 
-  
-  tryCatch({
-    
-    tmpL=.explodeSingleTSDELTAP(inputS) 
-    
-    #while we have more DELTAP()
-    while(tmpL$flag)
-    {
-      outL$output=tmpL$output 
-      outL$flag=TRUE 
-      tmpL=.explodeSingleTSDELTAP(tmpL$output) 
-    }
-  },error=function(e){stop(paste0('.explodeTSDELTAP(): ',e$message))})
-  
-  return(outL) 
-  
-}
-
-#transform first DELTALOG in inputS into exploded expression with related lags
-.explodeSingleTSDELTALOG = function (inputS='',...)
-{
-  #check args
-  if (is.null(inputS)) stop(paste0('.explodeSingleTSDELTALOG(): NULL input string')) 
-  if (! is.character(inputS))
-    stop(paste0('.explodeSingleTSDELTALOG(): inputs need to be strings')) 
-  
-  if (''==(inputS)) stop(paste0('.explodeSingleTSDELTALOG(): empty input string')) 
-  
-  #init tmp var
-  outL=list()
-  outL$output=inputS 
-  outL$flag=FALSE 
-  outL$tsLag=0 
-  
-  tryCatch({
-    outSE=.explodeFunctionCall(inputS,'.MODEL_TSDELTALOG') 
-  },error=function(e){stop(paste0('.explodeSingleTSDELTALOG(): ',e$message))}
-  )
-  
-  #no fun call so exit
-  if (length(outSE)==0) return(outL)
-  
-  tsLag=0 
-  
-  #if no specified lag=1
-  if (outSE$argsCount==1) 
-  {
-    tsLag=1 
-  } else
-  {
-    tryCatch({
-      tsLag=eval(parse(text=outSE$args[2])) 
-      if (! ( is.finite(tsLag) && tsLag %%1 ==0 && tsLag>0)) stop()
-    },error=function(e){stop(paste0('.explodeSingleTSDELTALOG(): DELTALOG value must be a positive integer. ',e$message))}
-    )
-  }
-  
-  
-  
-  #DELTALOG(varName[a,],b)=(log((varName[a,])/(varName[a-b,])))
-  outL$output=paste0(ifelse(outSE$firstLoc>1,substr(inputS,1,outSE$firstLoc-1),'')
-                     ,'(log((',
-                     outSE$args[1],
-                     ')/(',
-                     .addToIndexInString(outSE$args[1],-tsLag),
-                     ')))',
-                     ifelse(outSE$argsEnd<nchar(inputS)-1,substr(inputS,outSE$argsEnd+2,nchar(inputS)),'')
-  ) 
-  
-  #store flag if mod has been made
-  outL$flag=TRUE 
-  outL$tsLag=tsLag 
-  
-  return(outL)
-}
-
-#explode all DELTALOG()
-.explodeTSDELTALOG = function (inputS='',...)
-{
-  #check args
-  if (is.null(inputS)) stop(paste0('.explodeTSDELTALOG(): NULL input string')) 
-  if (! is.character(inputS))
-    stop(paste0('.explodeTSDELTALOG(): inputs need to be strings')) 
-  
-  if (''==(inputS)) stop(paste0('.explodeTSDELTALOG(): empty input string')) 
-  
-  #init tmp var
-  outL=list()
-  outL$output=inputS 
-  outL$flag=FALSE 
-  
-  tryCatch({
-    
-    tmpL=.explodeSingleTSDELTALOG(inputS) 
-    
-    #while we have more DELTALOG()
-    while(tmpL$flag)
-    {
-      outL$output=tmpL$output 
-      outL$flag=TRUE 
-      tmpL=.explodeSingleTSDELTALOG(tmpL$output) 
-    }
-  },error=function(e){stop(paste0('.explodeTSDELTALOG(): ',e$message))})
-  
-  return(outL) 
-  
-}
-
 
 #transform first MAVE in inputS into exploded expression with related lags
-.explodeSingleMAVE = function (inputS='',...)
+.explodeSingleMAVE <- function (inputS='',...)
 {
-  #check args
-  if (is.null(inputS)) stop(paste0('.explodeSingleMAVE(): NULL input string')) 
-  if (! is.character(inputS))
-    stop(paste0('.explodeSingleMAVE(): inputs need to be strings')) 
-  
-  if (''==(inputS)) stop(paste0('.explodeSingleMAVE(): empty input string')) 
-  
-  #init tmp var
-  outL=list()
-  outL$output=inputS 
-  outL$flag=FALSE 
-  outL$tsLag=0 
-  
-  
-  tryCatch({
-    outSE=.explodeFunctionCall(inputS,'.MODEL_MAVE') 
-  },error=function(e){stop(paste0('.explodeSingleMAVE(): ',e$message))}
-  )
-  
-  #no fun call so exit
-  if (length(outSE)==0) return(outL)
-  
-  tsLag=0 
-  
-  #if not specified lag=1
-  if (outSE$argsCount==1) 
-  {
-    tsLag=1 
-    
-  } else
-  {
-    tryCatch({
-      tsLag=eval(parse(text=outSE$args[2])) 
-      if (! ( is.finite(tsLag) && tsLag %%1 ==0 && tsLag>0)) stop()
-    },error=function(e){stop(paste0('.explodeSingleMAVE(): window size must be a positive integer. ',e$message))}
-    )
-  }
-  
-  outTS='0' 
-  
-  #MAVE(varName[a,],b) -> (0+varName[a,]+varName[a-1,]+...+varName[a-b,])/b
-  for (idxMA in 1:tsLag)
-    outTS=paste0(outTS,'+',.addToIndexInString(outSE$args[1],1-idxMA)) 
-  
-  
-  outL$output=paste0(ifelse(outSE$firstLoc>1,substr(inputS,1,outSE$firstLoc-1),'')
-                     ,'((',
-                     outTS,
-                     ')/',tsLag,')',
-                     ifelse(outSE$argsEnd<nchar(inputS)-1,substr(inputS,outSE$argsEnd+2,nchar(inputS)),'')
-  ) 
-  
-  #store flag if mod has been made
-  outL$flag=TRUE 
-  outL$tsLag=tsLag 
-  
-  return(outL)
-}
 
-#explode all MAVE()
-.explodeMAVE  = function (inputS='',...)
-{
-  #check args
-  if (is.null(inputS)) stop(paste0('.explodeMAVE(): NULL input string')) 
-  if (! is.character(inputS))
-    stop(paste0('.explodeMAVE(): inputs need to be strings')) 
-  
-  if (''==(inputS)) stop(paste0('.explodeMAVE(): empty input string')) 
-  
   #init tmp var
   outL=list()
   outL$output=inputS 
   outL$flag=FALSE 
   
-  tryCatch({
-    
-    tmpL=.explodeSingleMAVE(inputS) 
-    
-    #while we have more MAVE()
-    while(tmpL$flag)
-    {
-      outL$output=tmpL$output 
-      outL$flag=TRUE 
-      tmpL=.explodeSingleMAVE(tmpL$output) 
-    }
-  },error=function(e){stop(paste0('.explodeMAVE(): ',e$message))})
-  return(outL) 
-  
-}
-
-#transform first MTOT in inputS into exploded expression with related lags
-.explodeSingleMTOT = function (inputS='',...)
-{
-  #check args
-  if (is.null(inputS)) stop(paste0('.explodeSingleMTOT(): NULL input string')) 
-  if (! is.character(inputS))
-    stop(paste0('.explodeSingleMTOT(): inputs need to be strings')) 
-  
-  if (''==(inputS)) stop(paste0('.explodeSingleMTOT(): empty input string')) 
-  
-  #init tmp var
-  outL=list()
-  outL$output=inputS 
-  outL$flag=FALSE 
-  outL$tsLag=0 
-  
-  tryCatch({
-    outSE=.explodeFunctionCall(inputS,'.MODEL_MTOT') 
-  },error=function(e){stop(paste0('.explodeSingleMTOT(): ',e$message))}
-  )
+  outSE=.explodeFunctionCall(inputS,'.MODEL_MAVE') 
   
   #no fun call so exit
   if (length(outSE)==0) return(outL)
@@ -1029,48 +487,135 @@
   } else
   {
     tryCatch({
-      tsLag=eval(parse(text=outSE$args[2])) 
+      
+      tsLag=as.integer(outSE$args[2]) 
+      
       if (! ( is.finite(tsLag) && tsLag %%1 ==0 && tsLag>0)) stop()
-    },error=function(e){stop(paste0('.explodeSingleMTOT(): window size must be a positive integer. ',e$message))}
+    },error=function(e){stop(paste0('.explodeSingleMAVE(): window size must be a positive integer. ',e$message))}
     )
   }
   
-  outTS='0' 
+  outTS=outSE$args[1] 
+  tempArg=outTS
+  firstLoc=outSE$firstLoc
+  argsEnd=outSE$argsEnd
   
-  #MTOT(varName[a,],b) -> 0+varName[a,]+varName[a-1,]+...+varName[a-b,]
-  for (idxMA in 1:tsLag)
-    outTS=paste0(outTS,'+',.addToIndexInString(outSE$args[1],1-idxMA)) 
+  #MAVE(varName[a,],b) -> (0+varName[a,]+varName[a-1,]+...+varName[a-b,])/b
+  if (tsLag>1)
+  {
+    outADTS=.addToIndexInString(tempArg,1-2:tsLag)
+      for (idxMA in 1:length(outADTS))
+        outTS=paste0(outTS,'+',outADTS[idxMA]) 
+  }
   
+  ncIS=nchar(inputS)
   
-  outL$output=paste0(ifelse(outSE$firstLoc>1,substr(inputS,1,outSE$firstLoc-1),'')
+  if (firstLoc>1)   header=substr(inputS,1,firstLoc-1)
+  else              header=''
+  
+  if (argsEnd<ncIS-1)   trailer=substr(inputS,argsEnd+2,ncIS)
+  else                  trailer=''
+  
+  outL$output=paste0(header
                      ,'((',
                      outTS,
-                     '))',
-                     ifelse(outSE$argsEnd<nchar(inputS)-1,substr(inputS,outSE$argsEnd+2,nchar(inputS)),'')
-  ) 
+                     ')/',tsLag,')',
+                     trailer)
   
   #store flag if mod has been made
   outL$flag=TRUE 
-  outL$tsLag=tsLag 
+  #outL$tsLag=tsLag 
   
   return(outL)
 }
 
-#explode all MTOT()
-.explodeMTOT  = function (inputS='',...)
+#explode all MAVE()
+.explodeMAVE <- function (inputS='',...)
 {
-  #check args
-  if (is.null(inputS)) stop(paste0('.explodeMTOT(): NULL input string')) 
-  if (! is.character(inputS))
-    stop(paste0('.explodeMTOT(): inputs need to be strings')) 
+  tryCatch({
+    
+    tmpL=.explodeSingleMAVE(inputS) 
+    
+    #while we have more MAVE()
+    while(tmpL$flag)
+    {
+      tmpL=.explodeSingleMAVE(tmpL$output) 
+    }
+  },error=function(e){stop(paste0('.explodeMAVE(): ',e$message))})
   
-  if (''==(inputS)) stop(paste0('.explodeMTOT(): empty input string')) 
-  
+  return(tmpL) 
+}
+
+#transform first MTOT in inputS into exploded expression with related lags
+.explodeSingleMTOT <- function (inputS='',...)
+{
+ 
   #init tmp var
   outL=list()
   outL$output=inputS 
   outL$flag=FALSE 
   
+  outSE=.explodeFunctionCall(inputS,'.MODEL_MTOT') 
+  
+  #no fun call so exit
+  if (length(outSE)==0) return(outL)
+  
+  tsLag=0 
+  
+  #if not specified tslag=1
+  if (outSE$argsCount==1) 
+  {
+    tsLag=1 
+    
+  } else
+  {
+    tryCatch({
+       
+      tsLag=as.integer(outSE$args[2]) 
+      
+      if (! ( is.finite(tsLag) && tsLag %%1 ==0 && tsLag>0)) stop()
+      
+    },error=function(e){stop(paste0('.explodeSingleMTOT(): window size must be a positive integer. ',e$message))}
+    )
+  }
+  
+  outTS=outSE$args[1] 
+  tempArg=outTS
+  firstLoc=outSE$firstLoc
+  argsEnd=outSE$argsEnd
+  
+  #MTOT(varName[a,],b) -> 0+varName[a,]+varName[a-1,]+...+varName[a-b,]
+  if (tsLag>1)
+  {
+    outADTS=.addToIndexInString(tempArg,1-2:tsLag)
+    for (idxMA in 1:length(outADTS))
+      outTS=paste0(outTS,'+',outADTS[idxMA]) 
+  }
+  
+  ncIS=nchar(inputS)
+  
+  if (firstLoc>1) header=substr(inputS,1,firstLoc-1)
+  else header=''
+    
+  if (argsEnd<ncIS-1) trailer=substr(inputS,argsEnd+2,ncIS)
+  else trailer=''
+    
+  outL$output=paste0(header
+                     ,'((',
+                     outTS,
+                     '))',
+                     trailer) 
+  
+  #store flag if mod has been made
+  outL$flag=TRUE 
+  #outL$tsLag=tsLag 
+  
+  return(outL)
+}
+
+#explode all MTOT()
+.explodeMTOT <- function (inputS='',...)
+{ 
   tryCatch({
     
     tmpL=.explodeSingleMTOT(inputS) 
@@ -1078,29 +623,419 @@
     #while we have more MTOT()
     while(tmpL$flag)
     {
-      outL$output=tmpL$output 
-      outL$flag=TRUE 
       tmpL=.explodeSingleMTOT(tmpL$output) 
     }
   },error=function(e){stop(paste0('.explodeMTOT(): ',e$message))})
-  return(outL) 
+  return(tmpL) 
   
 }
 
-#retrieve minimum for all lagged vars
-.getLowerLag = function (inputS='',...)
+#transform first TSLAG in inputS into exploded expression with related lags
+.explodeSingleTSLAG <- function (inputS='',...)
+{
+  #init tmp vars
+  outL=list()
+  outL$output=inputS 
+  outL$flag=FALSE  
+  
+  outSE=.explodeFunctionCall(inputS,'.MODEL_TSLAG') 
+  
+  #no fun call so exit
+  if (length(outSE)==0) return(outL)
+  
+  tsLag=0 
+  
+  #no lag provided so it is 1
+  if (outSE$argsCount==1) 
+  {
+    tsLag=1 
+  } else
+  { #otherwise eval
+    tryCatch({
+      
+      tsLag=as.integer(outSE$args[2])
+      
+      if (! ( is.finite(tsLag) && tsLag %%1 ==0 && tsLag>=0)) stop()
+    },error=function(e){stop(paste0('.explodeSingleTSLAG(): lag value must be a non-negative integer. ',e$message))}
+    )
+  }
+  
+  firstLoc=outSE$firstLoc
+  argsEnd=outSE$argsEnd
+  
+  #replace varName[a,] -> varName[a-lag,]
+  ncIS=nchar(inputS)
+  
+  if (firstLoc>1) header=substr(inputS,1,firstLoc-1)
+  else header=''
+  
+  if (argsEnd<ncIS-1) trailer=substr(inputS,argsEnd+2,ncIS)
+  else trailer=''
+    
+  outL$output=paste0(header
+                     ,'(',
+                     .addToIndexInString(outSE$args[1],-tsLag),
+                     ')',
+                     trailer) 
+  
+  #store flag if mod has been made
+  outL$flag=TRUE 
+  
+  return(outL)
+}
+
+#explode all TSLAG()
+.explodeTSLAG <- function (inputS='',...)
+{ 
+  tryCatch({
+    
+    #explode first TSLAG
+    tmpL=.explodeSingleTSLAG(inputS) 
+    
+    #while exist a TSLAG()...
+    while(tmpL$flag)
+    {
+      tmpL=.explodeSingleTSLAG(tmpL$output) 
+    }
+  },error=function(e){stop(paste0('.explodeTSLAG(): ',e$message))})
+  return(tmpL) 
+  
+}
+
+#transform first TSLEAD in inputS into exploded expression with related lags
+.explodeSingleTSLEAD <- function (inputS='',...)
 {
   
+  #init tmp vars
+  outL=list()
+  outL$output=inputS 
+  outL$flag=FALSE  
   
-  #check args
-  if (is.null(inputS)) stop(paste0('.getLowerLag(): NULL input.')) 
-  if (! is.character(inputS))
-    stop(paste0('.getLowerLag(): input need to be character.')) 
+  outSE=.explodeFunctionCall(inputS,'.MODEL_TSLEAD') 
   
-  if (''==(inputS)) stop(paste0('.getLowerLag(): empty input string.')) 
+  #no fun call so exit
+  if (length(outSE)==0) return(outL)
   
+  tsLead=0 
+  
+  #no lag provided so it is 1
+  if (outSE$argsCount==1) 
+  {
+    tsLead=1 
+  } else
+  { #otherwise eval
+    tryCatch({
+      
+      tsLead=as.integer(outSE$args[2])
+      
+      if (! ( is.finite(tsLead) && tsLead %%1 ==0 && tsLead>=0)) stop()
+    },error=function(e){stop(paste0('.explodeSingleTSLEAD(): lead value must be a non-negative integer. ',e$message))}
+    )
+  }
+  
+  firstLoc=outSE$firstLoc
+  argsEnd=outSE$argsEnd
+  
+  #replace varName[a,] -> varName[a-lag,]
+  ncIS=nchar(inputS)
+  
+  if (firstLoc>1) header=substr(inputS,1,firstLoc-1)
+  else header=''
+  
+  if (argsEnd<ncIS-1) trailer=substr(inputS,argsEnd+2,ncIS)
+  else trailer=''
+  
+  outL$output=paste0(header
+                     ,'(',
+                     .addToIndexInString(outSE$args[1],tsLead),
+                     ')',
+                     trailer) 
+  
+  #store flag if mod has been made
+  outL$flag=TRUE  
+  
+  return(outL)
+}
+
+#explode all TSLEAD()
+.explodeTSLEAD <- function (inputS='',...)
+{ 
+  
+  tryCatch({
+    
+    #explode first TSLEAD
+    tmpL=.explodeSingleTSLEAD(inputS) 
+    
+    #while exist a TSLEAD()...
+    while(tmpL$flag)
+    {
+      tmpL=.explodeSingleTSLEAD(tmpL$output) 
+    }
+  },error=function(e){stop(paste0('.explodeTSLEAD(): ',e$message))})
+  return(tmpL) 
+  
+}
+
+#transform first DELTA in inputS into exploded expression with related lags
+.explodeSingleTSDELTA <- function (inputS='',...)
+{
   #init tmp var
+  outL=list()
+  outL$output=inputS 
+  outL$flag=FALSE 
+  
+  outSE=.explodeFunctionCall(inputS,'.MODEL_TSDELTA') 
+  
+  #no fun call so exit
+  if (length(outSE)==0) return(outL)
+  
+  tsLag=0 
+  
+  #if no specified tslag=1
+  if (outSE$argsCount==1) 
+  {
+    tsLag=1 
+  } else
+  {
+    tryCatch({
+      
+      tsLag=as.integer(outSE$args[2])
+      
+      if (! ( is.finite(tsLag) && tsLag %%1 ==0 && tsLag>0)) stop()
+    },error=function(e){stop(paste0('.explodeSingleTSDELTA(): DELTA value must be a positive integer. ',e$message))}
+    )
+  }
+  
+  tempArg=outSE$args[1] 
+  firstLoc=outSE$firstLoc
+  argsEnd=outSE$argsEnd
+  ncIS=nchar(inputS)
+  
+  if (firstLoc>1) header=substr(inputS,1,firstLoc-1)
+  else header=''
+  
+  if (argsEnd<ncIS-1) trailer=substr(inputS,argsEnd+2,ncIS)
+  else trailer=''
+    
+  #DELTA(varName[a,],b)=((varName[a,])-(varName[a-b,]))
+  outL$output=paste0(header
+                     ,'((',
+                     tempArg,
+                     ')-(',
+                     .addToIndexInString(tempArg,-tsLag),
+                     '))',
+                     trailer) 
+  
+  #store flag if mod has been made
+  outL$flag=TRUE   
+  
+  return(outL)
+}
+
+#explode all DELTA()
+.explodeTSDELTA <- function (inputS='',...)
+{ 
+  tryCatch({
+    
+    tmpL=.explodeSingleTSDELTA(inputS) 
+    
+    #while we have more DELTA()
+    while(tmpL$flag)
+    { 
+      tmpL=.explodeSingleTSDELTA(tmpL$output) 
+    }
+  },error=function(e){stop(paste0('.explodeTSDELTA(): ',e$message))})
+  
+  return(tmpL) 
+  
+}
+
+#transform first DELTALOG in inputS into exploded expression with related lags
+.explodeSingleTSDELTALOG <- function (inputS='',...)
+{
+  #init tmp var
+  outL=list()
+  outL$output=inputS 
+  outL$flag=FALSE 
+  
+  outSE=.explodeFunctionCall(inputS,'.MODEL_TSDELTALOG') 
+  
+  #no fun call so exit
+  if (length(outSE)==0) return(outL)
+  
+  tsLag=0 
+  
+  #if no specified tslag=1
+  if (outSE$argsCount==1) 
+  {
+    tsLag=1 
+  } else
+  {
+    tryCatch({
+       
+      tsLag=as.integer(outSE$args[2])
+      
+      if (! ( is.finite(tsLag) && tsLag %%1 ==0 && tsLag>0)) stop()
+    },error=function(e){stop(paste0('.explodeSingleTSDELTALOG(): DELTALOG value must be a positive integer. ',e$message))}
+    )
+  }
+  
+  tempArg=outSE$args[1] 
+  firstLoc=outSE$firstLoc
+  argsEnd=outSE$argsEnd
+  ncIS=nchar(inputS)
+  
+  if (firstLoc>1) header=substr(inputS,1,firstLoc-1)
+  else header=''
+    
+  if (argsEnd<ncIS-1) trailer=substr(inputS,argsEnd+2,ncIS)
+  else trailer=''
+    
+  #DELTALOG(varName[a,],b)=(log((varName[a,])/(varName[a-b,])))
+  outL$output=paste0(header
+                     ,'(log((',
+                     tempArg,
+                     ')/(',
+                     .addToIndexInString(tempArg,-tsLag),
+                     ')))',
+                     trailer) 
+  
+  #store flag if mod has been made
+  outL$flag=TRUE  
+  
+  return(outL)
+}
+
+#explode all DELTALOG()
+.explodeTSDELTALOG <- function (inputS='',...)
+{ 
+  tryCatch({
+    
+    tmpL=.explodeSingleTSDELTALOG(inputS) 
+    
+    #while we have more DELTALOG()
+    while(tmpL$flag)
+    { 
+      tmpL=.explodeSingleTSDELTALOG(tmpL$output) 
+    }
+  },error=function(e){stop(paste0('.explodeTSDELTALOG(): ',e$message))})
+  
+  return(tmpL) 
+  
+}
+
+#transform first DELTAP in inputS into exploded expression with related lags
+.explodeSingleTSDELTAP <- function (inputS='',...)
+{
+  #init tmp var
+  outL=list()
+  outL$output=inputS 
+  outL$flag=FALSE  
+  
+  outSE=.explodeFunctionCall(inputS,'.MODEL_TSDELTAP') 
+  
+  #no fun call so exit
+  if (length(outSE)==0) return(outL)
+  
+  tsLag=0 
+  
+  #if no specified lag=1
+  if (outSE$argsCount==1) 
+  {
+    tsLag=1 
+  } else
+  {
+    tryCatch({
+       
+      tsLag=as.integer(outSE$args[2])
+      
+      if (! ( is.finite(tsLag) && tsLag %%1 ==0 && tsLag>0)) stop()
+    },error=function(e){stop(paste0('.explodeSingleTSDELTAP(): DELTAP value must be a positive integer. ',e$message))}
+    )
+  }
+  
+  tempArg=outSE$args[1] 
+  firstLoc=outSE$firstLoc
+  argsEnd=outSE$argsEnd
+  ncIS=nchar(inputS)
+  tempLagged=.addToIndexInString(tempArg,-tsLag)
+  
+  if (firstLoc>1) header=substr(inputS,1,firstLoc-1)
+  else header=''
+    
+  if (argsEnd<ncIS-1) trailer=substr(inputS,argsEnd+2,ncIS)
+  else trailer=''
+    
+  #DELTAP(varName[a,],b)=(100*((varName[a,])-(varName[a-b,]))/(varName[a-b,]))
+  outL$output=paste0(header
+                     ,'(100*((',
+                     tempArg,
+                     ')-(',
+                     tempLagged,
+                     '))/(',tempLagged,'))',
+                     trailer
+  ) 
+  
+  #store flag if mod has been made
+  outL$flag=TRUE  
+  
+  return(outL)
+}
+
+#explode all DELTAP()
+.explodeTSDELTAP <- function (inputS='',...)
+{ 
+  tryCatch({
+    
+    tmpL=.explodeSingleTSDELTAP(inputS) 
+    
+    #while we have more DELTAP()
+    while(tmpL$flag)
+    { 
+      tmpL=.explodeSingleTSDELTAP(tmpL$output) 
+    }
+  },error=function(e){stop(paste0('.explodeTSDELTAP(): ',e$message))})
+  
+  return(tmpL) 
+  
+}
+
+#extract function names from string
+.extractFunsNames <- function(inputS=NULL)
+{
+  if (is.null(inputS)) return(character(0))
+  
+  out=regmatches(inputS,gregexpr('(\\w+)\\(',inputS))
+  out=gsub('\\(','',out[[1]])
+  return(out)
+}
+
+#return vName[x,] in inputS that has x==baseIndex
+#baseIndex default to 0, i.e. y[0,]=...
+.getIncidenceVendogs <- function (currentVendog,inputS='',vName=c(),baseIndex=0,...)
+{
+  if (length(vName)==0) return(NULL) 
+ 
+  #remove "currentVendog=[indexN,]" and ".MODEL_VIF(currentVendog[indexN,]"
+  #\\b is required to match whole word, e.g. abc != abc_def
+  inputS=gsub(paste0('\\b(',currentVendog,')\\b\\[\\s*',baseIndex,'\\s*,\\s*\\]\\s*\\='),'',inputS) 
+  inputS=gsub(paste0('.MODEL_VIF\\(\\s*',currentVendog,'\\[\\s*',baseIndex,'\\s*,\\s*\\]\\s*\\,'),'\\(',inputS) 
+   
+  trailer=paste0('\\[',baseIndex,',')
+  outC=regmatches(inputS,gregexpr(paste0('(\\w+)',trailer),inputS))
+  outC=gsub(trailer,'',outC[[1]])
+  outC=outC[outC %in% vName]
+  
+  return(outC)
+  
+}
+
+#retrieve minimum lag / maximium lead for all lagged/leaded vars
+.getLowerLagAndHigherLead <- function (inputS='',...)
+{ 
   outL=+Inf 
+  outH=-Inf 
+  
   openIdxs=c()
   closeIdxs=c() 
   
@@ -1119,94 +1054,137 @@
     {
       closeIdxs=c(closeIdxs,idxS) 
     }
-    
   }
   
-  #counts check
-  if (length(openIdxs) != length(closeIdxs))
-    stop(paste0('.getLowerLag(): syntax error on indices')) 
-  
-  #no indexes so exit
   if (length(openIdxs) ==0) return(0) 
-  
-  #empty argument
-  if (min(closeIdxs-openIdxs)<2)
-    stop(paste0('.getLowerLag(): syntax error on indices')) 
-  
-  #no interescting [ [ ] .. [ ] ]
-  if (max(+c(-Inf,closeIdxs)-c(openIdxs,Inf))>=-1)
-    stop(paste0('.getLowerLag(): syntax error on indices')) 
-  
+   
   tryCatch(
     {
-      #clicle in indexes
+      #cycle in indexes
       for (idxI in 1:length(openIdxs))
       {
         #get index as string
         tmpS=substr(inputS,openIdxs[idxI]+1,closeIdxs[idxI]-1) 
         tmpS=strsplit(tmpS,',')[[1]][1]
         
-        
-        #get index as numric
-        currentI=eval(parse(text=tmpS)) 
+        #get index as numeric 
+        currentI=as.integer(tmpS)
         
         if (! is.finite(currentI)) stop() 
         
         #get minimum
         outL=min(outL,currentI) 
         
+        #get maximum
+        outH=max(outH,currentI) 
+        
       }},
     error=function(e)
-    {stop(paste0('.getLowerLag(): cannot evaluate index "',tmpS,'"'))}
+    {stop(paste0('.getLowerLagAndHigherLead(): cannot evaluate index "',tmpS,'"'))}
     
   )
   
-  return(outL)
+  out=list()
+  
+  out$outL=outL
+  out$outH=outH
+  
+  return(out)
   
 }
 
-#return vName[a,] in inputS that has a==indexN
-.getIncidenceVendogs = function (inputS='',vName=c(),indexN='0',...)
-{
-  #check args
-  if (is.null(inputS)) stop(paste0('.getIncidenceVendogs(): NULL input string')) 
-  if (is.null(vName)) stop(paste0('.getIncidenceVendogs(): NULL variables name')) 
-  if (is.null(indexN)) stop(paste0('.getIncidenceVendogs(): NULL index name')) 
+#lead a simulation expression eqSimText by 1:(simSteps-1) period starting from base value 
+#and transform leaded references, e.g. var[i,] -> to var__LEAD__j[0,], i>simSteps, j <- i-simSteps
+.leadEqSim <- function(currentVendog,eqSimText,baseValue,simSteps)
+{ 
+  outSimList=list()
+ 
+  tempATIS=.addToIndexInString(eqSimText,1:(simSteps-1), TRUE, baseValue)
   
-  if ((! is.character(inputS)) 
-      || (! is.character(vName))
-      || (! is.character(indexN))
-  )
-    stop(paste0('.getIncidenceVendogs(): inputs need to be strings')) 
+  outS=paste0(currentVendog,'__LEAD__')
   
-  #init tmp var
-  outC=c() 
-  
-  if (length(vName)==0) return(outC) 
-  
-  if (''==(inputS)) stop(paste0('.getIncidenceVendogs(): empty input string')) 
-  if (0==any(nchar(vName))) stop(paste0('.getIncidenceVendogs(): there is an empty variable name')) 
-  if (''==(indexN)) stop(paste0('.getIncidenceVendogs(): empty index name')) 
-  
-  
-  
-  #cycle in vNames
-  if (length(vName)>0) for (idxV in 1:length(vName))
-  {
-    
-    #find "vName[idxV][indexN,]" NO MORE excluding LHS and .MODEL_VIF(vName)[indexN,],
-    if (grepl(paste0('\\b',vName[idxV],'\\[\\s*',indexN,'\\s*,\\s*\\]'),inputS))
-    {
-      outC=c(outC,vName[idxV])
-    }
+  for (idxSS in 1:length(tempATIS))
+  { 
+    outSimList[[paste0(outS,idxSS)]]=tempATIS[idxSS]
   }
   
-  return(outC)
+  return(outSimList)
+}
+
+#convert funs names in model
+.MODEL_MOD_FUNC_NAMES <- function(inputS=NULL)
+{
+    inputS=gsub('TSLEAD\\(','LEAD(',inputS,ignore.case=TRUE) 
+    inputS=gsub('LEAD\\(','.MODEL_TSLEAD(',inputS,ignore.case=TRUE) 
+    inputS=gsub('TSLAG\\(','LAG(',inputS,ignore.case=TRUE) 
+    inputS=gsub('LAG\\(','.MODEL_TSLAG(',inputS,ignore.case=TRUE) 
+    inputS=gsub('TSDELTA\\(','.MODEL_TSDELTA(',inputS,ignore.case=TRUE) 
+    inputS=gsub('DEL\\(','.MODEL_TSDELTA(',inputS,ignore.case=TRUE) 
+    inputS=gsub('LOG\\(','log(',inputS,ignore.case=TRUE) 
+    inputS=gsub('EXP\\(','exp(',inputS,ignore.case=TRUE) 
+    inputS=gsub('ABS\\(','abs(',inputS,ignore.case=TRUE) 
+    inputS=gsub('MOVAVG\\(','MAVE(',inputS,ignore.case=TRUE) 
+    inputS=gsub('MAVE\\(','.MODEL_MAVE(',inputS,ignore.case=TRUE) 
+    inputS=gsub('MOVSUM\\(','MTOT(',inputS,ignore.case=TRUE) 
+    inputS=gsub('MTOT\\(','.MODEL_MTOT(',inputS,ignore.case=TRUE) 
+    inputS=gsub('TSDELTAP\\(','.MODEL_TSDELTAP(',inputS,ignore.case=TRUE) 
+    inputS=gsub('TSDELTALOG\\(','.MODEL_TSDELTALOG(',inputS,ignore.case=TRUE) 
   
+  return(inputS) 
+}
+
+#wrapper for base::cat
+.MODEL_outputText <- function(...,sep=' ',outputText=TRUE)
+{
+  if (outputText) cat(...,sep=sep) 
+  return(NULL) 
+}
+
+#used in Estimate
+.MODEL_MAVE <- function(x=NULL,L=1)
+{
+  return(MAVE(x=x, L=L, avoidCompliance=TRUE))  
+}
+
+#used in Estimate
+.MODEL_MTOT <- function(x=NULL,L=1)
+{
+  return(MTOT(x=x, L=L, avoidCompliance=TRUE))  
+}
+
+#used in Estimate
+.MODEL_TSDELTA <- function(x=NULL,L=1)
+{
+  return(TSDELTA(x=x, L=L, avoidCompliance=TRUE)) 
+}
+
+#used in Estimate
+.MODEL_TSDELTALOG <- function(x=NULL,L=1)
+{
+  return(TSDELTALOG(x=x, L=L, avoidCompliance=TRUE)) 
+}
+
+#used in Estimate
+.MODEL_TSDELTAP <- function(x=NULL,L=1)
+{
+  return(TSDELTAP(x=x, L=L, avoidCompliance=TRUE)) 
+}
+
+#used in Estimate
+.MODEL_TSLAG <- function(ts,lag=1)
+{ 
+  return(TSLAG(ts, lag, avoidCompliance=TRUE, verbose=FALSE)) 
+}
+
+#used in Estimate
+.MODEL_TSLEAD <- function(ts,lead=1)
+{ 
+  return(TSLEAD(ts, lead, avoidCompliance=TRUE, verbose=FALSE)) 
 }
 
 #evaluate IF> condition in simulation of identities
-.MODEL_VIF <- function(vendog, index_which=T, values)
+#e.g. vendog <- 4 if vexog>0 ==> vendog <- MODEL_VIF(vendog,vexog>0,4)
+.MODEL_VIF <- function(vendog,index_which=TRUE,values)
 {
   
   if (! all(is.finite(index_which))) stop('Uncomputable IF condition.')
@@ -1230,195 +1208,792 @@
     tmpV[tmpI]=values 
   }
   
-  
   return(tmpV)
 }
 
-#limit TSLAG to positive lags
-#used in Estimate
-.MODEL_TSLAG <- function(ts,lag=1)
+.parseLhsEQ <- function (inputS='',allowedLhsEQfuns=NULL,...)
 {
+  outL=list() 
   
-  #check lag arg
-  if (
-    is.null(lag) ||
-    ! is.finite(lag) ||
-    lag<0
-  )
+  #cycle in available lhs funs
+  for (funName in allowedLhsEQfuns)
   {
-    stop(".MODEL_TSLAG(): please provide a positive lag.") 
-  } 
-  
-  return(TSLAG(ts, lag, avoidCompliance=TRUE)) 
-  
-}
-
-#used in Estimate
-.MODEL_TSDELTA <- function(x=NULL,L=1)
-{
-  return(TSDELTA(x=x, L=L, avoidCompliance=TRUE)) 
-}
-
-#used in Estimate
-.MODEL_TSDELTALOG <- function(x=NULL,L=1)
-{
-  return(TSDELTALOG(x=x, L=L, avoidCompliance=TRUE)) 
-}
-
-#used in Estimate
-.MODEL_TSDELTAP <- function(x=NULL,L=1)
-{
-  return(TSDELTAP(x=x, L=L, avoidCompliance=TRUE)) 
-}
-
-#used in Estimate
-.MODEL_MAVE <- function(x=NULL, L = 1)
-{
-  return(MAVE(x=x, L = L, avoidCompliance=TRUE))  
-}
-
-#used in Estimate
-.MODEL_MTOT <- function(x=NULL, L = 1)
-{
-  return(MTOT(x=x, L = L, avoidCompliance=TRUE))  
-}
-
-#convert funs names in model
-.MODEL_MOD_FUNC_NAMES <- function(inputS=NULL)
-{
-  #reservedKeyw=c('LOG','LAG','MAVE','EXP','DEL','ABS','MTOT') 
-  
-  outF=inputS 
-  
-  if (is.character(inputS))
-  {
-    outF=gsub('TSLAG\\(','LAG(',outF,ignore.case=TRUE) 
-    outF=gsub('LAG\\(','.MODEL_TSLAG(',outF,ignore.case=TRUE) 
-    outF=gsub('TSDELTA\\(','.MODEL_TSDELTA(',outF,ignore.case=TRUE) 
-    outF=gsub('DEL\\(','.MODEL_TSDELTA(',outF,ignore.case=TRUE) 
-    outF=gsub('LOG\\(','log(',outF,ignore.case=TRUE) 
-    outF=gsub('EXP\\(','exp(',outF,ignore.case=TRUE) 
-    outF=gsub('ABS\\(','abs(',outF,ignore.case=TRUE) 
-    outF=gsub('MOVAVG\\(','MAVE(',outF,ignore.case=TRUE) 
-    outF=gsub('MAVE\\(','.MODEL_MAVE(',outF,ignore.case=TRUE) 
-    outF=gsub('MOVSUM\\(','MTOT(',outF,ignore.case=TRUE) 
-    outF=gsub('MTOT\\(','.MODEL_MTOT(',outF,ignore.case=TRUE) 
-    outF=gsub('TSDELTAP\\(','.MODEL_TSDELTAP(',outF,ignore.case=TRUE) 
-    outF=gsub('TSDELTALOG\\(','.MODEL_TSDELTALOG(',outF,ignore.case=TRUE) 
+    #search current fun name in input expression
+    tmpList=.explodeFunctionCall(inputS,funName)
     
+    #we return first match
+    if (length(tmpList)>0 && tmpList$firstLoc==1)
+    {
+      outL=tmpList 
+      outL$funName=funName 
+      outL$raw=inputS 
+      
+      return(outL) 
+    }
   }
   
-  return(outF) 
+  #no lhs fun found so return identity
+  outL$funName='I' 
+  outL$args=inputS 
+  outL$raw=inputS 
+  
+  return(outL) 
 }
 
-#used in PDL
-.bm_tartaglia_pdl <- function(degree=1)
+#print verbose stuff during simulation
+#do not use this fun outside main simulation cycle
+.printVerboseSim <- function(phase=NULL,
+                            ConstantAdjustment,
+                            verboseVars,
+                            frequency,
+                            TSRANGE,
+                            simSteps,
+                            simIterLoopIdx,
+                            idxB,
+                            idxIter,
+                            model_max_lag_1,
+                            length_model_vexog,
+                            model_vendog,
+                            model_vexog,
+                            replica,
+                            localE,
+                            model_vpre,
+                            model_vsim,
+                            model_vpost,
+                            hasLeads)
 {
-  if (is.null(degree) 
-      || (!is.numeric(degree))
-      || (! degree >-1)
-      || (! ((degree %% 1) ==0))      
-  ) stop('.bm_tartaglia_pdl(): degree must be a positive integer.') 
-  
-  if (degree==0) 
-  {
-    return(c(1,-1))
-  } else 
-  {
-    levelUpResult=.bm_tartaglia_pdl(degree-1)     
-    outF=levelUpResult[1] 
+  verboseVarsAugmented=verboseVars
+  model_vendog_augmented=model_vendog
+  model_vexog_augmented=model_vexog
     
-    for (idx in 1:(length(levelUpResult)-1))
+  if (hasLeads && simSteps>1)
+  {
+    for (idx in 1:(simSteps-1))
     {
-      outF=c(outF,abs(levelUpResult[idx])+abs(levelUpResult[idx+1]))
+      verboseVarsAugmented=c(verboseVarsAugmented,paste0(verboseVars,'__LEAD__',idx))
+      model_vexog_augmented=c(model_vexog_augmented,paste0(model_vexog,'__LEAD__',idx))
+      model_vendog_augmented=c(model_vendog_augmented,paste0(model_vendog,'__LEAD__',idx))
+    }
+  }
+  
+  if (phase=='VPRE')
+  {
+    if(length(model_vpre)==0) return()
+    verboseVarsEndoActive=verboseVarsAugmented[verboseVarsAugmented %in% model_vpre]
+    
+  } else if (phase=='VSIM')
+  {
+    if(length(model_vsim[[idxB]])==0) return()
+    verboseVarsEndoActive=verboseVarsAugmented[verboseVarsAugmented %in% model_vsim[[idxB]]]
+    
+  } else if (phase=='VPOST')
+  {
+    if(length(model_vpost[[idxB]])==0) return()
+    verboseVarsEndoActive=verboseVarsAugmented[verboseVarsAugmented %in% model_vpost[[idxB]]]
+    
+  } else if (phase=='ERROR')
+  {
+    verboseVarsEndoActive=verboseVarsAugmented[verboseVarsAugmented %in% model_vendog_augmented]
+    
+  } else if (phase=='RESCHECK')
+  {
+    verboseVarsEndoActive=verboseVarsAugmented[verboseVarsAugmented %in% model_vendog_augmented]
+    
+  }  else return()
+  
+  verboseVarsExog=verboseVarsAugmented[verboseVarsAugmented %in% model_vexog_augmented]
+  
+  if (length(verboseVarsEndoActive)==0  && length(verboseVarsExog)==0)
+    return()
+  
+    if (phase=='VPRE')
+    {
+      model_vars_adj=model_vpre
+    } else if (phase=='VSIM')
+    {
+      model_vars_adj=model_vsim[[idxB]]
+    } else if (phase=='VPOST')
+    {
+      model_vars_adj=model_vpost[[idxB]]
+    } else if (phase=='ERROR')
+    {
+      model_vars_adj=NULL
+    } else if (phase=='RESCHECK')
+    {
+      model_vars_adj=NULL
+    }  else return()
+   
+    if (hasLeads && simSteps>1  && length(model_vars_adj)>0)
+    {
+      for (idx in 1:length(model_vars_adj))
+      {
+        tmpSS=strsplit(model_vars_adj[idx],'__LEAD__')[[1]]
+        tmpLHF=tmpSS[1]
+        tmpRHS=ifelse(length(tmpSS)>1,as.integer(tmpSS[2]),0)
+        
+        model_vars_adj[idx]=paste0(tmpLHF,
+                                   ' (',
+                                   paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+tmpRHS),f=frequency),collapse='-'),
+                                   ')')
+      }
     }
     
-    outF=c(outF,1) 
-    
-    for (idx in 1:length(outF))
+    if (phase=='VPRE')
     {
-      if (idx %% 2 ==0) outF[idx]=-outF[idx] 
-    } 
-    
-    return(outF) 
-  }
-}
-
-
-.MODEL_outputText <- function(...,sep=' ', outputText=TRUE)
-{
-  if (outputText) cat(...,sep=sep) 
-  return(NULL) 
-}
-
-
-.checkExpression <- function(inputS)
-{
-  if (is.null(inputS)) return(FALSE)
-  if (! is.character(inputS)) return(FALSE)
-  if (nchar(inputS)==0) return(FALSE)
-  
-  flagX=TRUE 
-  tryCatch({parse(text = inputS);flagX=FALSE;},error=function(e){})
-  if (flagX) return(FALSE) 
-  
-  return(TRUE)
-}
-
-.checkExpressionIsAtomic <- function(inputS=NULL,...)
-{
-  
-  if (is.null(inputS)) return(FALSE)
-  if (! is.character(inputS)) return(FALSE)
-  if (nchar(inputS)==0) return(FALSE)
-  
-  #operators to be checked for atomicity
-  dualOperators=c('\\+','\\-','<','>','<=','>=','!=','==','&','&&','\\|','\\|\\|') 
-  DOcollapse=paste0('(',paste(dualOperators,collapse = '|'),')') 
-  
-  #check start
-  if (grepl(paste0('^',DOcollapse),inputS)) return(FALSE)
-  
-  #check end
-  if (grepl(paste0(DOcollapse,'$'),inputS)) return(FALSE)
-  
-  #check parentheses
-  inputSnc=nchar(inputS)
-  parCountArray=rep(0,inputSnc)
-  
-  #each "(" is +1 each ")" is -1
-  tmpCounter=0 
-  for (idx in 1:inputSnc)
+      cat('\nVPRE. Vars: ',paste0(model_vars_adj,collapse=', '),'\n') 
+    } else if (phase=='VSIM')
+    {
+      cat(paste0('\nVSIM, block ',idxB,', iteration ',idxIter,'. Vars: ',
+                 paste0(model_vars_adj,collapse=', '),'\n'))
+    } else if (phase=='VPOST')
+    {
+      cat(paste0('\nVPOST, block ',idxB,', iteration ',idxIter,'. Vars: ',
+                 paste0(model_vars_adj,collapse=', '),'\n'))
+    } else if (phase=='ERROR')
+    {
+      cat('\nERROR SNAPSHOT:\n')
+    } else if (phase=='RESCHECK')
+    {
+      cat('\nRESCHECK SNAPSHOT:\n')
+    } else return()
+ 
+  doubleFormat="%20.11g"
+   
+  simPeriods=1
+  maxReplicas=3
+  printedReplicas=min(replica,maxReplicas)
+   
+  if (length(ConstantAdjustment)>0 )
   {
-    if (substring(inputS,idx,idx)=="(") tmpCounter=tmpCounter+1
-    if (substring(inputS,idx,idx)==")") tmpCounter=tmpCounter-1
+    namesCAaugmented=names(ConstantAdjustment)
+    if (hasLeads && simSteps>1)
+      for (idx in 1:(simSteps-1))
+        namesCAaugmented=c(namesCAaugmented,paste0(names(ConstantAdjustment),'__LEAD__',idx))
     
-    #too much )
-    if (tmpCounter<0) return(FALSE)
+    verboseVarsEndoActiveCA=verboseVarsEndoActive[verboseVarsEndoActive %in% namesCAaugmented]
     
-    parCountArray[idx]=tmpCounter 
+    if (length(verboseVarsEndoActiveCA)>0)
+    {
+      cat('\tCONSTANT ADJUSTMENTS:\n') 
+      for (tmpVA in verboseVarsEndoActiveCA) 
+      {  
+          tmpV=tmpVA
+          tmpSI=0
+          if (grepl('__LEAD__',tmpVA))
+          {
+            tmpSS=strsplit(tmpVA,'__LEAD__')[[1]]
+            tmpV=tmpSS[1]
+            tmpSI=as.integer(tmpSS[2])
+          }
+          cat(paste0(
+            '\tPrd. ',
+            sprintf("%4i",simIterLoopIdx+tmpSI),', ',
+            paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx+tmpSI-1),f=frequency),collapse='-'),', ',
+            'iter. ',
+            sprintf("%4i",idxIter),' ',
+            sprintf("%17s CA",tmpV),' ='))
+          
+          for (idxR in 1:printedReplicas)
+            cat(sprintf(doubleFormat,localE[[paste0(tmpV,'__ADDFACTOR',ifelse(tmpSI>0,paste0('__LEAD__',tmpSI),''))]][  model_max_lag_1,idxR])) 
+        
+         if (replica>maxReplicas) cat('\t(trunc)')
+          cat('\n') 
+        }
+    }
+  }
+ 
+  if (length(verboseVarsExog)>0)
+  {
+    cat('\tVEXOGS:\n') 
+    for (tmpVA in verboseVarsExog)
+    {  
+      tmpV=tmpVA
+      tmpSI=0
+      if (grepl('__LEAD__',tmpVA))
+      {
+        tmpSS=strsplit(tmpVA,'__LEAD__')[[1]]
+        tmpV=tmpSS[1]
+        tmpSI=as.integer(tmpSS[2])
+      }
+      
+      cat(paste0(
+        '\tPrd. ',
+        sprintf("%4i",simIterLoopIdx+tmpSI),', ',
+        paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx+tmpSI-1),f=frequency),collapse='-'),', ',
+        'iter. ',
+        sprintf("%4i",idxIter),' ',
+        sprintf("%20s",tmpV),' ='))
+      
+      for (idxR in 1:printedReplicas)
+        cat(sprintf(doubleFormat,localE[[paste0(tmpV,ifelse(tmpSI>0,paste0('__LEAD__',tmpSI),''))]][  model_max_lag_1,idxR])) 
+    
+      if (replica>maxReplicas) cat('\t(trunc)')
+      cat('\n') 
+    }
   }
   
-  #too much (
-  if (tmpCounter>0) return(FALSE)
-  
-  #get position of operators
-  DOpos=as.numeric(gregexpr(DOcollapse,inputS)[[1]])
-  
-  #operators cannot be out of parentheses
-  if (any(DOpos >0) && any(parCountArray[DOpos]==0)) return(FALSE)
-  
-  #check expression 
-  
-  if (! .checkExpression(inputS)) return(FALSE)
-  
-  return(TRUE)
+  if (length(verboseVarsEndoActive)>0)
+  {
+    cat('\tVENDOGS:\n') 
+    for (tmpVA in verboseVarsEndoActive) 
+    { 
+      tmpV=tmpVA
+      tmpSI=0
+      if (grepl('__LEAD__',tmpVA))
+      {
+        tmpSS=strsplit(tmpVA,'__LEAD__')[[1]]
+        tmpV=tmpSS[1]
+        tmpSI=as.integer(tmpSS[2])
+      }
+      cat(paste0(
+        '\tPrd. ',
+        sprintf("%4i",simIterLoopIdx+tmpSI),', ',
+        paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx+tmpSI-1),f=frequency),collapse='-'),', ',
+        'iter. ',
+        sprintf("%4i",idxIter),' ',
+        sprintf("%20s",tmpV),' ='))
+      
+      for (idxR in 1:printedReplicas)
+        cat(sprintf(doubleFormat,localE[[paste0(tmpV,ifelse(tmpSI>0,paste0('__LEAD__',tmpSI),''))]][  model_max_lag_1,idxR]))
+    
+      if (replica>maxReplicas) cat('\t(trunc)')
+      cat('\n') 
+    }
+  }
 }
 
+#export main RexEx definitions
+.RegExGlobalDefinition <- function()
+{
+  #symbols/funcs allowed on EQ
+  reservedKeyw=c('LOG','TSLAG','LAG','TSLEAD','LEAD','MOVAVG','MAVE','EXP','TSDELTA','DEL','ABS','MOVSUM','MTOT','TSDELTAP','TSDELTALOG') 
+  
+  #list of availables lhs funs
+  allowedLhsEQfuns=c('LOG','EXP','TSDELTA','DEL','TSDELTAP','TSDELTALOG') 
+  allowedLhsEQfunsPub=c('LOG','EXP','TSDELTA','TSDELTAP','TSDELTALOG') 
+  
+  #what to remove from equations in order to obtains symbol names
+  #symOnEqCleaner='(\\+|\\-|\\(|\\)|\\*|\\/|\\,|\\=|LOG\\(|LAG\\(|MAVE\\(|EXP\\(|DEL\\(|ABS\\()' 
+  symOnEqCleaner=paste0('(\\+|\\-|\\(|\\)|\\*|\\/|\\,|\\^|\\=|<|>|\\.GE\\.|\\.LE\\.|\\.GT\\.|\\.LT\\.|\\.EQ\\.',paste(paste0('|',reservedKeyw,'\\('),collapse=''),')') 
+  symOnIfCleaner=paste0('(\\&|\\||\\+|\\-|\\(|\\)|\\*|\\/|\\,|\\^|\\=|<|>|\\.GE\\.|\\.LE\\.|\\.GT\\.|\\.LT\\.|\\.EQ\\.',paste(paste0('|',reservedKeyw,'\\('),collapse=''),')') 
+  
+  #regex allowed on symbol names
+  allowedCharOnNameToken='[a-zA-Z_]+[a-zA-Z0-9_]*' 
+  allowedCharOnName=paste0('^',allowedCharOnNameToken,'$') 
+  
+  #regex allowed on numbers (we use only 'strongCharsOnNumbs')
+  charsOnNumbs='([0-9]+[\\.]?|[\\.]?[0-9]+|[0-9]+\\.[0-9]+|pi)' 
+  charsOnNumWithSign=paste0('(\\+|-)?',charsOnNumbs) 
+  strongCharOnNumbs=paste0('^',charsOnNumbs,'$') 
+  strongCharOnNumbsWithSign=paste0('^',charsOnNumWithSign,'$') 
+  
+  return(list(reservedKeyw=reservedKeyw,
+              symOnEqCleaner=symOnEqCleaner,
+              symOnIfCleaner=symOnIfCleaner,
+              allowedCharOnName=allowedCharOnName,
+              allowedCharOnNameToken=allowedCharOnNameToken,
+              charsOnNumbs=charsOnNumbs,
+              charsOnNumWithSign=charsOnNumWithSign,
+              strongCharOnNumbs=strongCharOnNumbs,
+              strongCharOnNumbsWithSign=strongCharOnNumbsWithSign,
+              allowedLhsEQfuns=allowedLhsEQfuns,
+              allowedLhsEQfunsPub=allowedLhsEQfunsPub))
+}
 
+#reorder equation evaluation sequence based on incidence matrix
+.reorderEquations <- function(incidence_matrix)
+{
+  if (is.null(incidence_matrix))
+    return(list(
+      vsim=NULL,
+      vfeed=NULL
+    ))
+ 
+  #we need original incidence_matrix later...
+  temp_incidence_matrix=incidence_matrix 
+  
+  #get VFEED endogenous
+  VFEED=c() 
+  
+  if (dim(temp_incidence_matrix)[1]>0) while(1) {
+    
+    flag=1
+    while(flag)
+    {
+      flag=0
+      
+      #RULE #2c 
+      temp_vendog=colSums(temp_incidence_matrix)
+      which_temp_vendog=(temp_vendog==0)
+      
+      if (any(which_temp_vendog))
+      {
+        temp_incidence_matrix=temp_incidence_matrix[! which_temp_vendog,! which_temp_vendog, drop=F]
+        
+        if (dim(temp_incidence_matrix)[1]==0) break
+        
+        flag=1
+      }
+      
+      #RULE #2r 
+      temp_vendog=rowSums(temp_incidence_matrix)
+      which_temp_vendog=(temp_vendog==0)
+      
+      if (any(which_temp_vendog))
+      {
+        temp_incidence_matrix=temp_incidence_matrix[! which_temp_vendog,! which_temp_vendog, drop=F]
+        
+        if (dim(temp_incidence_matrix)[1]==0) break
+        flag=1
+      }
+      
+      #RULE #3 
+      #if sum column is 1 merge and remove it
+      temp_vendog=colSums(temp_incidence_matrix)
+      which_temp_vendog=which(temp_vendog==1)
+      if (length(which_temp_vendog)>0)
+      {
+        for (idx in which_temp_vendog)
+        {
+          dest_row=which(temp_incidence_matrix[,idx]==1)
+          temp_incidence_matrix[dest_row,which(temp_incidence_matrix[idx,]==1)]=1
+        }
+        
+        for (idx in which_temp_vendog)
+          if (T && temp_incidence_matrix[idx,idx]==1 )
+          {
+            VFEED=c(VFEED,rownames(temp_incidence_matrix)[idx])
+          }
+        
+        temp_incidence_matrix=temp_incidence_matrix[-which_temp_vendog,-which_temp_vendog, drop=F]
+        
+        if (dim(temp_incidence_matrix)[1]==0) break
+        flag=1
+      }
+      #if sum rows is 1 merge and remove it
+      temp_vendog=rowSums(temp_incidence_matrix)
+      which_temp_vendog=which(temp_vendog==1)
+      if (length(which_temp_vendog)>0)
+      {
+        for (idx in which_temp_vendog)
+        {
+          dest_col=which(temp_incidence_matrix[idx,]==1)
+          temp_incidence_matrix[which(temp_incidence_matrix[,idx]==1),dest_col]=1
+        }
+        
+        for (idx in which_temp_vendog)
+          if (temp_incidence_matrix[idx,idx]==1 )
+          {            VFEED=c(VFEED,rownames(temp_incidence_matrix)[idx])
+            
+          }
+        
+        temp_incidence_matrix=temp_incidence_matrix[-which_temp_vendog,-which_temp_vendog, drop=F]
+        
+        if (dim(temp_incidence_matrix)[1]==0) break
+        flag=1
+      }
+      
+      #RULE #1
+      rule1_active=c()
+      
+      for (idx in 1:dim(temp_incidence_matrix)[1])
+        if (temp_incidence_matrix[idx,idx]==1)
+          rule1_active=c(idx,rule1_active)
+      
+      if (length(rule1_active)>0)
+      {
+        VFEED=c(VFEED,rownames(temp_incidence_matrix)[rule1_active])
+        temp_incidence_matrix=temp_incidence_matrix[-rule1_active,-rule1_active, drop=F]
+        
+        if (dim(temp_incidence_matrix)[1]==0) break
+        flag=1
+      }
+      
+    }#end flag
+    
+    #break if incidence matrix is empty
+    if (dim(temp_incidence_matrix)[1]==0) break
+    
+    #RULE #4
+    #remove most populated (#1 in rows * (times) #1 in cols)
+    temp_rowSums_vendog=rowSums(temp_incidence_matrix)
+    temp_colSums_vendog=colSums(temp_incidence_matrix)
+    
+    which_max_temp=which.max(temp_rowSums_vendog*temp_colSums_vendog)
+    VFEED=c(VFEED,rownames(temp_incidence_matrix)[which_max_temp])
+    
+    temp_incidence_matrix=temp_incidence_matrix[-which_max_temp,-which_max_temp, drop=F]
+    
+    if (dim(temp_incidence_matrix)[1]==0) break
+    
+  }
+  
+  #separate VFEED from VSIM, and order VSIM
+  VSIM=c()
+  temp_incidence_matrix=incidence_matrix
+  
+  which_inactive_vendog_index=which(rownames(temp_incidence_matrix) %in% VFEED)
+  
+  temp_incidence_matrix=temp_incidence_matrix[-which_inactive_vendog_index,-which_inactive_vendog_index, drop=F]
+  
+  if (dim(temp_incidence_matrix)[1]>0) while(1){
+    if (dim(temp_incidence_matrix)[1]==0) break
+    
+    temp_vendog=rowSums(temp_incidence_matrix)
+    which_temp_vendog=(temp_vendog==0)
+    
+    if (any(which_temp_vendog))
+    {
+      VSIM=c(VSIM,rownames(temp_incidence_matrix)[which_temp_vendog]) 
+      
+      temp_incidence_matrix=temp_incidence_matrix[! which_temp_vendog,! which_temp_vendog, drop=F]
+      
+      if (dim(temp_incidence_matrix)[1]==0) break
+    } else {
+      stop(paste0('LOAD_MODEL(): cannot reduce incidence matrix.'))
+    }
+  }
+  
+  #append VFEED to VSIM
+  VSIM=c(VSIM,VFEED) 
+  
+  return(list(
+    vsim=VSIM, 
+    vfeed=VFEED
+  ))
+}
 
+#Tarjan support funs
+#see Tarjan's strongly connected components algorithm
+.TarjanBlocksExtraction <- function(incidence_matrix)
+{
+  #local supporting environment
+  localT=new.env()
+  
+  #copy incidence matrix into envornment
+  localT$incidence_matrix=incidence_matrix
+  nvar=dim(incidence_matrix)[1]
+  
+  localT$stack=c() 
+  localT$lists=list()
+  
+  #refs:
+  #tarjanMatrix[v,1] == v.index
+  #tarjanMatrix[v,2] == v.lowlink
+  #tarjanMatrix[v,3] == v.onStack
+  localT$tarjanMatrix=matrix(0,nrow=nvar,ncol=3)
+  localT$tarjanMatrix[,1]=-1 
+  localT$index=0
+  
+  for (vv in 1:nvar)
+  {
+    if (localT$tarjanMatrix[vv,1]==-1)
+      .TarjanStrongConnect(vv,localT)
+  }
+  
+  return(localT)
+}
 
-# LOAD MODEL code ----------------------------------------
+.TarjanStrongConnect <- function(vv,localT)
+{
+  localT$tarjanMatrix[vv,1]=localT$index
+  localT$tarjanMatrix[vv,2]=localT$index
+  localT$index=localT$index+1
+  
+  localT$stack=c(vv,localT$stack)
+  localT$tarjanMatrix[vv,3]=1
+  
+  destvars=which(localT$incidence_matrix[,vv]==1)
+  
+  #we exploded recursive function by 3 levels to avoid R limitation on stack
+  if (length(destvars)>0)
+    for (ww in destvars)
+    {
+      #ww.index indefined
+      if (localT$tarjanMatrix[ww,1]==-1)
+      {
+        #_______________________________________
+        
+        vv_old=vv
+        ww_old=ww
+        vv=ww
+        
+        localT$tarjanMatrix[vv,1]=localT$index
+        localT$tarjanMatrix[vv,2]=localT$index
+        localT$index=localT$index+1
+        
+        localT$stack=c(vv,localT$stack)
+        localT$tarjanMatrix[vv,3]=1
+        
+        destvars=which(localT$incidence_matrix[,vv]==1)
+        
+        if (length(destvars)>0)
+          for (ww in destvars)
+          {
+            if (localT$tarjanMatrix[ww,1]==-1)
+            {
+              #_______________________________________
+              
+              vv_old2=vv
+              ww_old2=ww
+              vv=ww
+              
+              localT$tarjanMatrix[vv,1]=localT$index
+              localT$tarjanMatrix[vv,2]=localT$index
+              localT$index=localT$index+1
+              
+              localT$stack=c(vv,localT$stack)
+              localT$tarjanMatrix[vv,3]=1
+              
+              destvars=which(localT$incidence_matrix[,vv]==1)
+              
+              if (length(destvars)>0)
+                for (ww in destvars)
+                {
+                  if (localT$tarjanMatrix[ww,1]==-1)
+                  {
+                    #_______________________________________
+                    
+                    vv_old3=vv
+                    ww_old3=ww
+                    vv=ww
+                    
+                    localT$tarjanMatrix[vv,1]=localT$index
+                    localT$tarjanMatrix[vv,2]=localT$index
+                    localT$index=localT$index+1
+                    
+                    localT$stack=c(vv,localT$stack)
+                    localT$tarjanMatrix[vv,3]=1
+                    
+                    destvars=which(localT$incidence_matrix[,vv]==1)
+                    
+                    if (length(destvars)>0)
+                      for (ww in destvars)
+                      {
+                        if (localT$tarjanMatrix[ww,1]==-1)
+                        {
+                          #_______________________________________
+                          
+                          #vv_old=vv
+                          #vv=ww
+                          .TarjanStrongConnect(ww,localT)
+                          
+                          #vv=vv_old
+                          
+                          #_______________________________________
+                          
+                          localT$tarjanMatrix[vv,2]=min(localT$tarjanMatrix[vv,2],localT$tarjanMatrix[ww,2])
+                          
+                        } else if (localT$tarjanMatrix[ww,3]==1)
+                        {
+                          localT$tarjanMatrix[vv,2]=min(localT$tarjanMatrix[vv,2],localT$tarjanMatrix[ww,1])
+                        }
+                      }
+                    
+                    if (localT$tarjanMatrix[vv,2]==localT$tarjanMatrix[vv,1])
+                    {
+                      listsLength=length(localT$lists)+1
+                      outputList=c()
+                      
+                      flag=0
+                      while (flag!=vv)
+                      {
+                        ww=localT$stack[1]
+                        localT$stack=localT$stack[-1]
+                        localT$tarjanMatrix[ww,3]=0
+                        outputList=c(outputList,ww)
+                        flag=ww
+                      }
+                      
+                      localT$lists[[listsLength]]=outputList
+                    }
+                    
+                    ww=ww_old3
+                    vv=vv_old3
+                    
+                    #_______________________________________
+                    
+                    localT$tarjanMatrix[vv,2]=min(localT$tarjanMatrix[vv,2],localT$tarjanMatrix[ww,2])
+                    
+                  } else if (localT$tarjanMatrix[ww,3]==1)
+                  {
+                    localT$tarjanMatrix[vv,2]=min(localT$tarjanMatrix[vv,2],localT$tarjanMatrix[ww,1])
+                  }
+                }
+              
+              if (localT$tarjanMatrix[vv,2]==localT$tarjanMatrix[vv,1])
+              {
+                listsLength=length(localT$lists)+1
+                outputList=c()
+                
+                flag=0
+                while (flag!=vv)
+                {
+                  ww=localT$stack[1]
+                  localT$stack=localT$stack[-1]
+                  localT$tarjanMatrix[ww,3]=0
+                  outputList=c(outputList,ww)
+                  flag=ww
+                }
+                
+                localT$lists[[listsLength]]=outputList
+                
+              }
+              
+              ww=ww_old2
+              vv=vv_old2
+              
+              #_______________________________________
+              
+              localT$tarjanMatrix[vv,2]=min(localT$tarjanMatrix[vv,2],localT$tarjanMatrix[ww,2])
+              
+            } else if (localT$tarjanMatrix[ww,3]==1)
+            {
+              localT$tarjanMatrix[vv,2]=min(localT$tarjanMatrix[vv,2],localT$tarjanMatrix[ww,1])
+            }
+          }
+        
+        if (localT$tarjanMatrix[vv,2]==localT$tarjanMatrix[vv,1])
+        {
+          listsLength=length(localT$lists)+1
+          outputList=c()
+          
+          flag=0
+          while (flag!=vv)
+          {
+            ww=localT$stack[1]
+            localT$stack=localT$stack[-1]
+            localT$tarjanMatrix[ww,3]=0
+            outputList=c(outputList,ww)
+            flag=ww
+          }
+          
+          localT$lists[[listsLength]]=outputList
+          
+        }
+        
+        ww=ww_old
+        vv=vv_old
+        
+        #_______________________________________
+        
+        localT$tarjanMatrix[vv,2]=min(localT$tarjanMatrix[vv,2],localT$tarjanMatrix[ww,2])
+        
+      } else if (localT$tarjanMatrix[ww,3]==1)
+      {
+        localT$tarjanMatrix[vv,2]=min(localT$tarjanMatrix[vv,2],localT$tarjanMatrix[ww,1])
+      }
+    }
+  
+  if (localT$tarjanMatrix[vv,2]==localT$tarjanMatrix[vv,1])
+  {
+    listsLength=length(localT$lists)+1
+    outputList=c()
+    
+    flag=0
+    while (flag!=vv)
+    {
+      ww=localT$stack[1]
+      localT$stack=localT$stack[-1]
+      localT$tarjanMatrix[ww,3]=0
+      outputList=c(outputList,ww)
+      flag=ww
+    }
+    
+    localT$lists[[listsLength]]=outputList
+  }
+}
+
+#return list of unknown fun names, case ignored
+.unknownFunsNames <- function(inputS=NULL,reservedKeyw)
+{
+  
+  allFunNames=.extractFunsNames(inputS) 
+  return( allFunNames[! (toupper(allFunNames) %in% reservedKeyw)])
+}
+
+# exported core funs -----------------------------------------------------------
+
+# PRINT SUMMARY code -----------------------------------------------------------
+
+print.BIMETS_MODEL <- function(x=NULL,...)
+{
+  model=x 
+  
+  if (! inherits(model, "BIMETS_MODEL")) stop("print.BIMETS_MODEL(): model object is not a BIMETS model.") 
+  
+  cat(paste0('\nBIMETS MODEL\n')) 
+  cat(paste0('-----------------------------------\n')) 
+  cat(paste0(sprintf("%-25s",'name:'),model$modelName,'\n')) 
+  cat(paste0(sprintf("%-25s",'built with bimets:'),ifelse(is.null(model$bimets_version),'unknown',model$bimets_version),'\n')) 
+  cat(paste0(sprintf("%-25s",'behaviorals:'),(model$totNumEqs),'\n')) 
+  cat(paste0(sprintf("%-25s",'identities:'),(model$totNumIds),'\n')) 
+  cat(paste0(sprintf("%-25s",'coefficients:'),(model$eqCoeffNum),'\n')) 
+  
+  tryCatch({
+    .CHECK_MODEL_DATA(model,showWarnings=FALSE) 
+    cat(paste0(sprintf("%-25s",'model data:'),"OK",'\n')) 
+  },error=function(e){cat(paste0(sprintf("%-25s",'model data:'),"not OK",' :: ',e$message,"\n")) }) 
+  
+  is_lead=FALSE
+  if (model$max_lead>0) is_lead=TRUE
+  cat(paste0(sprintf("%-25s",'forward looking:'),(is_lead),'\n')) 
+  
+  totCoeffEstimated=0 
+  if (length(model$behaviorals)>0) for (idxEq in 1:length(model$behaviorals))
+  {
+    totCoeffEstimated=totCoeffEstimated+length(model$behaviorals[[idxEq]]$coefficients) 
+  }
+  
+  fullyEstimated=ifelse(totCoeffEstimated<model$eqCoeffNum,FALSE,TRUE) 
+  cat(paste0(sprintf("%-25s",'fully estimated:'),(fullyEstimated),'\n')) 
+  
+  simulated=FALSE 
+  if (! is.null(model$simulation))
+  {
+    namesSim=names(model$simulation) 
+    namesSim=namesSim[-which(namesSim=='__SIM_PARAMETERS__')] 
+    if (length(base::setdiff(model$vendog,namesSim))==0)
+      simulated=TRUE 
+  }
+  
+  cat(paste0(sprintf("%-25s",'fully simulated:'),(simulated),'\n')) 
+  
+  renormed=FALSE
+  if (! is.null(model$renorm))
+  {
+    if (!is.null(model$renorm$TARGET))
+      renormed=TRUE
+  }
+  cat(paste0(sprintf("%-25s",'renormed:'),(renormed),'\n')) 
+  
+  stoch_simulated=FALSE 
+  if (! is.null(model$stochastic_simulation))
+  {
+    namesSim=names(model$stochastic_simulation) 
+    namesSim=namesSim[-which(namesSim=='__STOCH_SIM_PARAMETERS__')] 
+    if (length(base::setdiff(model$vendog,namesSim))==0)
+      stoch_simulated=TRUE 
+  }
+  
+  cat(paste0(sprintf("%-25s",'fully stochastic sim.:'),(stoch_simulated),'\n')) 
+  
+  optimized=FALSE
+  if (! is.null(model$optimize))
+  {
+    if (!is.null(model$optimize$realizationsToKeep))
+      optimized=TRUE  
+  }
+  
+  cat(paste0(sprintf("%-25s",'optimized:'),(optimized),'\n')) 
+}
+
+summary.BIMETS_MODEL <- function(object,...)
+{
+  return(print.BIMETS_MODEL(object,...))  
+}
+
+# LOAD MODEL code --------------------------------------------------------------
 
 LOAD_MODEL <- function(modelFile=NULL,
                        modelText=NULL,
@@ -1426,63 +2001,60 @@ LOAD_MODEL <- function(modelFile=NULL,
                        oldStyleModel=FALSE,
                        ...)
 {
-  
-  
   #rawData:       original text file
   #cleanModel:    rawData without MODEL, END, comments and trim spaces
   #totNumEqs:     equations count
-  #totNumIds:     identities count (same id multiple if counts 1)
+  #totNumIds:     identities count ("same id multiple IF>" counts 1)
   #totNumCoeff:   coefficients count
   #behaviorals:   contains data of behavioral definition
   #identities:    contains data of identity definition
-  #max_lag:       contains max lag required in all eqs
+  #max_lag:       contains max lag required for all eqs
   #oldStyleModel  removes starting dollar signs if there 
   #               is another dollar sign at the end of the line
   
-  
-  
-  
-  
   #main output
   model=list() 
-  class( model )='BIMETS_MODEL' 
+  class(model)='BIMETS_MODEL' 
+  
   #get regex definitions
   regExDefs=.RegExGlobalDefinition() 
   reservedKeyw=regExDefs$reservedKeyw 
   symOnEqCleaner=regExDefs$symOnEqCleaner 
   symOnIfCleaner=regExDefs$symOnIfCleaner 
   allowedCharOnName=regExDefs$allowedCharOnName 
+  allowedCharOnNameToken=regExDefs$allowedCharOnNameToken
   charsOnNumbs=regExDefs$charsOnNumbs 
   charsOnNumWithSign=regExDefs$charsOnNumWithSign 
   strongCharOnNumbs=regExDefs$strongCharOnNumbs 
   strongCharOnNumbsWithSign=regExDefs$strongCharOnNumbsWithSign 
   allowedLhsEQfuns=regExDefs$allowedLhsEQfuns 
   allowedLhsEQfunsPub=regExDefs$allowedLhsEQfunsPub 
+  
   #check arg
   if (!(is.logical(quietly))) stop('LOAD_MODEL(): "quietly" must be TRUE or FALSE.')
-  
   
   #input is a file
   if (is.null(modelText))
   {
     #file exists?
-    if (is.null(modelFile) || !is.character(modelFile) || !file.exists(modelFile)) stop('LOAD_MODEL(): model file "',as.character(modelFile),'" not found.') 
+    if (is.null(modelFile) || !is.character(modelFile) || !file.exists(modelFile)) 
+      stop('LOAD_MODEL(): model file "',as.character(modelFile),'" not found.') 
     modelName=modelFile 
     #read file
     tryCatch({
-      rawData=readLines(modelFile,warn = FALSE) 
+      rawData=readLines(modelFile,warn=FALSE) 
     },error=function(e){stop('LOAD_MODEL(): cannot read the model file. ',e$message) }) 
   } else 
   {
     #input is text
     modelName=substitute(modelText) 
-    #deal with win carriage
+    #deal with MS-Win carriage
     modelText=gsub('\r\n','\n',modelText) 
     #get lines
     rawData=strsplit(modelText,'\n')[[1]] 
   }
   
- #check consistence
+  #check consistence
   if (length(rawData)==0) stop('LOAD_MODEL(): empty model file.')
   model$rawData=rawData 
   #trim leading/trailing spaces
@@ -1525,16 +2097,16 @@ LOAD_MODEL <- function(modelFile=NULL,
   totNumIds=0 
   
   #collect keyword indexes
-  behavioralIndexes=grep("^(EQUATION|BEHAVIORAL)\\s*>",cleanModel, ignore.case = TRUE) 
-  identityIndexes=grep("^IDENTITY\\s*>",cleanModel, ignore.case = TRUE) 
-  eqIndexes=grep("^EQ\\s*>",cleanModel, ignore.case = TRUE) 
-  coeffIndexes=grep("^COEFF\\s*>",cleanModel, ignore.case = TRUE) 
-  storeIndexes=grep("^STORE\\s*>",cleanModel, ignore.case = TRUE) 
-  pdlIndexes=grep("^PDL\\s*>",cleanModel, ignore.case = TRUE) 
-  restrictIndexes=grep("^RESTRICT\\s*>",cleanModel, ignore.case = TRUE) 
-  errorIndexes=grep("^ERROR\\s*>",cleanModel, ignore.case = TRUE) 
-  ifIndexes=grep("^IF\\s*>",cleanModel, ignore.case = TRUE) 
-  ivIndexes=grep("^IV\\s*>",cleanModel, ignore.case = TRUE) 
+  behavioralIndexes=grep("^(EQUATION|BEHAVIORAL)\\s*>",cleanModel, ignore.case=TRUE) 
+  identityIndexes=grep("^IDENTITY\\s*>",cleanModel, ignore.case=TRUE) 
+  eqIndexes=grep("^EQ\\s*>",cleanModel, ignore.case=TRUE) 
+  coeffIndexes=grep("^COEFF\\s*>",cleanModel, ignore.case=TRUE) 
+  storeIndexes=grep("^STORE\\s*>",cleanModel, ignore.case=TRUE) 
+  pdlIndexes=grep("^PDL\\s*>",cleanModel, ignore.case=TRUE) 
+  restrictIndexes=grep("^RESTRICT\\s*>",cleanModel, ignore.case=TRUE) 
+  errorIndexes=grep("^ERROR\\s*>",cleanModel, ignore.case=TRUE) 
+  ifIndexes=grep("^IF\\s*>",cleanModel, ignore.case=TRUE) 
+  ivIndexes=grep("^IV\\s*>",cleanModel, ignore.case=TRUE) 
   
   #sorted indexes of all keywords
   kwIdx=sort(c(length(cleanModel)+1,
@@ -1557,7 +2129,7 @@ LOAD_MODEL <- function(modelFile=NULL,
   #coeff num
   totNumCoeff=0
   
-  # analyze code behaviorals -----------------------------------------------------------------------------
+  #analyze code behaviorals -----------------------------------------------------------------------------
   
   model$behaviorals=list() 
   
@@ -1567,16 +2139,16 @@ LOAD_MODEL <- function(modelFile=NULL,
     #empty tmp behavioral to be added to model list
     behavioralTmp=list()     
     
-    #...we extract all code between two eqs definitions
+    #...we extract all code between two behavioral definitions
     #get next keyword definition index
     nextKwIdx=min(kwIdx[which(kwIdx>behavioralIndexes[idxBI])])     
     
-    #get next eq definition index, needed to check COEFF exists
+    #get next behavioral definition index, needed to check COEFF exists
     nextDefIdx=min(eqIdenDefIdx[which(eqIdenDefIdx>behavioralIndexes[idxBI])])     
     
-    #read all lines of behavior definition
+    #read and trim all lines of behavior definition
     behavioralRaw=paste(cleanModel[behavioralIndexes[idxBI]:(nextKwIdx-1)],collapse=' ')
-    behavioralRaw=gsub("^(EQUATION|BEHAVIORAL)\\s*>", "", behavioralRaw, ignore.case = TRUE) 
+    behavioralRaw=gsub("^(EQUATION|BEHAVIORAL)\\s*>", "", behavioralRaw, ignore.case=TRUE) 
     behavioralRaw=gsub("^\\s+|\\s+$", "", behavioralRaw) 
     
     #get behavioral name (split if TSRANGE defined)
@@ -1592,7 +2164,6 @@ LOAD_MODEL <- function(modelFile=NULL,
     if (length(grep('TSRANGE',behavioralRaw))>0)
     { 
       tryCatch({
-        
         #get text after TSRANGE kw then split with spaces
         behavioralTsrange=suppressWarnings(as.numeric(strsplit(gsub("^\\s+|\\s+$", "",strsplit(behavioralRaw,'TSRANGE')[[1]][2]),'\\s+')[[1]]))  
         if (any(! is.finite(behavioralTsrange))) stop()  
@@ -1606,14 +2177,14 @@ LOAD_MODEL <- function(modelFile=NULL,
     } else behavioralTsrange=NA      
     
     #check behavioral has the COEFF definition
-    coeffLocalIdx=which(coeffIndexes %in% behavioralIndexes[idxBI]:nextDefIdx)  
+    coeffLocalIdx=which(coeffIndexes %in% behavioralIndexes[idxBI]:(nextDefIdx-1))  
     if (length(coeffLocalIdx)==0) stop('LOAD_MODEL(): no COEFF definition in behavioral "',behavioralName,'".')  
     if (length(coeffLocalIdx)>1) stop('LOAD_MODEL(): multiple COEFF definitions in behavioral "',behavioralName,'".')  
     
     #read all lines of coeff definition    
     nextKwIdx=min(kwIdx[which(kwIdx>coeffIndexes[coeffLocalIdx])])  
     coeffRaw=paste(cleanModel[coeffIndexes[coeffLocalIdx]:(nextKwIdx-1)],collapse=' ')  
-    coeffRaw=gsub("^COEFF\\s*>", "", coeffRaw, ignore.case = TRUE)  
+    coeffRaw=gsub("^COEFF\\s*>", "", coeffRaw, ignore.case=TRUE)  
     coeffRaw=gsub("^\\s+|\\s+$", "", coeffRaw)  
     
     #split and remove duplicates
@@ -1627,26 +2198,32 @@ LOAD_MODEL <- function(modelFile=NULL,
     if (coeffNum==0) stop('LOAD_MODEL(): no COEFF definition in behavioral "',behavioralName,'".')  
     
     #check behavioral has EQ definition
-    eqLocalIdx=which(eqIndexes %in% behavioralIndexes[idxBI]:nextDefIdx)  
+    eqLocalIdx=which(eqIndexes %in% behavioralIndexes[idxBI]:(nextDefIdx-1))  
     if (length(eqLocalIdx)==0) stop('LOAD_MODEL(): no EQ definition in behavioral "',behavioralName,'".')  
     if (length(eqLocalIdx)>1) stop('LOAD_MODEL(): multiple EQ definitions in behavioral "',behavioralName,'".')  
     
     #read all lines of EQ definition
     nextKwIdx=min(kwIdx[which(kwIdx>eqIndexes[eqLocalIdx])])  
     eqRaw=paste(cleanModel[eqIndexes[eqLocalIdx]:(nextKwIdx-1)],collapse=' ')  
-    eqRaw=gsub("^EQ\\s*>", "", eqRaw, ignore.case = TRUE)  
+    eqRaw=gsub("^EQ\\s*>", "", eqRaw, ignore.case=TRUE)  
     eqRaw=gsub("\\s*", "", eqRaw)   
     
     #check unknown funs names
     unknownFuns=.unknownFunsNames(eqRaw,reservedKeyw)
     if (length(unknownFuns)>0) stop('LOAD_MODEL(): unsupported functions in EQ definition: "',eqRaw,'" in behavioral "',behavioralName,'": ',
                                     paste0(paste0(unknownFuns,'()'),collapse=', '))  
+   
+    #check EQ is non trivial
+    if (nchar(eqRaw)==0 || !grepl('=',eqRaw))
+      stop('LOAD_MODEL(): syntax error in behavioral "',behavioralName,'" in EQ definition: "',eqRaw,'".')  
+    
     #trim and extract symbol names from EQ
+    #we keep dependent
     namesOnEq=strsplit(gsub("^\\s+|\\s+$", "",gsub(symOnEqCleaner,' ',eqRaw,ignore.case=TRUE)),'\\s+')[[1]]  
     
     #check EQ is non trivial
-    if (nchar(eqRaw)==0 || length(namesOnEq)==0 || !grepl('=',eqRaw))
-      stop('LOAD_MODEL(): syntax error in EQ definition: "',eqRaw,'" in behavioral "',behavioralName,'".')  
+    if ( length(namesOnEq)==0 )
+      stop('LOAD_MODEL(): syntax error in behavioral "',behavioralName,'" in EQ definition: "',eqRaw,'".')  
     
     #remove numbers from names
     rmvNumOnEqIdx=c()  
@@ -1654,19 +2231,18 @@ LOAD_MODEL <- function(modelFile=NULL,
       if (length(grep(strongCharOnNumbs,namesOnEq[idxNamesOnEq]))>0) 
       {
         rmvNumOnEqIdx=c(rmvNumOnEqIdx,idxNamesOnEq)  
-        
       }
     }
     if (length(rmvNumOnEqIdx)>0) namesOnEq=namesOnEq[-rmvNumOnEqIdx]  
     
-    
+    #check "=" exists
     eqRawSplitted=strsplit(eqRaw,'\\=')[[1]]  
-    if (length(eqRawSplitted)!=2) stop('LOAD_MODEL(): syntax error in EQ definition: "',eqRaw,'".')
+    if (length(eqRawSplitted)!=2) stop('LOAD_MODEL(): syntax error in behavioral "',behavioralName,'" in EQ definition: "',eqRaw,'".')
     
     rhsExp=eqRawSplitted[2]  
     lhsExp=eqRawSplitted[1]  
     
-    if (lhsExp=='') stop('LOAD_MODEL(): syntax error in EQ definition: "',eqRaw,'" in behavioral "',behavioralName,'".','".')
+    if (lhsExp=='') stop('LOAD_MODEL(): syntax error in behavioral "',behavioralName,'" in EQ definition: "',eqRaw,'".')
     
     lhsFun=NULL  
     
@@ -1674,9 +2250,7 @@ LOAD_MODEL <- function(modelFile=NULL,
     tryCatch({
       lhsFun=.parseLhsEQ(lhsExp,allowedLhsEQfuns)  
     },error=function(err){
-      stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" in behavioral "',behavioralName,'".')
-    }
-    )
+      stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" in behavioral "',behavioralName,'".')})
     
     # lhs behavioral ------------------------------------------------
     
@@ -1687,31 +2261,48 @@ LOAD_MODEL <- function(modelFile=NULL,
       if (lhsFun$args!=behavioralName)
         stop('LOAD_MODEL(): LHS of EQ definition: "',eqRaw,'" must contain only the behavioral name "',behavioralName,'" or the allowed uppercase LHS functions: ',paste0(paste0(allowedLhsEQfunsPub,'()'),collapse=', '))  
       
+      if (lhsExp!=paste0(behavioralName))
+        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'". Only the identity function or a single transformation of the endogenous variable "',behavioralName,'" are allowed on the LHS of EQ definition, e.g. EQ> ',behavioralName,'=...') 
+      
     } else if (lhsFun$funName=='LOG')
     {
       if (lhsFun$argsCount!=1 || lhsFun$args!=behavioralName) 
         stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" of the behavioral "',behavioralName,'". If the LOG of the endogenous variable is requested please try the following: "LOG(',behavioralName,')"')  
+      
+      if (lhsExp!=paste0('LOG(',behavioralName,')'))
+        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'". Only the identity function or a single transformation of the endogenous variable "',behavioralName,'" are allowed on the LHS of EQ definition, e.g. EQ> LOG(',behavioralName,')=...') 
       
     } else if (lhsFun$funName=='EXP')
     {
       if (lhsFun$argsCount!=1 || lhsFun$args!=behavioralName) 
         stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" of the behavioral "',behavioralName,'". If the EXP of the endogenous variable is requested please try the following: "EXP(',behavioralName,')"')  
       
+      if (lhsExp!=paste0('EXP(',behavioralName,')'))
+        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'". Only the identity function or a single transformation of the endogenous variable "',behavioralName,'" are allowed on the LHS of EQ definition, e.g. EQ> EXP(',behavioralName,')=...') 
+      
     } else if (lhsFun$funName=='TSDELTA' || lhsFun$funName=='DEL')
     {
       if (lhsFun$argsCount>2 || lhsFun$args[1]!=behavioralName) 
         stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" of the behavioral "',behavioralName,'". If the TSDELTA of the endogenous variable is requested please try the following: "TSDELTA(',behavioralName,')" or "TSDELTA(',behavioralName,',n)"')  
+      
+      if (lhsExp!=paste0(lhsFun$funName,'(',behavioralName,',',lhsFun$args[2],')') && lhsExp!=paste0(lhsFun$funName,'(',behavioralName,')'))
+        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'". Only the identity function or a single transformation of the endogenous variable "',behavioralName,'" are allowed on the LHS of EQ definition, e.g. EQ> TSDELTA(',behavioralName,',n)=...') 
       
     } else if (lhsFun$funName=='TSDELTAP' )
     {
       if (lhsFun$argsCount>2 || lhsFun$args[1]!=behavioralName) 
         stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" of the behavioral "',behavioralName,'". If the TSDELTAP of the endogenous variable is requested please try the following: "TSDELTAP(',behavioralName,')" or "TSDELTAP(',behavioralName,',n)"')  
       
+      if (lhsExp!=paste0(lhsFun$funName,'(',behavioralName,',',lhsFun$args[2],')') && lhsExp!=paste0(lhsFun$funName,'(',behavioralName,')') )
+        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'". Only the identity function or a single transformation of the endogenous variable "',behavioralName,'" are allowed on the LHS of EQ definition, e.g. EQ> TSDELTAP(',behavioralName,',n)=...') 
+      
     } else if (lhsFun$funName=='TSDELTALOG' )
     {
       if (lhsFun$argsCount>2 || lhsFun$args[1]!=behavioralName) 
-        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" of the behavioral "',behavioralName,'". If the TSDELTALOG of the endogenous variable is requested please try the following: "TSDELTALOG(',behavioralName,')" or "TSDELTALOG(',behavioralName,',n)"')  
+        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" in behavioral "',behavioralName,'". If the TSDELTALOG of the endogenous variable is requested please try the following: "TSDELTALOG(',behavioralName,')" or "TSDELTALOG(',behavioralName,',n)"')  
       
+      if (lhsExp!=paste0(lhsFun$funName,'(',behavioralName,',',lhsFun$args[2],')') && lhsExp!=paste0(lhsFun$funName,'(',behavioralName,')') )
+        stop('LOAD_MODEL(): syntax error in behavioral "',behavioralName,'" in LHS of EQ definition: "',eqRaw,'". Only the identity function or a single transformation of the endogenous variable "',behavioralName,'" are allowed on the LHS of EQ definition, e.g. EQ> TSDELTALOG(',behavioralName,',n)=...') 
     }
     
     #check EQ contains COEFFs
@@ -1719,6 +2310,8 @@ LOAD_MODEL <- function(modelFile=NULL,
       stop('LOAD_MODEL(): invalid coefficient name "',coeffTmp,'" in COEFF definition of behavioral: "',behavioralName,'".')      
     for(coeffTmp in coeff) if (! (coeffTmp %in% namesOnEq) ) 
       stop('LOAD_MODEL(): coefficient "',coeffTmp,'" not found in EQ definition: "',eqRaw,'".')      
+    
+    if (! .checkExpression(rhsExp)) stop('LOAD_MODEL(): syntax error in behavioral: "',behavioralName,'" in RHS of EQ definition: "',eqRaw,'".')
     
     #remove coeff from EQ components names
     rmvCoeffOnEqIdx=c()  
@@ -1730,7 +2323,7 @@ LOAD_MODEL <- function(modelFile=NULL,
     }
     
     if (!(all(namesOnEq[rmvCoeffOnEqIdx]==coeff))) 
-      stop('LOAD_MODEL(): coefficients in EQ definition: "',eqRaw,'" must appear in the same order as in the COEFF definition: "',paste(coeff,collapse=', '),'".')  
+      stop('LOAD_MODEL(): in behavioral "',behavioralName,'", coefficients in EQ definition: "',eqRaw,'" must appear in the same order as in the COEFF definition: "',paste(coeff,collapse=', '),'".')  
     
     if (length(rmvCoeffOnEqIdx)>0) namesOnEq=namesOnEq[-rmvCoeffOnEqIdx]  
     
@@ -1738,15 +2331,14 @@ LOAD_MODEL <- function(modelFile=NULL,
     for (idxNOEQ in 1:length(namesOnEq)) {
       if (length(grep(allowedCharOnName,namesOnEq[idxNOEQ]))==0) 
       {
-        stop('LOAD_MODEL(): syntax error in EQ definition: "',eqRaw,'". The following symbol cannot be a variable name: "',namesOnEq[idxNOEQ],'".')  
-        
+        stop('LOAD_MODEL(): syntax error in behavioral "',behavioralName,'" in EQ definition: "',eqRaw,'". The following symbol cannot be a variable name: "',namesOnEq[idxNOEQ],'".')  
       }
     }
     
     #normalize regressors
     for(coeffTmp in coeff)
     {
-      #isolated coeff
+      #if is intercept (isolated coeff)
       if (!grepl(paste0(coeffTmp,'\\*'),rhsExp))
       {
         #convert intercept: coeff0+ -> coeff0*1+
@@ -1758,33 +2350,31 @@ LOAD_MODEL <- function(modelFile=NULL,
       }
       
       #in case rhs start with coeff without sign
-      rhsExp=gsub(paste0('^',coeffTmp),paste0('+',coeffTmp),rhsExp)  
-      
+      rhsExp=gsub(paste0('^',coeffTmp),paste0('+',coeffTmp),rhsExp) 
     }
     
     for(coeffTmp in coeff) if (length(grep(paste0('(\\+)',coeffTmp,'\\*'),rhsExp))==0 ) 
-      stop('LOAD_MODEL(): please provide EQ "',eqRaw,'" in form of a linear combination of coefficients: fix coeff. "',coeffTmp,'".')      
-    
+      stop('LOAD_MODEL(): in behavioral "',behavioralName,'", please provide EQ "',eqRaw,'" in form of a linear combination of coefficients: fix coeff. "',coeffTmp,'".')      
     
     #split using coeffs and get EQ regressors
     eqRegressorsNames=strsplit(rhsExp,paste0('(\\+)(',paste(coeff,collapse='|'),')\\*'))[[1]]  
-    if (length(eqRegressorsNames)<2) stop('LOAD_MODEL(): regressors count error in EQ definition: "',eqRaw,'"')  
+    if (length(eqRegressorsNames)<2) stop('LOAD_MODEL(): in behavioral "',behavioralName,'", regressors count error in EQ definition: "',eqRaw,'"')  
     
     if (eqRegressorsNames[1]!='')
-      stop('LOAD_MODEL(): please provide EQ "',eqRaw,'" in form of a linear combination of coefficients.')  
+      stop('LOAD_MODEL(): in behavioral "',behavioralName,'", please provide EQ "',eqRaw,'" in form of a linear combination of coefficients.')  
     
     eqRegressorsNames=eqRegressorsNames[-1]   #remove first void element
     
     for (idxR in 1:length(eqRegressorsNames))
       if (! .checkExpressionIsAtomic(eqRegressorsNames[idxR])) 
-        stop('LOAD_MODEL(): please provide EQ "',eqRaw,'" in form of a linear combination of coefficients: fix regressor "',eqRegressorsNames[idxR],'".')  
+        stop('LOAD_MODEL(): in behavioral "',behavioralName,'", please provide EQ "',eqRaw,'" in form of a linear combination of coefficients: fix regressor "',eqRegressorsNames[idxR],'".')  
     
     if (length(eqRegressorsNames)!=length(coeff)) 
-      stop('LOAD_MODEL(): regressors count in EQ definition: "',eqRaw,'" is different from coefficients count in COEFF definition: "',paste(coeff,collapse=', '),'".')  
+      stop('LOAD_MODEL(): in behavioral "',behavioralName,'", regressors count in EQ definition: "',eqRaw,'" is different from coefficients count in COEFF definition: "',paste(coeff,collapse=', '),'".')  
     
     #check if duplicated regressor
     if (any(duplicated(eqRegressorsNames))) 
-      stop('LOAD_MODEL(): duplicated regressor "',paste(eqRegressorsNames[which(duplicated(eqRegressorsNames))],collapse=' '),'" in EQ definition: "',eqRaw,'".')  
+      stop('LOAD_MODEL(): in behavioral "',behavioralName,'", duplicated regressor "',paste(eqRegressorsNames[which(duplicated(eqRegressorsNames))],collapse=' '),'" in EQ definition: "',eqRaw,'".')  
     
     #check unique intercept 
     flagSC=FALSE  
@@ -1792,13 +2382,13 @@ LOAD_MODEL <- function(modelFile=NULL,
     {
       if (grepl(strongCharOnNumbs,regrTmp))
       {
-        if (flagSC) stop('LOAD_MODEL(): multiple intercepts defined in EQ: "',eqRaw,'"' )  
+        if (flagSC) stop('LOAD_MODEL(): in behavioral "',behavioralName,'", multiple intercepts defined in EQ: "',eqRaw,'"' )  
         flagSC=TRUE  
       }
     }
     
     #check behavioral has STORE definition
-    storeLocalIdx=which(storeIndexes %in% behavioralIndexes[idxBI]:nextDefIdx)  
+    storeLocalIdx=which(storeIndexes %in% behavioralIndexes[idxBI]:(nextDefIdx-1))  
     storeVarName=NULL  
     storePosition=NULL  
     if (length(storeLocalIdx)>0)
@@ -1808,7 +2398,7 @@ LOAD_MODEL <- function(modelFile=NULL,
       #read all lines of store definition
       nextKwIdx=min(kwIdx[which(kwIdx>storeIndexes[storeLocalIdx])])  
       storeRaw=paste(cleanModel[storeIndexes[storeLocalIdx]:(nextKwIdx-1)],collapse=' ')  
-      storeRaw=gsub("^STORE\\s*>", "", storeRaw, ignore.case = TRUE)  
+      storeRaw=gsub("^STORE\\s*>", "", storeRaw, ignore.case=TRUE)  
       storeRaw=gsub("\\s*", "", storeRaw)  
       
       #get store var name and position
@@ -1818,7 +2408,7 @@ LOAD_MODEL <- function(modelFile=NULL,
       
       storeVarName=gsub("\\s*", "", storeSplit[1])  
       if (length(grep(allowedCharOnName,storeVarName))==0) 
-        stop('LOAD_MODEL(): invalid var name on STORE definition: "',storeRaw,'" in behavioral "',behavioralName,'".')  
+        stop('LOAD_MODEL(): invalid variable name in STORE definition: "',storeRaw,'" in behavioral "',behavioralName,'".')  
       
       #STORE location must be positive integer
       if (length(grep("^\\s*[0]*[0-9]*\\s*\\)$",storeSplit[2]))==0) 
@@ -1830,7 +2420,7 @@ LOAD_MODEL <- function(modelFile=NULL,
     
     #check behavioral has PDL definition
     #pdlLocalIdx contains lines indexes of pdl in behavioral
-    pdlLocalIdx=which(pdlIndexes %in% behavioralIndexes[idxBI]:nextDefIdx)  
+    pdlLocalIdx=which(pdlIndexes %in% behavioralIndexes[idxBI]:(nextDefIdx-1))  
     pdlRaw=NULL  
     bm_pdlMatrix=NULL        
     
@@ -1841,28 +2431,29 @@ LOAD_MODEL <- function(modelFile=NULL,
     coeffOriginal=coeff  
     eqRegressorsNamesOriginal=eqRegressorsNames  
     
-    #...there are PDL definitions
+    #we have PDL definitions
     if (length(pdlLocalIdx)>0) 
     {
-      #analize all pdl definitions
+      #analyze all PDL definitions
       pdlRaw='' 
       for (pdlLLidx in 1:length(pdlLocalIdx))
       {
-        #read all lines of pdl definition
+        #read all lines of PDL definition
         nextKwIdx=min(kwIdx[which(kwIdx>pdlIndexes[pdlLocalIdx[pdlLLidx]])]) 
         #e.g. pdlRawSingle="PDL> C06 2 14 F"
         #clean...
         pdlRawSingle=paste(cleanModel[pdlIndexes[pdlLocalIdx[pdlLLidx]]:(nextKwIdx-1)],collapse=';') 
-        pdlRawSingle=gsub("^PDL\\s*>", "", pdlRawSingle, ignore.case = TRUE) 
+        pdlRawSingle=gsub("^PDL\\s*>", "", pdlRawSingle, ignore.case=TRUE) 
         pdlRawSingle=gsub("^\\s*|\\s*$", "", pdlRawSingle) 
+        
         #e.g. pdlRaw="C07 2 14 F;C06 2 14 F;"
         pdlRaw=paste0(pdlRawSingle,';',pdlRaw) 
       }
       
-      #analize pdlRaw
+      #analyze pdlRaw
       pdlComponents=strsplit(pdlRaw,';')[[1]] 
       if (length(pdlComponents)<1) 
-        stop('LOAD_MODEL(): NULL length on PDL definition "',pdlRaw,'" in behavioral "',behavioralName,'".')
+        stop('LOAD_MODEL(): NULL length in PDL definition "',pdlRaw,'" in behavioral "',behavioralName,'".')
       
       #create empty list
       bm_pdl=list() 
@@ -1885,10 +2476,10 @@ LOAD_MODEL <- function(modelFile=NULL,
           stop('LOAD_MODEL(): unknown coefficient "',pdlSingleElement[1],'" in PDL definition in behavioral "',behavioralName,'".') 
         coeffPos=which(coeff==pdlSingleElement[1]) 
         bm_pdlMatrix[1,coeffPos]=1 
-        #pdl on constant term throws an error
+        #PDL on constant term throws an error
         if (grepl(strongCharOnNumbs,eqRegressorsNames[coeffPos]))
         {
-          stop('LOAD_MODEL(): cannot expand a PDL on a constant term: coeff. "',pdlSingleElement[1],'" on behavioral "',behavioralName,'".') 
+          stop('LOAD_MODEL(): cannot expand a PDL on a constant term: coeff. "',pdlSingleElement[1],'" in behavioral "',behavioralName,'".') 
         }
         
         #deal with degree
@@ -1898,7 +2489,7 @@ LOAD_MODEL <- function(modelFile=NULL,
           (length(tmpV)==0) ||
           (!((tmpV %% 1) == 0) ) ||
           (!(tmpV >-1))
-        ) stop('LOAD_MODEL(): degree of the polynomial must be a non-negative integer in PDL definition of coefficient "',pdlSingleElement[1],'" in behavioral "',behavioralName,'".') 
+        ) stop('LOAD_MODEL(): polynomial degree must be a non-negative integer in PDL definition of coefficient "',pdlSingleElement[1],'" in behavioral "',behavioralName,'".') 
         bm_pdlMatrix[2,coeffPos]=tmpV 
         #deal with laglength
         tmpV=as.numeric(pdlSingleElement[3])
@@ -1935,7 +2526,7 @@ LOAD_MODEL <- function(modelFile=NULL,
           if (tmpV == 'F') bm_pdlMatrix[5,coeffPos]=1 
         }
         
-        #check if pdl is 0 1 then error due to redundance
+        #check if PDL is 0 1 then error due to redundance
         if (bm_pdlMatrix[2,coeffPos]==0 && bm_pdlMatrix[3,coeffPos]==1) 
           stop('LOAD_MODEL(): PDL with degree 0 and length 1 can be removed: coefficient "',pdlSingleElement[1],'" in behavioral "',behavioralName,'".') 
       }		
@@ -1967,11 +2558,12 @@ LOAD_MODEL <- function(modelFile=NULL,
           if (idxIntoInsert<length(coeff)) coeff=c(coeff[1:idxIntoInsert],coeffToBeInserted,coeff[(idxIntoInsert+1):length(coeff)])
           else coeff=c(coeff[1:idxIntoInsert],coeffToBeInserted) 
           idxIntoInsert=which(eqRegressorsNames==eqRegressorsNamesOriginal[pdlMatrixIdx])
-          #adding LAGs can replicate regressors 
-          #e.g. we have a MDL EQ with "p" and "LAG(p,1)" on a klein model
-          #if we have PDL on "p" and PDL on "LAG(p)", when dealing with PDL on "LAG(p)"
-          #we already have a expanded regressor LAG(p) produced by first PDL on "p",
-          #so take the last one (regressor must be different in model definition so last one is ok)
+          #warning: adding LAGs can duplicate regressors 
+          #e.g. we have a MDL EQ with regressors (i) "p" and (ii) "LAG(p,1)" in a klein model
+          #if we have PDL on "p" when we expand we will have a duplicated regressor LAG(p,1).
+          #Now, if we also have a PDL on second original regressors (ii) LAG(p,1)
+          #we have to take the last LAG(p,1) in list as the insertion point for new regressors
+          #for PDL of (ii) "LAG(p,1)" (regressor must be different in model definition so last one is ok)
           idxIntoInsert=idxIntoInsert[length(idxIntoInsert)]
           
           if (idxIntoInsert<length(eqRegressorsNames)) eqRegressorsNames=c(eqRegressorsNames[1:idxIntoInsert],eqCompToBeInserted,eqRegressorsNames[(idxIntoInsert+1):length(eqRegressorsNames)])
@@ -1979,10 +2571,10 @@ LOAD_MODEL <- function(modelFile=NULL,
         }      
       }		
       
-      #create pdl restriction matrix and vector (using Tartaglia)
+      #create PDL restriction matrix and vector (using Tartaglia)
       for (pdlMatrixIdx in 1:length(coeffOriginal)) 
       {
-        #coefficient has pdl
+        #coefficient has PDL
         if (bm_pdlMatrix[1,pdlMatrixIdx]==1)
         {
           #pdllength > pdldegree+1 then insert row
@@ -1998,7 +2590,7 @@ LOAD_MODEL <- function(modelFile=NULL,
               #insert tartaglia coeff starting from correct index
               temp_row[(idxCoeff-1+tartagliaIdx):(idxCoeff+length(tmpTartagliaRow)-2+tartagliaIdx)]=tmpTartagliaRow
               
-              #bm_pdlRestrictionMatrix=(0 0 1 -2 1 0 0; 0 0 0 1 -2 1 0 )
+              #e.g. bm_pdlRestrictionMatrix=(0 0 1 -2 1 0 0; 0 0 0 1 -2 1 0 )
               bm_pdlRestrictionMatrix=rbind(bm_pdlRestrictionMatrix,temp_row) 
               bm_pdlRestrictionVector=c(bm_pdlRestrictionVector,0) 
             }					
@@ -2008,7 +2600,6 @@ LOAD_MODEL <- function(modelFile=NULL,
           #put one row in matrix with 1 on original coeff (no LAGged) e.g. c02
           if (bm_pdlMatrix[4,pdlMatrixIdx]==1 && bm_pdlMatrix[3,pdlMatrixIdx]>1)
           {			
-            
             temp_row=rep(0,length(coeff)) 
             idxCoeff=which(coeff==coeffOriginal[pdlMatrixIdx])
             temp_row[idxCoeff]=1 
@@ -2030,7 +2621,7 @@ LOAD_MODEL <- function(modelFile=NULL,
           #check N and F and length=2 -> error
           if (bm_pdlMatrix[4,pdlMatrixIdx]==1 && bm_pdlMatrix[5,pdlMatrixIdx]==1 && bm_pdlMatrix[3,pdlMatrixIdx]==2)
           {
-            stop('LOAD_MODEL(): redundant options "N" and "F" set in coefficient "',coeffOriginal[pdlMatrixIdx],'" with PDL length 2 in behavioral "',behavioralName,'".')
+            stop('LOAD_MODEL(): redundant options "N" and "F" set in coefficient "',coeffOriginal[pdlMatrixIdx],'" with PDL of length 2 in behavioral "',behavioralName,'".')
           }
         }
       }  
@@ -2047,30 +2638,30 @@ LOAD_MODEL <- function(modelFile=NULL,
       rownames(bm_pdlRestrictionVector)=c() 
       colnames(bm_pdlRestrictionVector)=c() 
     }
-    
+   
     #check behavioral has RESTRICT def
     #RESTRICT> definition can span on several lines 
     #or have multiple defs separated by ";"
-    restrictLocalIdx=which(restrictIndexes %in% behavioralIndexes[idxBI]:nextDefIdx) 
+    restrictLocalIdx=which(restrictIndexes %in% behavioralIndexes[idxBI]:(nextDefIdx-1)) 
     restrictRaw=NULL 
     if (length(restrictLocalIdx)>0) 
     {
-      #analize all restrict definitions
+      #analyze all restrict definitions
       restrictRaw='' 
       for (restrictLLidx in 1:length(restrictLocalIdx))
       {
         #read all lines of restrict definition
         nextKwIdx=min(kwIdx[which(kwIdx>restrictIndexes[restrictLocalIdx[restrictLLidx]])]) 
         restrictRawSingle=paste(cleanModel[restrictIndexes[restrictLocalIdx[restrictLLidx]]:(nextKwIdx-1)],collapse=';') 
-        restrictRawSingle=gsub("^RESTRICT\\s*>", "", restrictRawSingle, ignore.case = TRUE) 
+        restrictRawSingle=gsub("^RESTRICT\\s*>", "", restrictRawSingle, ignore.case=TRUE) 
         restrictRawSingle=gsub("\\s*", "", restrictRawSingle) 
         #e.g. restrictRaw="C01+C02=0;C01+C03=0"
         restrictRaw=paste0(restrictRawSingle,';',restrictRaw) 
       }
       
-      #analize restrictRaw
+      #analyze restrictRaw
       restrictComponents=strsplit(restrictRaw,';')[[1]] 
-      if (length(restrictComponents)<1) stop('LOAD_MODEL(): NULL length on restriction definition "',restrictRaw,' in behavioral "',behavioralName,'".')
+      if (length(restrictComponents)<1) stop('LOAD_MODEL(): NULL length in restriction definition "',restrictRaw,' in behavioral "',behavioralName,'".')
       
       #matrix R and vector r of restriction
       bm_matrixR=c() 
@@ -2082,7 +2673,7 @@ LOAD_MODEL <- function(modelFile=NULL,
         
         #check equal signs count
         if (length(restrComponentSplit)!=2) 
-          stop('LOAD_MODEL(): syntax error on restriction "',restrictComponents[[idxRestricComp]],'" in behavioral "',behavioralName,'".\nUsage: "RESTRICT> alpha0 * coeff0 + ... + alphaN * coeffN = const".')
+          stop('LOAD_MODEL(): syntax error in restriction "',restrictComponents[[idxRestricComp]],'" in behavioral "',behavioralName,'".\nUsage: "RESTRICT> alpha0 * coeff0 + ... + alphaN * coeffN = const".')
         
         restrictionRHS=restrComponentSplit[2] 
         restrictionLHS=restrComponentSplit[1] 
@@ -2098,13 +2689,13 @@ LOAD_MODEL <- function(modelFile=NULL,
             {
               restrictionLHS=gsub(paste0('LAG\\(',coeffOriginal[idxLoopInPdlMatrix],',',idxReplaceLagInRestriction,'\\)'),
                                   paste0(coeffOriginal[idxLoopInPdlMatrix],'__PDL__',idxReplaceLagInRestriction),
-                                  restrictionLHS)
+                                  restrictionLHS)            
             }
         }
         
         #check RHS constant is a number
         if (length(grep(strongCharOnNumbsWithSign,restrictionRHS))==0) 
-          stop('LOAD_MODEL(): syntax error on restriction "',restrictComponents[[idxRestricComp]],'" in behavioral "',behavioralName,'".\nUsage: "RESTRICT> alpha0 * coeff0 + ... + alphaN * coeffN = const".')
+          stop('LOAD_MODEL(): syntax error in restriction "',restrictComponents[[idxRestricComp]],'" in behavioral "',behavioralName,'".\nUsage: "RESTRICT> alpha0 * coeff0 + ... + alphaN * coeffN = const".')
         
         #check LHS is linear comb of coeff
         regExprRes=paste0('^((',
@@ -2112,21 +2703,26 @@ LOAD_MODEL <- function(modelFile=NULL,
                                                     paste0(coeff,collapse='|')  ,')'),')+$')
         
         if (length(grep(regExprRes,restrictionLHS))==0) 
-          stop('LOAD_MODEL(): syntax error on restriction "',restrictComponents[[idxRestricComp]],'" in behavioral "',behavioralName,'".\nUsage: "RESTRICT> alpha0 * coeff0 + ... + alphaN * coeffN = const".')
+          stop('LOAD_MODEL(): syntax error in restriction "',restrictComponents[[idxRestricComp]],'" in behavioral "',behavioralName,'".\nUsage: "RESTRICT> alpha0 * coeff0 + ... + alphaN * coeffN = const".')
         
         bm_tmpRrow=c() 
         #exctract coeff multiplier in restriction
         for (idxCoeff in 1:length(coeff))
         {  
-          
-          tmpRegExp=regexpr(paste0('(',charsOnNumWithSign,'\\*|\\+|-)?(',
+          tmpRegExp=gregexpr(paste0('(',charsOnNumWithSign,'\\*|\\+|-)?(',
                                    coeff[idxCoeff],')(\\+|-|$)'),restrictionLHS) 
           #e.g. localMultiplier="+C02"
-          localMultiplier=regmatches(restrictionLHS,tmpRegExp)
-          if (length(localMultiplier)>0)
+          localMultiplierList=regmatches(restrictionLHS,tmpRegExp)
+          
+          localMultiplier=localMultiplierList[[1]]
+          
+          #duplicate coefficient in single restriction
+          if (length(localMultiplier)>1)   
+            stop('LOAD_MODEL(): syntax error in restriction "',restrictComponents[[idxRestricComp]],'" in behavioral "',behavioralName,'".\nUsage: "RESTRICT> alpha0 * coeff0 + ... + alphaN * coeffN = const".')
+          
+          if (length(localMultiplier)==1)
           {
             #coeff exists in restriction
-            #localMultiplier="+"
             localMultiplier=gsub(paste0('(\\*|',coeff[idxCoeff],'(\\+|-)?)'),'',localMultiplier)
             
             #exctract value
@@ -2173,9 +2769,9 @@ LOAD_MODEL <- function(modelFile=NULL,
       behavioralTmp$vectorR=bm_vectorR 
     }#endif restrict
     
-    #get error
-    #check behavioral has error def
-    errorLocalIdx=which(errorIndexes %in% behavioralIndexes[idxBI]:nextDefIdx) 
+    #get ERROR>
+    #check behavioral has ERROR def
+    errorLocalIdx=which(errorIndexes %in% behavioralIndexes[idxBI]:(nextDefIdx-1)) 
     errorRaw=NULL 
     errorType=NULL 
     errorDim=NULL 
@@ -2185,7 +2781,7 @@ LOAD_MODEL <- function(modelFile=NULL,
       errorRaw='' 
       nextKwIdx=min(kwIdx[which(kwIdx>errorIndexes[errorLocalIdx])]) 
       errorRaw=paste(cleanModel[errorIndexes[errorLocalIdx]:(nextKwIdx-1)],collapse=' ') 
-      errorRaw=gsub("^ERROR\\s*>", "", errorRaw, ignore.case = TRUE) 
+      errorRaw=gsub("^ERROR\\s*>", "", errorRaw, ignore.case=TRUE) 
       errorRaw=gsub("^\\s*|\\s*$", "", errorRaw) 
       #catch auto(n) directive with n=1..9
       if (length(grep('^AUTO\\([1-9]\\)',errorRaw))>0){
@@ -2199,40 +2795,39 @@ LOAD_MODEL <- function(modelFile=NULL,
       }
     }
     
-    #check behavioral has IV def
-    #IV> can span on several lines or have several definitions separated by ";"
-    ivLocalIdx=which(ivIndexes %in% behavioralIndexes[idxBI]:nextDefIdx) 
+    #check behavioral has IV> def
+    #IV can span on several lines or have several definitions separated by ";"
+    ivLocalIdx=which(ivIndexes %in% behavioralIndexes[idxBI]:(nextDefIdx-1)) 
     ivRaw=NULL 
     namesOnIV=c() 
     if (length(ivLocalIdx)>0) 
     {
-      #analize all iv definitions
+      #analyze all IV definitions
       ivRaw='' 
       for (ivLLidx in 1:length(ivLocalIdx))
       {
         nextKwIdx=min(kwIdx[which(kwIdx>ivIndexes[ivLocalIdx[ivLLidx]])]) 
         ivRawSingle=paste(cleanModel[ivIndexes[ivLocalIdx[ivLLidx]]:(nextKwIdx-1)],collapse='') 
-        ivRawSingle=gsub("^IV\\s*>", "", ivRawSingle, ignore.case = TRUE) 
+        ivRawSingle=gsub("^IV\\s*>", "", ivRawSingle, ignore.case=TRUE) 
         ivRawSingle=gsub("\\s*", "", ivRawSingle) 
         ivRaw=paste0(ivRawSingle,';',ivRaw) 
       }
       
-      #analize ivRaw
+      #analyze ivRaw
       ivComponents=strsplit(ivRaw,';')[[1]] 
       if (length(ivComponents)<1) stop('LOAD_MODEL(): NULL length on IV definition "',ivRaw,' in behavioral "',behavioralName,'".')
       
       for (idxIVComp in 1:length(ivComponents))
       {
+        if (! .checkExpression(ivComponents[idxIVComp]))
+          stop('LOAD_MODEL(): syntax error in IV definition: "',ivComponents[idxIVComp],'" in behavioral "',behavioralName,'".')
         #check unknown funs names
-        unknownFuns=.unknownFunsNames(idxIVComp,reservedKeyw) 
+        unknownFuns=.unknownFunsNames(ivComponents[idxIVComp],reservedKeyw) 
         if (length(unknownFuns)>0) stop('LOAD_MODEL(): unsupported functions in IV definition: "',ivComponents[idxIVComp],'" in behavioral "',behavioralName,'": ',
                                         paste0(paste0(unknownFuns,'()'),collapse=', ')) 
         #trim and extract symbol names from IV
         namesOnIV=c(namesOnIV,strsplit(gsub("^\\s+|\\s+$", "",gsub(symOnEqCleaner,' ',ivComponents[idxIVComp],ignore.case=TRUE)),'\\s+')[[1]]) 
-        #check IV is non trivial
-        if (nchar(ivComponents[idxIVComp])==0 || length(ivComponents[idxIVComp])==0 )
-          stop('LOAD_MODEL(): syntax error in IV definition: "',ivComponents[idxIVComp],'" in behavioral "',behavioralName,'".') 
-      }
+       }
       
       #remove numbers from names
       rmvNumOnIVIdx=c() 
@@ -2247,12 +2842,11 @@ LOAD_MODEL <- function(modelFile=NULL,
       for (idxNOEQ in 1:length(namesOnIV)) {
         if (length(grep(allowedCharOnName,namesOnIV[idxNOEQ]))==0) 
         {
-          stop('LOAD_MODEL(): syntax error in instrumental variable definition: "',ivRaw,'". The following symbol cannot be a variable name: "',namesOnIV[idxNOEQ],'" (behavioral "',behavioralName,'").') 
+          stop('LOAD_MODEL(): syntax error in IV definition: "',ivRaw,'". The following symbol cannot be a variable name: "',namesOnIV[idxNOEQ],'" (behavioral "',behavioralName,'").') 
         }
         
         if ((grepl('__',namesOnIV[idxNOEQ])))
-          stop(paste0('LOAD_MODEL(): instrumental variable definition "',namesOnIV[idxNOEQ],'" cannot contain double underscore "__" (behavioral "',behavioralName,'").'))
-        
+          stop(paste0('LOAD_MODEL(): IV definition "',namesOnIV[idxNOEQ],'" cannot contain double underscore "__" (behavioral "',behavioralName,'").'))
       }
     }
     
@@ -2289,18 +2883,17 @@ LOAD_MODEL <- function(modelFile=NULL,
   }# end behavioral loop
   
   
-  #analize code identities ----------------------------------------------------------------------
+  #analyze code identities ----------------------------------------------------------------------
   
   model$identities=list() 
   if (length(identityIndexes)>0) for(idxII in 1:length(identityIndexes))
   {
-    
     identityTmp=list() 
     #get next keyword definition index
     nextKwIdx=min(kwIdx[which(kwIdx>identityIndexes[idxII])]) 
     #read all lines of behavior definition
     identitylRaw=paste(cleanModel[identityIndexes[idxII]:(nextKwIdx-1)],collapse=' ')
-    identitylRaw=gsub("^IDENTITY\\s*>", "", identitylRaw, ignore.case = TRUE) 
+    identitylRaw=gsub("^IDENTITY\\s*>", "", identitylRaw, ignore.case=TRUE) 
     identitylRaw=gsub("^\\s+|\\s+$", "", identitylRaw) 
     #get identity name
     identityName=gsub("^\\s+|\\s+$", "",identitylRaw) 
@@ -2310,36 +2903,45 @@ LOAD_MODEL <- function(modelFile=NULL,
     #get next eq definition index
     nextDefIdx=min(eqIdenDefIdx[which(eqIdenDefIdx>identityIndexes[idxII])]) 
     #check identity has eq def
-    eqLocalIdx=which(eqIndexes %in% identityIndexes[idxII]:nextDefIdx) 
+    eqLocalIdx=which(eqIndexes %in% identityIndexes[idxII]:(nextDefIdx-1)) 
     if (length(eqLocalIdx)==0) stop('LOAD_MODEL(): no EQ definition in identity "',identityName,'".') 
     if (length(eqLocalIdx)>1) stop('LOAD_MODEL(): multiple EQ definitions in identity "',identityName,'".') 
     #get eq
     #read all lines of EQ definition
     nextKwIdx=min(kwIdx[which(kwIdx>eqIndexes[eqLocalIdx])]) 
     eqRaw=paste(cleanModel[eqIndexes[eqLocalIdx]:(nextKwIdx-1)],collapse=' ') 
-    eqRaw=gsub("^EQ\\s*>", "", eqRaw, ignore.case = TRUE) 
+    eqRaw=gsub("^EQ\\s*>", "", eqRaw, ignore.case=TRUE) 
     eqRaw=gsub("\\s*", "", eqRaw) 
     #check unknown funs names
     unknownFuns=.unknownFunsNames(eqRaw,reservedKeyw)
-    if (length(unknownFuns)>0) stop('LOAD_MODEL(): unsupported functions in EQ definition: "',eqRaw,'" in identity "',identityName,'": ',
+    if (length(unknownFuns)>0) stop('LOAD_MODEL(): unsupported functions in identity "',identityName,'" in EQ definition: "',eqRaw,'": ',
                                     paste0(paste0(unknownFuns,'()'),collapse=', ')) 
-    #extract components names from EQ
-    namesOnEq=strsplit(gsub("^\\s+|\\s+$", "",gsub(symOnEqCleaner,' ',eqRaw,ignore.case=TRUE)),'\\s+')[[1]] 
+    
+    #check EQ is non trivial
+    if (nchar(eqRaw)==0 || !grepl('=',eqRaw))
+      stop('LOAD_MODEL(): syntax error in identity "',identityName,'" in EQ definition: "',eqRaw,'".')  
+    
+    #trim and extract symbol names from EQ
+    #we keep dependent
+    namesOnEq=strsplit(gsub("^\\s+|\\s+$", "",gsub(symOnEqCleaner,' ',eqRaw,ignore.case=TRUE)),'\\s+')[[1]]  
+    
+    #check EQ is non trivial
+    if ( length(namesOnEq)==0 )
+      stop('LOAD_MODEL(): syntax error in identity "',identityName,'" in EQ definition: "',eqRaw,'".')  
+    
     eqRawSplitted=strsplit(eqRaw,'\\=')[[1]] 
-    if (length(eqRawSplitted)!=2) stop('LOAD_MODEL(): syntax error in EQ definition: "',eqRaw,'".')
+    if (length(eqRawSplitted)!=2) stop('LOAD_MODEL(): syntax error in identity "',identityName,'" in EQ definition: "',eqRaw,'".')
     
     #convert RHS text to expression
-    
     rhsExp=eqRawSplitted[2] 
     lhsExp=eqRawSplitted[1] 
-    if (lhsExp=='') stop('LOAD_MODEL(): syntax error in EQ definition: "',eqRaw,'" in identity "',identityName,'".')
+    if (lhsExp=='') stop('LOAD_MODEL(): syntax error in identity "',identityName,'" in EQ definition: "',eqRaw,'".')
     
     #find lhs func
     tryCatch({
       lhsFun=.parseLhsEQ(lhsExp,allowedLhsEQfuns) 
     },error=function(err){
-      stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" in identity "',identityName,'".')
-    })
+      stop('LOAD_MODEL(): syntax error in identity "',identityName,'" in LHS of EQ definition: "',eqRaw,'".')})
     
     # lhs identity -------------------------------------------------------------------
     
@@ -2348,33 +2950,53 @@ LOAD_MODEL <- function(modelFile=NULL,
     {
       #check EQ contains identity name
       if (lhsFun$args!=identityName)
-        stop('LOAD_MODEL(): LHS of EQ definition: "',eqRaw,'" must contain only the idenity name "',identityName,'" or the allowed uppercase LHS functions: ',paste0(paste0(allowedLhsEQfunsPub,'()'),collapse=', ')) 
+        stop('LOAD_MODEL(): LHS of EQ definition: "',eqRaw,'" must contain only the identity name "',identityName,'" or the allowed uppercase LHS functions: ',paste0(paste0(allowedLhsEQfunsPub,'()'),collapse=', ')) 
+      
+      if (lhsExp!=paste0(identityName))
+        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'". Only the identity function or a single transformation of the endogenous variable "',identityName,'" are allowed on the LHS of EQ definition, e.g. EQ> ',identityName,'=...') 
+      
     } else if (lhsFun$funName=='LOG')
     {
-      if (lhsFun$argsCount!=1 || lhsFun$args!=identityName) 
+      if (lhsFun$argsCount!=1 || lhsFun$args!=identityName ) 
         stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" of the identity "',identityName,'". If the LOG of the endogenous variable is requested please try the following: "LOG(',identityName,')"') 
+      
+      if (lhsExp!=paste0('LOG(',identityName,')'))
+        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'". Only the identity function or a single transformation of the endogenous variable "',identityName,'" are allowed on the LHS of EQ definition, e.g. EQ> LOG(',identityName,')=...') 
+      
     } else if (lhsFun$funName=='EXP')
     {
       if (lhsFun$argsCount!=1 || lhsFun$args!=identityName) 
         stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" of the identity "',identityName,'". If the EXP of the endogenous variable is requested please try the following: "EXP(',identityName,')"') 
+      
+      if (lhsExp!=paste0('EXP(',identityName,')'))
+        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'". Only the identity function or a single transformation of the endogenous variable "',identityName,'" are allowed on the LHS of EQ definition, e.g. EQ> EXP(',identityName,')=...') 
+      
     } else if (lhsFun$funName=='TSDELTA' || lhsFun$funName=='DEL')
     {
       if (  lhsFun$argsCount>2 || lhsFun$args[1]!=identityName) 
-        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" of the identity "',identityName,'". If the TSDELTA of the endogenous variable is requested please try the following: "TSDELTA(',identityName,')" or "TSDELTA(',behavioralName,',n)"') 
+        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" of the identity "',identityName,'". If the TSDELTA of the endogenous variable is requested please try the following: "TSDELTA(',identityName,')" or "TSDELTA(',identityName,',n)"') 
+    
+      if (lhsExp!=paste0(lhsFun$funName,'(',identityName,',',lhsFun$args[2],')') && lhsExp!=paste0(lhsFun$funName,'(',identityName,')'))
+        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'". Only the identity function or a single transformation of the endogenous variable "',identityName,'" are allowed on the LHS of EQ definition, e.g. EQ> TSDELTA(',identityName,',n)=...') 
+      
     } else if (lhsFun$funName=='TSDELTAP' )
     {
       if (  lhsFun$argsCount>2 || lhsFun$args[1]!=identityName) 
-        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" of the identity "',identityName,'". If the TSDELTAP of the endogenous variable is requested please try the following: "TSDELTAP(',identityName,')" or "TSDELTAP(',behavioralName,',n)"') 
+        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" of the identity "',identityName,'". If the TSDELTAP of the endogenous variable is requested please try the following: "TSDELTAP(',identityName,')" or "TSDELTAP(',identityName,',n)"') 
+      
+      if (lhsExp!=paste0(lhsFun$funName,'(',identityName,',',lhsFun$args[2],')') && lhsExp!=paste0(lhsFun$funName,'(',identityName,')') )
+        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'". Only the identity function or a single transformation of the endogenous variable "',identityName,'" are allowed on the LHS of EQ definition, e.g. EQ> TSDELTAP(',identityName,',n)=...') 
+      
     } else if (lhsFun$funName=='TSDELTALOG' )
     {
       if (  lhsFun$argsCount>2 || lhsFun$args[1]!=identityName) 
-        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" of the identity "',identityName,'". If the TSDELTALOG of the endogenous variable is requested please try the following: "TSDELTALOG(',identityName,')" or "TSDELTALOG(',behavioralName,',n)"') 
+        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'" of the identity "',identityName,'". If the TSDELTALOG of the endogenous variable is requested please try the following: "TSDELTALOG(',identityName,')" or "TSDELTALOG(',identityName,',n)"') 
+      
+      if (lhsExp!=paste0(lhsFun$funName,'(',identityName,',',lhsFun$args[2],')') && lhsExp!=paste0(lhsFun$funName,'(',identityName,')') )
+        stop('LOAD_MODEL(): syntax error in LHS of EQ definition: "',eqRaw,'". Only the identity function or a single transformation of the endogenous variable "',identityName,'" are allowed on the LHS of EQ definition, e.g. EQ> TSDELTALOG(',identityName,',n)=...') 
     }
     
-    #check EQ contains other names
-    if (length(namesOnEq[-which(namesOnEq==identityName)])==0) 
-      stop('LOAD_MODEL(): singular equation in EQ "',eqRaw,'" in identity "',identityName,'"') 
-    if (! .checkExpression(rhsExp)) stop('LOAD_MODEL(): syntax error in RHS of EQ definition: "',eqRaw,'".')
+    if (! .checkExpression(rhsExp)) stop('LOAD_MODEL(): syntax error in identity "',identityName,'" in RHS of EQ definition: "',eqRaw,'".')
     
     #remove numbers
     rmvNumOnEqIdx=c() 
@@ -2389,12 +3011,12 @@ LOAD_MODEL <- function(modelFile=NULL,
     for (idxNOEQ in 1:length(namesOnEq)) {
       if (length(grep(allowedCharOnName,namesOnEq[idxNOEQ]))==0) 
       {
-        stop('LOAD_MODEL(): syntax error in EQ definition: "',eqRaw,'". The following symbol cannot be a variable name: "',namesOnEq[idxNOEQ],'".') 
+        stop('LOAD_MODEL(): syntax error in identity "',identityName,'" in EQ definition: "',eqRaw,'". The following symbol cannot be a variable name: "',namesOnEq[idxNOEQ],'".') 
       }
     }
     
     #check identity has IF def
-    ifLocalIdx=which(ifIndexes %in% identityIndexes[idxII]:nextDefIdx) 
+    ifLocalIdx=which(ifIndexes %in% identityIndexes[idxII]:(nextDefIdx-1)) 
     ifRaw=NULL 
     identityTmp$hasIF=FALSE 
     if (length(ifLocalIdx)>0) 
@@ -2403,7 +3025,7 @@ LOAD_MODEL <- function(modelFile=NULL,
       ifRaw='' 
       nextKwIdx=min(kwIdx[which(kwIdx>ifIndexes[ifLocalIdx])]) 
       ifRaw=paste(cleanModel[ifIndexes[ifLocalIdx]:(nextKwIdx-1)],collapse=' ') 
-      ifRaw=gsub("^IF\\s*>", "", ifRaw, ignore.case = TRUE) 
+      ifRaw=gsub("^IF\\s*>", "", ifRaw, ignore.case=TRUE) 
       ifRaw=gsub("^\\s*|\\s*$", "", ifRaw) 
       #check for unknown funs
       unknownFuns=.unknownFunsNames(ifRaw,reservedKeyw)
@@ -2430,7 +3052,7 @@ LOAD_MODEL <- function(modelFile=NULL,
       for (idxNOEQ in 1:length(namesOnIf)) {
         if (length(grep(allowedCharOnName,namesOnIf[idxNOEQ]))==0) 
         {
-          stop(paste0('LOAD_MODEL(): syntax error in IF definition: "',ifRaw,'" on identity "',identityName,'". The following symbol cannot be a variable name: "',namesOnIf[idxNOEQ],'".')) 
+          stop(paste0('LOAD_MODEL(): syntax error in IF definition: "',ifRaw,'" in identity "',identityName,'". The following symbol cannot be a variable name: "',namesOnIf[idxNOEQ],'".')) 
         }
       }
       
@@ -2442,6 +3064,7 @@ LOAD_MODEL <- function(modelFile=NULL,
     
     #we must deal with multiple lhsFun due to IF conditions
     #e.g. __IF__ (x<0) __THEN__ EXP(y)=x; __IF__(x>=0) __THEN__ DELTAP(y)=x
+    #we need a list of lists
     identityTmp$multipleLhsFun=list(lhsFun) 
     
     #build identity eq as __IF__ (condition) __THEN__ EQ
@@ -2457,7 +3080,7 @@ LOAD_MODEL <- function(modelFile=NULL,
       tmpIfRaw=gsub('<-','< -',tmpIfRaw) 
      
        if (! grepl('(==|<|>|>=|<=|!=|&|\\|)',tmpIfRaw))
-        stop(paste0('LOAD_MODEL(): syntax error in IF condition "',ifRaw,'" in identity "',identityName,'". No logical operators found.'))
+        stop(paste0('LOAD_MODEL(): syntax error in IF condition "',ifRaw,'" in identity "',identityName,'". No logical operator found.'))
       
       if (! .checkExpression(tmpIfRaw)) stop('LOAD_MODEL(): syntax error in IF definition: "',tmpIfRaw,'" in identity "',identityName,'".')
       
@@ -2474,9 +3097,15 @@ LOAD_MODEL <- function(modelFile=NULL,
     identityTmp$eqComponentsNames=sort(unique(namesOnEq)) 
     #RAW must be refined
     if (! is.null(ifRaw)) identityTmp$ifRaw=paste0(ifRaw,';') 
-    #append to model list of identities. if double exclusive IF only the first one will be stored in identity (?)
+    #append to model list of identities.  
     if (! is.null(model$identities[[identityName]])) 
-    { 
+    {
+      #check lhs function is the same for all identity equations in same vendog
+      baseLhsFun=model$identities[[identityName]]$multipleLhsFun[[1]]
+      if (baseLhsFun$funName!=lhsFun$funName || any(baseLhsFun$args != lhsFun$args)) 
+      {
+        stop('LOAD_MODEL(): error in identity "',identityName,'", all EQ equations must have the same LHS function.')
+      }
       
       model$identities[[identityName]]$eqRaw=paste0(model$identities[[identityName]]$eqRaw,identityTmp$eqRaw) 
       model$identities[[identityName]]$ifCondition=paste0(model$identities[[identityName]]$ifCondition,identityTmp$ifCondition) 
@@ -2492,10 +3121,11 @@ LOAD_MODEL <- function(modelFile=NULL,
       model$identities[[identityName]]$eqComponentsNames=sort(unique(c(model$identities[[identityName]]$eqComponentsNames,identityTmp$eqComponentsNames))) 
     } else
     {
+      #if new identity has no if than store only latter
       model$identities[[identityName]]=identityTmp 
       
       #add name to vendog in related position (required for ordering algo)
-      #we want the same order in vendog as the one in MDL
+      #we want the same order in vendog as the one in MDL (?)
       model$vendog[identityIndexes[idxII]]=identityName 
     }
     
@@ -2511,11 +3141,13 @@ LOAD_MODEL <- function(modelFile=NULL,
   model$totNumIds=totNumIds 
   model$eqCoeffNum=totNumCoeff 
   
-  #set max lag to default
+  #set max lag/leead to default
   model$max_lag=0 
+  model$max_lead=0 
+  
   if (totNumEqs+totNumIds==0) stop('LOAD_MODEL(): empty model.') 
   
-  #remove NAs from vendog
+  #remove NAs from vendog (we inserted vars in model$vendog using their line position in model text)
   model$vendog=model$vendog[! is.na(model$vendog)] 
   
   #create sublists for vendog behaviorals and vendog identities
@@ -2543,26 +3175,33 @@ LOAD_MODEL <- function(modelFile=NULL,
   
   vexog=unique(vexog) 
   
-  #remove enogenous
+  #remove endogenous
   rmvIdx=which(vexog %in% model$vendog)
   if (length(rmvIdx)>0) vexog=vexog[-rmvIdx] 
   model$vexog=vexog 
   
-  #build incidence matrix
-  incidence_matrix=matrix(0,nrow = length(model$vendog), ncol = length(model$vendog)) 
-  colnames(incidence_matrix)=model$vendog 
-  rownames(incidence_matrix)=model$vendog 
+  #deal with reserved words
+  allNames=c(model$vendog,model$vexog) 
+  if (any(grepl('__',allNames)))
+    stop(paste0('LOAD_MODEL(): variable names cannot contain double underscore "__". Please change the following variable names: ',paste0(allNames[which(grepl('__',allNames))],collapse=', ')))
+  
+  if (length(model$vexog)==0 && (! quietly) ) .MODEL_outputText(outputText=!quietly,'\nLOAD_MODEL(): warning, model has no exogenous variables.\n')
+  
+  #probably never occur
+  if (length(model$vendog)==0 && (! quietly) ) .MODEL_outputText(outputText=!quietly,'\nLOAD_MODEL(): warning, model has no endogenous variables.\n')
   
   # behavioral expr and max_lag  ----------------------------------
   
   .MODEL_outputText(outputText=!quietly,'Analyzing behaviorals...\n') 
-  #build RHS expressions of behaviorals and identities (needed to speedup simulation...)
-  #cycle in behaviorals
+  #build RHS expressions in behaviorals and identities (needed to speedup simulation...)
   
-  if (length(model$behaviorals)>0) for(idxB in 1:length(model$behaviorals))
+  #cycle in behaviorals
+  length_model_behaviorals=length(model$behaviorals) 
+  names_model_behaviorals=names(model$behaviorals) 
+  if (length_model_behaviorals>0) for(idxB in 1:length_model_behaviorals)
   {#cycle in components
     outRHS='' 
-    currentVendog=names(model$behaviorals)[idxB] 
+    currentVendog=names_model_behaviorals[idxB] 
     currentBehavioral=model$behaviorals[[idxB]] 
     for (idxC in 1:length(currentBehavioral$eqCoefficientsNames))
     {
@@ -2584,8 +3223,9 @@ LOAD_MODEL <- function(modelFile=NULL,
       errorEqRaw=paste0(.MODEL_MOD_FUNC_NAMES(currentBehavioral$lhsFun$raw),'-(',outRHS,')') 
       for (idxED in 1:currentBehavioral$errorDim)
       {
-        #final RHS EQ is original one plus lagged errors, i.e. historical/simulated endog minus fitted
+        #final RHS EQ is original one plus lagged errors
         #warning: in DYNAMIC simulation RHO*LAG(y-f(x)) is always 0
+        #if simulation period > errorDim
         outRHS=paste0(outRHS,'+',currentVendog,'__RHO__',idxED,'*.MODEL_TSLAG(',errorEqRaw,',',idxED,')') 
       }
     }
@@ -2624,23 +3264,33 @@ LOAD_MODEL <- function(modelFile=NULL,
       { 
         if (currentBehavioral$lhsFun$argsCount>1 && ! is.finite(as.numeric(currentBehavioral$lhsFun$args[2])))
           stop('Non-numeric lag in LHS function: TSDELTA()') 
-        outSim=paste0(currentVendog,'=',outRHS,'+.MODEL_TSLAG(',currentVendog,',',ifelse(currentBehavioral$lhsFun$argsCount>1,currentBehavioral$lhsFun$args[2],'1'),')')
+        
+        if (currentBehavioral$lhsFun$argsCount>1) tmpS=currentBehavioral$lhsFun$args[2]
+        else tmpS='1'
+        outSim=paste0(currentVendog,'=',outRHS,'+.MODEL_TSLAG(',currentVendog,',',tmpS,')')
         
       } else if (currentBehavioral$lhsFun$funName=='TSDELTAP' )
       { 
         if (currentBehavioral$lhsFun$argsCount>1 && ! is.finite(as.numeric(currentBehavioral$lhsFun$args[2])))
           stop('Non-numeric lag in LHS function: TSDELTAP()') 
+        
+        if (currentBehavioral$lhsFun$argsCount>1) tmpS=currentBehavioral$lhsFun$args[2]
+        else tmpS='1'
+            
         outSim=paste0(currentVendog,'=(',outRHS,
-                      ')*.MODEL_TSLAG(',currentVendog,',',ifelse(currentBehavioral$lhsFun$argsCount>1,currentBehavioral$lhsFun$args[2],'1'),')/100',
-                      '+.MODEL_TSLAG(',currentVendog,',',ifelse(currentBehavioral$lhsFun$argsCount>1,currentBehavioral$lhsFun$args[2],'1'),')')
+                      ')*.MODEL_TSLAG(',currentVendog,',',tmpS,')/100',
+                      '+.MODEL_TSLAG(',currentVendog,',',tmpS,')')
         
       } else if (currentBehavioral$lhsFun$funName=='TSDELTALOG' )
       { 
         if (currentBehavioral$lhsFun$argsCount>1 && ! is.finite(as.numeric(currentBehavioral$lhsFun$args[2])))
           stop('Non-numeric lag in LHS function: TSDELTALOG()') 
-        outSim=paste0(currentVendog,'=exp(',outRHS,
-                      ')*.MODEL_TSLAG(',currentVendog,',',ifelse(currentBehavioral$lhsFun$argsCount>1,currentBehavioral$lhsFun$args[2],'1'),')')
         
+        if (currentBehavioral$lhsFun$argsCount>1) tmpS=currentBehavioral$lhsFun$args[2]
+        else tmpS='1'
+        
+        outSim=paste0(currentVendog,'=exp(',outRHS,
+                      ')*.MODEL_TSLAG(',currentVendog,',',tmpS,')')
       }
       
       #add indexes to vars
@@ -2649,6 +3299,7 @@ LOAD_MODEL <- function(modelFile=NULL,
                                 ,'0') 
       #explode model funs
       tempS=.explodeTSLAG(outSim)
+      tempS=.explodeTSLEAD(tempS$output)
       tempS=.explodeTSDELTA(tempS$output)
       tempS=.explodeTSDELTAP(tempS$output)
       tempS=.explodeTSDELTALOG(tempS$output)
@@ -2657,39 +3308,20 @@ LOAD_MODEL <- function(modelFile=NULL,
       
       outSim=tempS$output
       
-      #get max lag
-      model$max_lag=max(model$max_lag,-.getLowerLag(outSim)) 
+      #get max lag lead
+      tempOut=.getLowerLagAndHigherLead(outSim)
+      model$max_lag=max(model$max_lag,-tempOut$outL) 
+      model$max_lead=max(model$max_lead,tempOut$outH) 
       
       #save sim expression
-      currentBehavioral$eqSimExp=outSim 
+      currentBehavioral$eqSimExpText=outSim 
       
-    },error=function(e){stop(paste0('LOAD_MODEL(): error while parsing EQ expression "',currentBehavioral$eq,'" of behavioral "',
-                                    currentVendog,'". ',e$message))}) 
-    tryCatch({
-      
-      
-      #get incidence matrix row
-      vendogComponents=base::intersect(localComponentsNames,
-                                       model$vendog)
-      
-      
-      #remove "currentVendog[indexN,]=" 
-      indexN='0' 
-      inputS=gsub(paste0('\\b',currentVendog,'\\[\\s*',indexN,'\\s*,\\s*\\]\\s*\\='),'',outSim) 
-      incidenceVendogs=.getIncidenceVendogs(inputS,
-                                            vendogComponents,indexN) 
-      #save stuff
-      if (length(incidenceVendogs)>0)
-        for (idxIV in 1:length(incidenceVendogs))
-          incidence_matrix[[currentVendog,
-                            incidenceVendogs[idxIV]]]=1
-      
-    },error=function(e){stop(paste0('LOAD_MODEL(): error while building incidence vector for behavioral ',
-                                    currentVendog,'. ',e$message))}) 
+    },error=function(e){stop(paste0('LOAD_MODEL(): error in behavioral "',
+                                    currentVendog,'" while parsing EQ expression "',currentBehavioral$eq,'". ',e$message))}) 
+    
     #store stuff
     model$behaviorals[[idxB]]=currentBehavioral 
   }
-  
   
   # identity expr and max lag  ----------------------------------
   
@@ -2698,10 +3330,8 @@ LOAD_MODEL <- function(modelFile=NULL,
   #cycle in identities
   length_model_identities=length(model$identities) 
   names_model_identities=names(model$identities) 
-  
   if (length_model_identities>0) for(idxI in 1:length_model_identities)
   {
-    
     currentIdentity=model$identities[[idxI]] 
     currentVendog=names_model_identities[idxI] 
     localComponentsNames=currentIdentity$eqComponentsNames 
@@ -2767,40 +3397,45 @@ LOAD_MODEL <- function(modelFile=NULL,
           RHSmodeText=paste0('log(',RHSmodeText,')') 
         } else if (currentIdentity$multipleLhsFun[[eqIdx]]$funName == 'TSDELTA' || currentIdentity$multipleLhsFun[[eqIdx]]$funName == 'DEL')
         {
-          
           if (currentIdentity$multipleLhsFun[[eqIdx]]$argsCount>1 && ! is.finite(as.numeric(currentIdentity$multipleLhsFun[[eqIdx]]$args[2])))
             stop('Non-numeric lag in LHS function: TSDELTA()') 
-          RHSmodeText=paste0(RHSmodeText,'+.MODEL_TSLAG(',currentVendog,',',ifelse(currentIdentity$multipleLhsFun[[eqIdx]]$argsCount>1,currentIdentity$multipleLhsFun[[eqIdx]]$args[2],'1'),')')
+          
+          if (currentIdentity$multipleLhsFun[[eqIdx]]$argsCount>1) tmpS=currentIdentity$multipleLhsFun[[eqIdx]]$args[2]
+          else tmpS='1'
+              
+          RHSmodeText=paste0(RHSmodeText,'+.MODEL_TSLAG(',currentVendog,',',tmpS,')')
           
         } else if (currentIdentity$multipleLhsFun[[eqIdx]]$funName == 'TSDELTAP' )
         {
-          
           if (currentIdentity$multipleLhsFun[[eqIdx]]$argsCount>1 && ! is.finite(as.numeric(currentIdentity$multipleLhsFun[[eqIdx]]$args[2])))
             stop('Non-numeric lag in LHS function: TSDELTAP()') 
           
-          RHSmodeText=paste0('(',RHSmodeText,
-                             ')*.MODEL_TSLAG(',currentVendog,',',ifelse(currentIdentity$multipleLhsFun[[eqIdx]]$argsCount>1,currentIdentity$multipleLhsFun[[eqIdx]]$args[2],'1'),')/100',
-                             '+.MODEL_TSLAG(',currentVendog,',',ifelse(currentIdentity$multipleLhsFun[[eqIdx]]$argsCount>1,currentIdentity$multipleLhsFun[[eqIdx]]$args[2],'1'),')')
+          if (currentIdentity$multipleLhsFun[[eqIdx]]$argsCount>1) tmpS=currentIdentity$multipleLhsFun[[eqIdx]]$args[2]
+          else tmpS='1'
           
+          RHSmodeText=paste0('(',RHSmodeText,
+                             ')*.MODEL_TSLAG(',currentVendog,',',tmpS,')/100',
+                             '+.MODEL_TSLAG(',currentVendog,',', tmpS,')')
           
         } else if (currentIdentity$multipleLhsFun[[eqIdx]]$funName == 'TSDELTALOG' )
         {
-          
           if (currentIdentity$multipleLhsFun[[eqIdx]]$argsCount>1 && ! is.finite(as.numeric(currentIdentity$multipleLhsFun[[eqIdx]]$args[2])))
             stop('Non-numeric lag in LHS function: TSDELTALOG()') 
           
+          if (currentIdentity$multipleLhsFun[[eqIdx]]$argsCount>1) tmpS=currentIdentity$multipleLhsFun[[eqIdx]]$args[2]
+          else tmpS='1'
+          
           RHSmodeText=paste0('exp(',RHSmodeText,
-                             ')*.MODEL_TSLAG(',currentVendog,',',ifelse(currentIdentity$multipleLhsFun[[eqIdx]]$argsCount>1,currentIdentity$multipleLhsFun[[eqIdx]]$args[2],'1'),')')
+                             ')*.MODEL_TSLAG(',currentVendog,',',tmpS,')')
         }
         
-        #build sim expresion w. constant adjustmnet
-        outSim=paste0(outSim,
-                      ifelse(ifRawComponent=='TRUE',
-                             paste0(currentVendog,'=',RHSmodeText,';'),
-                             paste0(currentVendog,'=.MODEL_VIF(',currentVendog,
-                                    ',',
-                                    ifModText,',',RHSmodeText,');'))
-        )
+        if (ifRawComponent=='TRUE') tmpS=paste0(currentVendog,'=',RHSmodeText,';')
+        else  tmpS=paste0(currentVendog,'=.MODEL_VIF(',currentVendog,
+                          ',',ifModText,',',RHSmodeText,');') 
+          
+        #build sim expresion w. constant adjustment
+        outSim=paste0(outSim,tmpS)
+      
         
       },error=function(e){
         stop(paste0('LOAD_MODEL(): error parsing EQ expression "',eqRaw,'" in identity "',currentVendog, '" - ', e$message)) 
@@ -2809,13 +3444,13 @@ LOAD_MODEL <- function(modelFile=NULL,
     
     tryCatch({
       
-      
       #add indexes to vars
       outSim=.appendIndexToVars(outSim,c(localComponentsNames,
                                          paste0(currentVendog,'__ADDFACTOR'))
                                 ,'0') 
       #explode model funs
       tempS=.explodeTSLAG(outSim)
+      tempS=.explodeTSLEAD(tempS$output)
       tempS=.explodeTSDELTA(tempS$output)
       tempS=.explodeTSDELTAP(tempS$output)
       tempS=.explodeTSDELTALOG(tempS$output)
@@ -2823,358 +3458,173 @@ LOAD_MODEL <- function(modelFile=NULL,
       tempS=.explodeMAVE(tempS$output)
       outSim=tempS$output
       
-      currentIdentity$eqSimExp=outSim
+      currentIdentity$eqSimExpText=outSim
       
-      #get max lag
-      model$max_lag=max(model$max_lag,-.getLowerLag(outSim)) 
+      #get max lag lead
+      tempOut=.getLowerLagAndHigherLead(outSim)
+      model$max_lag=max(model$max_lag,-tempOut$outL) 
+      model$max_lead=max(model$max_lead,tempOut$outH) 
+      
     },error=function(e){stop(paste0('LOAD_MODEL(): error while building simulation expression of identity ',
                                     currentVendog,'. ',e$message))}) 
-    tryCatch({
-      
-      #get incidence matrix
-      vendogComponents=base::intersect(localComponentsNames,
-                                       model$vendog) 
-     
-       #remove "currentVendog=[indexN,]" and ".MODEL_VIF(currentVendog[indexN,]"
-      indexN='0' 
-      inputS=gsub(paste0('\\b',currentVendog,'\\[\\s*',indexN,'\\s*,\\s*\\]\\s*\\='),'',outSim) 
-      if (currentIdentity$hasIF) inputS=gsub(paste0('.MODEL_VIF\\(\\s*',currentVendog,'\\[\\s*',indexN,'\\s*,\\s*\\]\\s*\\,'),'\\(',inputS) 
-      incidenceVendogs=.getIncidenceVendogs(inputS,
-                                            vendogComponents,indexN) 
-      #save stuff
-      if (length(incidenceVendogs)>0)
-        for (idxIV in 1:length(incidenceVendogs))
-          incidence_matrix[[currentVendog,
-                            incidenceVendogs[idxIV]]]=1
-      
-    },error=function(e){stop(paste0('LOAD_MODEL(): error while building incidence vector of identity ',
-                                    currentVendog,'. ',e$message))}) 
+    
     #update identity
     model$identities[[idxI]]=currentIdentity 
+    
   }#end loop identities
   
   
   # reordering incidence ------------------------
   
-  .MODEL_outputText(outputText=!quietly,'Optimizing...\n') 
-  
-  #analize incidence matrix
-  temp_incidence_matrix=incidence_matrix 
-  
-  #speed-up variables
-  total_im_rows=dim(temp_incidence_matrix)[1]
-  full_im_rows=1:total_im_rows 
-  
-  #list of dynamic removed vendog
-  inactive_vendog_index=vector('integer',length=total_im_rows) 
-  
-  #get VPRE endogenous
-  VPRE=c() 
-  #we need to iterate till no changes to incidence_matrix
-  #if flag > #vendog exit loop 'cause no further variable can be removed
-  flag=0 
-  #index of looping into vendog set
-  localIdx=0 
-  while (flag<=total_im_rows)
+  #backward looking model
+  if (model$max_lead==0)
   {
-    flag=flag+1 
-    localIdx=localIdx+1 
-    #reset vendog index if required...
-    if (localIdx>total_im_rows) localIdx=1 
-    #skip if current vendog has already been removed
-    if (inactive_vendog_index[localIdx]==1) next 
-    #if all 0 this vendog moves to VPRE
-    if (all(temp_incidence_matrix[localIdx,which(inactive_vendog_index==0)]==0))
-    { 
-      #add vendog to VPRE
-      VPRE=c(VPRE,row.names(temp_incidence_matrix)[localIdx]) 
-      #add vendog to inactive set
-      inactive_vendog_index[localIdx]=1 
-      #reset flag
-      flag=0 
-    }
-  }
-  
-  #get VPOST endogenous
-  VPOST=c() 
-  #we need to iterate till no changes to incidence_matrix
-  #if flag > #vendog exit loop 'cause no further variable can be removed
-  flag=0 
-  #index of looping into vendog set
-  localIdx=0 
-  while (flag<=total_im_rows)
-  {
-    flag=flag+1 
-    localIdx=localIdx+1 
-    #reset vendog index if required...
-    if (localIdx>total_im_rows) localIdx=1 
-    #skip if current vendog has already been removed
-    if (inactive_vendog_index[localIdx]==1) next 
-    #if all 0 this vendog moves to VPOST
-    if (all(temp_incidence_matrix[which(inactive_vendog_index==0),localIdx]==0))
-    { 
-      #add vendog to VPOST
-      VPOST=c(row.names(temp_incidence_matrix)[localIdx],VPOST) 
-      #add vendog to inactive set
-      inactive_vendog_index[localIdx]=1 
-      #reset flag
-      flag=0 
-    }
-  }
-  
-  #get VFEED endogenous
-  VFEED=c() 
-  #we need to iterate till no changes to incidence_matrix
-  #if flag > #vendog exit loop 'cause no further variable can be removed
-  flag=0 
-  #index of looping into vendog set
-  localIdx=0 
-  #flag4 is set if RULE #4 removes some vendog
-  flag4=0 
-  while(flag4==0)
-  {
-    flag4=1 
-    while (flag<=total_im_rows )
+    .MODEL_outputText(outputText=!quietly,'Optimizing...\n') 
+    
+    #build incidence matrix
+    incidence_matrix=matrix(0,nrow=length(model$vendog), ncol=length(model$vendog)) 
+    colnames(incidence_matrix)=model$vendog 
+    rownames(incidence_matrix)=model$vendog 
+    
+    if (length_model_behaviorals>0) for(idxB in 1:length_model_behaviorals)
     {
-      flag=flag+1 
-      localIdx=localIdx+1 
-      #speedup
-      which_inactive_vendog_index=which(inactive_vendog_index==0) 
-      #reset vendog index if required...
-      if (localIdx>total_im_rows) localIdx=1 
-      #skip if current vendog has already been removed
-      if (inactive_vendog_index[localIdx]==1) next 
+      currentVendog=names_model_behaviorals[idxB] 
+      currentBehavioral=model$behaviorals[[idxB]] 
       
-      #RULE #1
-      #if self-feedback i.e. im[i,i]==1 add to VFEED
-      if (temp_incidence_matrix[localIdx,localIdx]==1)
-      {
-        #add vendog to VFEED
-        VFEED=c(VFEED,row.names(temp_incidence_matrix)[localIdx]) 
-        #add vendog to inactive set
-        inactive_vendog_index[localIdx]=1 
-        #check for all removed
-        if (all(inactive_vendog_index==1)) break 
-        #reset flag
-        flag=0 
-        next 
-      }
-      
-      #RULE #2 
-      #if column or row is 0 remove it
-      if ((all(temp_incidence_matrix[which_inactive_vendog_index,localIdx]==0) || 
-           all(temp_incidence_matrix[localIdx,which_inactive_vendog_index]==0)) )
-      {
-        #add vendog to inactive set
-        inactive_vendog_index[localIdx]=1 
-        #check for all removed
-        if (all(inactive_vendog_index==1)) break 
-        #reset flag
-        flag=0 
-        next 
-      }
-      
-      #RULE #3 
-      #if sum column is 1 merge and remove it
-      if (sum(temp_incidence_matrix[which_inactive_vendog_index,localIdx])==1)  
-      {
-        #get vendog to be merged
-        destinationVendogIndex=which(temp_incidence_matrix[which_inactive_vendog_index,localIdx]==1) 
-        #get rows
-        sourceRow=temp_incidence_matrix[localIdx,which_inactive_vendog_index] 
-        destinationRow=temp_incidence_matrix[which_inactive_vendog_index[destinationVendogIndex],which_inactive_vendog_index] 
-        #build merge
-        destinationRow[which(destinationRow | sourceRow)]=1 
-        #save merge on destination row
-        temp_incidence_matrix[which_inactive_vendog_index[destinationVendogIndex],which_inactive_vendog_index]=destinationRow 
-        #add vendog to inactive set
-        inactive_vendog_index[localIdx]=1 
-        #check for all removed
-        if (all(inactive_vendog_index==1)) break 
-        #reset flag
-        flag=0 
-        next 
-      }
-      
-      #if sum row is 1 merge and remove it
-      if (sum(temp_incidence_matrix[localIdx,which_inactive_vendog_index])==1)  
-      {
+      tryCatch({
         
-        #get vendog to be merged
-        destinationVendogIndex=which(temp_incidence_matrix[localIdx,which_inactive_vendog_index]==1) 
-        #get columns
-        sourceColumn=temp_incidence_matrix[which_inactive_vendog_index,localIdx] 
-        destinationColumn=temp_incidence_matrix[which_inactive_vendog_index,which_inactive_vendog_index[destinationVendogIndex]] 
-        #build merge
-        destinationColumn[which(destinationColumn | sourceColumn)]=1 
-        #save merge on destination row
-        temp_incidence_matrix[which_inactive_vendog_index,which_inactive_vendog_index[destinationVendogIndex]]=destinationColumn 
-        #add vendog to inactive set
-        inactive_vendog_index[localIdx]=1 
-        #check for all removed
-        if (all(inactive_vendog_index==1)) break 
-        #reset flag
-        flag=0 
-        next 
-      }
-    }
-    
-    #RULE #4
-    #remove most populated (#1 in rows * #1 in cols)
-    targetIdxIM=0 
-    tempSum=0 
-    #check for all removed
-    if (all(inactive_vendog_index==1)) break 
-    #speedup
-    which_inactive_vendog_index=which(inactive_vendog_index==0) 
-    for (idxIM in which_inactive_vendog_index)
-    {
-      if (sum(temp_incidence_matrix[idxIM,which_inactive_vendog_index])*
-          sum(temp_incidence_matrix[which_inactive_vendog_index,idxIM])>tempSum) 
-      {
-        targetIdxIM=idxIM 
-        tempSum=sum(temp_incidence_matrix[idxIM,which_inactive_vendog_index])*
-          sum(temp_incidence_matrix[which_inactive_vendog_index,idxIM]) 
-      }
-    }
-    
-    #add to VFEED selected vendog
-    VFEED=c(VFEED,row.names(temp_incidence_matrix)[targetIdxIM]) 
-    #add vendog to inactive set
-    inactive_vendog_index[targetIdxIM]=1 
-    #check for all removed
-    if (all(inactive_vendog_index==1)) break 
-    #reset flags
-    flag4=0 
-    flag=0 
-  }
-  
-  #reset inactive vendogs
-  inactive_vendog_index[T]=0 
-  #get VSIM 
-  VSIM=c() 
-  #remove VPRE
-  if (length(VPRE)>0)
-  {   
-    #remove VPRE vendog from incidence matrix
-    for (idxVF in 1:length(VPRE))
-    {
-      #index to be removed
-      inactive_vendog_index[which(rownames(temp_incidence_matrix)==VPRE[idxVF])]=1 
-    }
-    
-  }
-  
-  #remove VPOST
-  if (length(VPOST)>0)
-  {   
-    #remove VPOST vendog from incidence matrix
-    for (idxVF in 1:length(VPOST))
-    {
-      #index to be removed
-      inactive_vendog_index[which(rownames(temp_incidence_matrix)==VPOST[idxVF])]=1 
-    }
-    
-  }
-  
-  #remove VFEED
-  if (length(VFEED)>0)
-  {   
-    #remove VFEED vendog from incidence matrix
-    for (idxVF in 1:length(VFEED))
-    {
-      #index to be removed
-      inactive_vendog_index[which(rownames(temp_incidence_matrix)==VFEED[idxVF])]=1 
-    }
-  }
-  
-  #we need to iterate till no empty or changes to incidence_matrix
-  #actually, we are building up the ordering for SIM vars
-  flag=0 
-  while (flag==0 ) 
-  {
-    flag=1 
-    which_inactive_vendog_index=which(inactive_vendog_index==0) 
-    #if row is 0 save vendog and remove it
-    for (idxIM in which_inactive_vendog_index)
-      if (all(temp_incidence_matrix[idxIM,which_inactive_vendog_index]==0)) 
-      {      
-        #add vendog to VSIM
-        VSIM=c(VSIM,row.names(temp_incidence_matrix)[idxIM]) 
-        #remove vendog from analysis
-        inactive_vendog_index[idxIM]=1 
-        #check for all removed
-        if (all(inactive_vendog_index==1)) 
-        {flag=1 
-        break}
+        #get incidence matrix row
+        vendogComponents=c(currentBehavioral$eqComponentsNamesBehaviorals,currentBehavioral$eqComponentsNamesIdentities)
         
-        flag=0 
-      }
+        outSim=currentBehavioral$eqSimExpText
+        
+        incidenceVendogs=.getIncidenceVendogs(currentVendog,outSim,
+                                              vendogComponents) 
+        #save stuff
+        if (length(incidenceVendogs)>0)
+          for (idxIV in 1:length(incidenceVendogs))
+            incidence_matrix[currentVendog,
+                             incidenceVendogs[idxIV]]=1
+        
+      },error=function(e){stop(paste0('LOAD_MODEL(): error while building incidence row for behavioral ',
+                                      currentVendog,'. ',e$message))}) 
+    }
     
-  }
-  
-  #...hope never happen
-  if (any(inactive_vendog_index==0)) stop(paste0('LOAD_MODEL(): cannot reduce incidence matrix.'))
-  
-  #reorder VFEED as shown in MDL model definition
-  if (length(VFEED)>0) VFEED=model$vendog[which(model$vendog %in% VFEED)]
-  
-  #append VFEED to VSIM
-  VSIM=c(VSIM,VFEED) 
-  
-  #assign to model
-  model$vpre=VPRE 
-  model$vpost=VPOST 
-  model$vfeed=VFEED 
-  model$vsim=VSIM 
-  
-  if (length(c(model$vpre,model$vsim,model$vpost)) != length(model$vendog)) 
-    stop('LOAD_MODEL(): unknown error while optimizing model. Countings do not match.') 
+    if (length_model_identities>0) for(idxI in 1:length_model_identities)
+    {
+      currentIdentity=model$identities[[idxI]] 
+      currentVendog=names_model_identities[idxI] 
+      
+      tryCatch({
+        
+        #get incidence matrix
+        vendogComponents=c(currentIdentity$eqComponentsNamesBehaviorals,currentIdentity$eqComponentsNamesIdentities)
+        
+        outSim=currentIdentity$eqSimExpText
+        
+        incidenceVendogs=.getIncidenceVendogs(currentVendog,outSim,
+                                              vendogComponents) 
+        
+        #save stuff
+        if (length(incidenceVendogs)>0)
+          for (idxIV in 1:length(incidenceVendogs))
+            incidence_matrix[currentVendog,
+                             incidenceVendogs[idxIV]]=1
+        
+      },error=function(e){stop(paste0('LOAD_MODEL(): error while building incidence vector of identity ',
+                                      currentVendog,'. ',e$message))}) 
+      
+    }
+    
+    #export incidence matrix
+    model$incidence_matrix=incidence_matrix
+    
+    #create vblocks
+    modelBlocks=.buildBlocks(incidence_matrix)
+    model$vblocks=modelBlocks$vblocks
+    model$vpre=modelBlocks$vpre
+    
+    varsCount=length(model$vpre)
+    if (length(model$vblocks)>0)
+      for (idxB in 1:length(model$vblocks)) varsCount=varsCount+
+                                          length(model$vblocks[[idxB]]$vsim)+
+                                          length(model$vblocks[[idxB]]$vpost)
+    if (varsCount != length(model$vendog)) 
+      stop('LOAD_MODEL(): unknown error while optimizing model. Countings do not match.') 
+    
+  } else {
+    .MODEL_outputText(outputText=!quietly,'This is a forward looking model...\n') 
+    }
   
   # build sim expressions ----------------------------------------------
   
   #we need at least 2 rows in sim matrices in case of simType='FORECAST'
-  max_lag_sim=max(model$max_lag,1)  
-  
+  max_lag_sim_1=max(model$max_lag,1)+1 
+ 
   tryCatch({
     if (length(model$behaviorals)>0) for(idxB in 1:length(model$behaviorals))
     {
-      model$behaviorals[[idxB]]$eqSimExp=parse(text=.addToIndexInString(model$behaviorals[[idxB]]$eqSimExp,
-                                                                        max_lag_sim+1
-      ))
+      #eqSimExpText must be kept original (i.e. no __LEAD__ tx) because it is needed to
+      #create leaded expressions
+      
+      #base sim equation as text, used only to lead base eq in leaded model
+      model$behaviorals[[idxB]]$eqSimExpText=.addToIndexInString(model$behaviorals[[idxB]]$eqSimExpText,
+                                                                 max_lag_sim_1)
+      #base sim equation with lead tx as text
+      #we need eqSimExpLeadedText also in non-leaded models
+      #because users can simulate with forceForwardLooking=TRUE
+      model$behaviorals[[idxB]]$eqSimExpLeadedText=.addToIndexInString(model$behaviorals[[idxB]]$eqSimExpText,
+                                                                         0,
+                                                                         TRUE,
+                                                                         max_lag_sim_1)
+      #parsed base sim eq with lead tx 
+      model$behaviorals[[idxB]]$eqSimExp=parse(text=model$behaviorals[[idxB]]$eqSimExpLeadedText)
+      
     }
-  },error=function(err){stop(paste0('LOAD_MODEL(): error while building sim expression on behavioral "',names(model$behaviorals)[idxB],'". ',err$message))}) 
+  },error=function(err){stop(paste0('LOAD_MODEL(): error while building sim expression in behavioral "',names(model$behaviorals)[idxB],'". ',err$message))}) 
+  
   tryCatch({
     if (length(model$identities)>0) for(idxI in 1:length(model$identities))
     {
-      model$identities[[idxI]]$eqSimExp=parse(text=.addToIndexInString(model$identities[[idxI]]$eqSimExp,
-                                                                       max_lag_sim+1
-      ))
+      #eqSimExpText must be kept original (i.e. no __LEAD__ tx) because it is needed to
+      #create leaded expressions
+      
+      #base sim equation as text, used only to lead base eq in leaded model
+      model$identities[[idxI]]$eqSimExpText=.addToIndexInString(model$identities[[idxI]]$eqSimExpText,
+                                                                max_lag_sim_1)
+      
+      #base sim equation with lead tx as text
+      #we need eqSimExpLeadedText also in non-leaded models
+      #because users can simulate with forceForwardLooking=TRUE
+      model$identities[[idxI]]$eqSimExpLeadedText=.addToIndexInString(model$identities[[idxI]]$eqSimExpText,
+                                                                        0,
+                                                                        TRUE,
+                                                                        max_lag_sim_1)
+      
+      #parsed base sim eq with lead tx 
+      model$identities[[idxI]]$eqSimExp=parse(text=model$identities[[idxI]]$eqSimExpLeadedText)
+      
     }
-  },error=function(err){stop(paste0('LOAD_MODEL(): error while building sim expression on identity "',names(model$identities)[idxI],'". ',err$message))}) 
-  
-  #deal with reserved words
-  allNames=c(model$vendog,model$vexog) 
-  if (any(grepl('__',allNames)))
-    stop(paste0('LOAD_MODEL(): variable names cannot contain double underscore "__". Please change the following variable names: ',paste0(allNames[which(grepl('__',allNames))],collapse=', ')))
+  },error=function(err){stop(paste0('LOAD_MODEL(): error while building sim expression in identity "',names(model$identities)[idxI],'". ',err$message))}) 
   
   .MODEL_outputText(outputText=!quietly,'Loaded model "',modelName,'":\n',
                     sprintf("%5i",model$totNumEqs),' behaviorals\n',
                     sprintf("%5i",model$totNumIds),' identities\n',
                     sprintf("%5i",model$eqCoeffNum),' coefficients\n',sep='') 
-  if (length(model$vexog)==0 && (! quietly) ) .MODEL_outputText(outputText=!quietly,'\nLOAD_MODEL(): warning, model has no exogenous variables.\n')
-  if (length(model$vendog)==0 && (! quietly) ) .MODEL_outputText(outputText=!quietly,'\nLOAD_MODEL(): warning, model has no endogenous variables.\n')
-  
   
   model$modelName=modelName 
-  model$incidence_matrix=incidence_matrix 
-  #if (cleanWorkspaceOnExit) CLEAN_WORKSPACE(model) 
-  .MODEL_outputText(outputText=!quietly,'...LOAD MODEL OK\n') 
+  
+  #set model version
+  model$bimets_version=getOption('BIMETS_VERSION')
+  
+  .MODEL_outputText(outputText=!quietly,'...LOAD MODEL OK\n')
+  
   return(model) 
+  
 }
 
 
-# LOAD MODEL DATA code ----------------------------------------
+# LOAD MODEL DATA code ---------------------------------------------------------
 
 LOAD_MODEL_DATA <- function(model=NULL, 
                             modelData=NULL, 
@@ -3184,38 +3634,45 @@ LOAD_MODEL_DATA <- function(model=NULL,
   #check args
   if (is.null(model)) stop('LOAD_MODEL_DATA(): NULL model argument.') 
   if (!(inherits( model ,'BIMETS_MODEL')) ) stop('LOAD_MODEL_DATA(): model must be instance of BIMETS_MODEL class.') 
+  
+  .checkModelBimetsVersion(model, 'LOAD_MODEL_DATA')
+  
   #check arg
   if (!(is.logical(quietly))) stop('LOAD_MODEL_DATA(): "quietly" must be TRUE or FALSE.')
   
-  
   .MODEL_outputText(outputText=!quietly,paste0('Load model data "',substitute(modelData),'" into model "', model$modelName,'"...\n')) 
+  
   #copy list to model
   model$modelData=modelData 
   tryCatch({
     .CHECK_MODEL_DATA(model,showWarnings=(! quietly),'LOAD_MODEL_DATA(): ') 
   },error=function(e){stop('LOAD_MODEL_DATA(): ',e$message)}) 
-  .MODEL_outputText(outputText=!quietly,'...LOAD MODEL DATA OK\n') 
+  
   #add frequency info
   model$frequency=frequency(model$modelData[[1]]) 
+  
+  .MODEL_outputText(outputText=!quietly,'...LOAD MODEL DATA OK\n') 
+  
   return(model) 
+  
 }
 
-# .CHECK MODEL_DATA code ----------------------------------------
+# .CHECK MODEL_DATA code -------------------------------------------------------
 
-.CHECK_MODEL_DATA <- function(model=NULL,showWarnings=TRUE, caller='.CHECK_MODEL_DATA(): ',...)
+.CHECK_MODEL_DATA <- function(model=NULL,showWarnings=TRUE,caller='.CHECK_MODEL_DATA(): ',...)
 {
-  #check args
-  
   if (is.null(model)) stop(caller,'NULL model argument.') 
   if (!(inherits( model ,'BIMETS_MODEL'))) stop(caller,'model must be instance of BIMETS_MODEL class.') 
   if (is.null(model$vendog))  stop(caller,'list of endogenous variables not found.') 
   if (is.null(model$vexog))  stop(caller,'list of exogenous variables not found.') 
   if (is.null(model$modelData)) stop(caller,'model has no data. Please use LOAD_MODEL_DATA().') 
+  
   modelData=model$modelData 
   if (! is.list(modelData)) stop(caller,'modelData must be a list of BIMETS time series.') 
   if (length(modelData)==0) stop(caller,'empty modelData list.') 
   if (is.null(names(modelData))) stop(caller,'names of modelData list are NULL.') 
   if (any(names(modelData)=='')) stop(caller,'there are NULL names in modelData list.') 
+  
   #check time series
   for (idx in 1:length(model$modelData))
   {
@@ -3224,19 +3681,14 @@ LOAD_MODEL_DATA <- function(model=NULL,
     if (frequency(model$modelData[[idx]])!=frequency(model$modelData[[1]])) 
       stop(caller,'time series must have the same frequency. Check time series "',names(model$modelData)[idx],'"') 
     if (showWarnings && any(! is.finite(coredata(model$modelData[[idx]])))) 
-      .MODEL_outputText(outputText=showWarnings,paste0(caller,'warning, there are undefined values in time series "',names(model$modelData)[idx],'".\n',sep=''))
+      .MODEL_outputText(outputText=showWarnings,paste0(caller,'warning, there are non-finite values in time series "',names(model$modelData)[idx],'".\n',sep=''))
     
   }
   
-  
-  #if (length(base::setdiff(model$vendog,names(model$modelData)))>0)
-  #stop('.CHECK_MODEL_DATA(): modelData must contain time series "',paste0(base::setdiff(model$vendog,names(model$modelData)),collapse=', '),'"') 
-  #if (length(base::setdiff(model$vexog,names(model$modelData)))>0)
-  #stop('.CHECK_MODEL_DATA(): modelData must contain time series "',paste0(base::setdiff(model$vexog,names(model$modelData)),collapse=', '),'"') 
   return(TRUE) 
 }
 
-# ESTIMATE code ----------------------------------------
+# ESTIMATE code ----------------------------------------------------------------
 
 ESTIMATE <- function(model=NULL,
                      eqList=NULL,
@@ -3253,12 +3705,13 @@ ESTIMATE <- function(model=NULL,
                      CHOWPAR=NULL,
                      avoidCompliance=FALSE,
                      ...)
-{	
-  
-  #check args
-  if (is.null(estTech) || ((estTech!='OLS') && (estTech!='IV'))) stop('ESTIMATE(): estimation technique not supported.') 
+{	 
   if (is.null(model) ) stop('ESTIMATE(): NULL model.') 
   if (!(inherits( model ,'BIMETS_MODEL'))) stop('ESTIMATE(): model must be instance of BIMETS_MODEL class.') 
+  .checkModelBimetsVersion(model, 'ESTIMATE')
+  
+  if (is.null(estTech) || ((estTech!='OLS') && (estTech!='IV'))) stop('ESTIMATE(): estimation technique not supported.') 
+  
   if (! is.finite(tol) || tol<=0) stop('ESTIMATE(): please provide a valid tolerance value.')
   
   if ((! is.finite(digits) )|| (digits %% 1 !=0) || digits<=0 || digits > 22) 
@@ -3290,6 +3743,7 @@ ESTIMATE <- function(model=NULL,
   reservedKeyw=regExDefs$reservedKeyw 
   symOnEqCleaner=regExDefs$symOnEqCleaner 
   allowedCharOnName=regExDefs$allowedCharOnName 
+  allowedCharOnNameToken=regExDefs$allowedCharOnNameToken
   charsOnNumbs=regExDefs$charsOnNumbs 
   charsOnNumWithSign=regExDefs$charsOnNumWithSign 
   strongCharOnNumbs=regExDefs$strongCharOnNumbs 
@@ -3297,10 +3751,10 @@ ESTIMATE <- function(model=NULL,
   
   #a new local environment is created in order to improve performance
   #it will contains model time series, coefficients, parameters, etc.
-  #model equations is faster if executed in a isolated environment
+  #model equations are faster if executed in a isolated environment
   #in localE parameters, coefficient, etc. names must contains
   #double underscore in order to avoid collisions with model variable names
-  localE = new.env() 
+  localE=new.env() 
   
   if (! avoidCompliance)
   {
@@ -3354,18 +3808,24 @@ ESTIMATE <- function(model=NULL,
     IVlist=list() 
     
     #check args
-    if (estTech=='IV' && is.null(IV) && is.null(currentBehavioral$iv)) stop('ESTIMATE(): please provide instrumental variables IV.')
-    if (estTech=='IV' && is.null(IV) && forceIV==TRUE) stop('ESTIMATE(): please provide instrumental variables IV. "forceIV" is TRUE.')
+    if (estTech=='IV' && is.null(IV) && is.null(currentBehavioral$iv)) stop('ESTIMATE(): please provide instrumental variables "IV".')
+    if (estTech=='IV' && is.null(IV) && forceIV==TRUE) stop('ESTIMATE(): please provide instrumental variables "IV". "forceIV" is TRUE.')
   
+    if (! is.null(IV)) 
+    {
+      if (length(IV)==0) stop('ESTIMATE(): syntax error in "IV".')
+      
+      for (idxIV in 1:length(IV))
+        if (! .checkExpression(IV[idxIV])) 
+          stop('ESTIMATE(): syntax error in "IV".')
+    }
     
     if (!forceIV && !is.null(currentBehavioral$iv))
     {
       #split iv from MDL
       IV=strsplit(currentBehavioral$iv,';')[[1]] 
     }
-    
-    if (!(is.null(IV)) && (length(IV)==0 || !(is.character(IV)) )) stop('ESTIMATE(): misspecified IV.')
-    
+ 
     if (! is.null(IV)) 
     {
       namesOnIV=c()
@@ -3431,7 +3891,6 @@ ESTIMATE <- function(model=NULL,
             stop(paste0('ESTIMATE(): cannot evaluate instrumental variable expression "',IV[idxIV],'": ',e$message)) 
           })
       }
-     
       
     }# IV exists
     
@@ -3460,7 +3919,6 @@ ESTIMATE <- function(model=NULL,
       bm_pdlRestrictionVector=currentBehavioral$pdlRestrictionVector 
     }
     
-    
     #deal with error autocorrelation
     
     thereAreErrorCorr=FALSE 
@@ -3486,23 +3944,21 @@ ESTIMATE <- function(model=NULL,
     localTSRANGE=NULL 
     localTSRANGE_bk=NULL #this is needed if error autocorrelation is required
     
-    bm_vectorY_bk = NULL 
-    bm_matrixX_bk = NULL 
+    bm_vectorY_bk=NULL 
+    bm_matrixX_bk=NULL 
     #behavioral has TSRANGE
     if (!forceTSRANGE && all(is.finite(currentBehavioral$tsrange)))
     {
       localTSRANGE=currentBehavioral$tsrange 
     } else 
     {
-      
       #check if TSRANGE function argument is compliant
       if (! is.null(TSRANGE)) {
         tryCatch({
           if (! ( is.numeric(TSRANGE) && length(TSRANGE)==4 && 
                   .isCompliantYP(c(TSRANGE[1],TSRANGE[2]),frequency) && 
                   .isCompliantYP(c(TSRANGE[3],TSRANGE[4]),frequency) &&
-                  NUMPERIOD(c(TSRANGE[1],TSRANGE[2]),c(TSRANGE[3],TSRANGE[4]),frequency)>=0
-          )
+                  NUMPERIOD(c(TSRANGE[1],TSRANGE[2]),c(TSRANGE[3],TSRANGE[4]),frequency)>=0)
           ) stop() 
         },error=function(e) {stop('ESTIMATE(): syntax error in TSRANGE: ',e$message)}) 
         localTSRANGE=TSRANGE 
@@ -3518,7 +3974,6 @@ ESTIMATE <- function(model=NULL,
     if (thereAreErrorCorr==TRUE)
     {
       #extend tsrange errorDim obs in the past. Cochrane-Orcutt procedure iteration 1
-      
       tmpTSR=normalizeYP(c(localTSRANGE[1],localTSRANGE[2]-bm_errorDim),frequency) 
       localTSRANGE[1]=tmpTSR[1] 
       localTSRANGE[2]=tmpTSR[2] 
@@ -3542,7 +3997,6 @@ ESTIMATE <- function(model=NULL,
         },error=function(e){
           stop('ESTIMATE(): modelData must contain time series "',currentBehavioral$eqComponentsNames[idxName],'"') 
         })  
-      
     }
     
     #do we have a constant term in regression?
@@ -3573,7 +4027,7 @@ ESTIMATE <- function(model=NULL,
         
         for (idxIV in 1:length(IVlist))
         {
-          if ((! is.bimets(IVlist[[idxIV]])) )
+          if ((! is.ts(IVlist[[idxIV]])) && (! is.xts(IVlist[[idxIV]]))  )
           {
             tempRegressor=rep(IVlist[[idxIV]],regressorLengthTest) 
           } else  tempRegressor=(TSPROJECT(IVlist[[idxIV]],ARRAY=TRUE,TSRANGE=localTSRANGE,avoidCompliance=TRUE)) 
@@ -3589,8 +4043,7 @@ ESTIMATE <- function(model=NULL,
         stop('ESTIMATE(): instrumental variable expression "',IV[idxIV],
              '" in behavioral "',
              eqList[eqIdx],'"\n is not defined over the entire TSRANGE ',paste0(localTSRANGE,collapse=','),': ',e$message) 
-      }
-      ) 
+      }) 
     }  #now we have Z matrix
     
     for (idxRegrs in 1:length(currentBehavioral$eqRegressorsNames))
@@ -3604,15 +4057,12 @@ ESTIMATE <- function(model=NULL,
         tryCatch({
           
           tempRegressor=eval(parse(text=tempRegressorExpr)
-                             ,envir=localE
-          ) 
+                             ,envir=localE) 
         },error=function(e)
         {
           stop('ESTIMATE(): cannot evaluate expression "',currentBehavioral$eqRegressorsNames[idxRegrs],
                '"\n(regressor #',idxRegrs,ifelse(thereArePDL,' with PDL expansion',''),') in behavioral "',
-               eqList[eqIdx],'": ',e$message) 
-        }
-        ) 
+               eqList[eqIdx],'": ',e$message)}) 
         tempRegressor=rep(tempRegressor,regressorLengthTest)
         bm_ConstTermExist=TRUE 
        
@@ -3625,15 +4075,12 @@ ESTIMATE <- function(model=NULL,
         tryCatch({
           
           tempRegressor=eval(parse(text=tempRegressorExpr)
-                             ,envir=localE
-          ) 
+                             ,envir=localE) 
         },error=function(e)
         {
           stop('ESTIMATE(): cannot evaluate expression "',currentBehavioral$eqRegressorsNames[idxRegrs],
                '"\n(regressor #',idxRegrs,ifelse(thereArePDL,' with PDL expansion',''),') in behavioral "',
-               eqList[eqIdx],'": ',e$message) 
-        }
-        )
+               eqList[eqIdx],'": ',e$message)})
         
         #project regressor on tsrange
         tryCatch({
@@ -3651,8 +4098,7 @@ ESTIMATE <- function(model=NULL,
                ifelse(thereAreErrorCorr,' with ERROR autocorrelation TSRANGE extension',''),
                ') in behavioral "',
                eqList[eqIdx],'"\ndoes not overlap with TSRANGE ',paste0(localTSRANGE,collapse=','),': ',e$message) 
-        }
-        ) 
+        }) 
       }	
       
       #check regressor has NA
@@ -3685,18 +4131,31 @@ ESTIMATE <- function(model=NULL,
         {
           if (currentBehavioral$lhsFun$argsCount>1 && ! is.finite(as.numeric(currentBehavioral$lhsFun$args[2])))
             stop('Non-numeric lag in TSDELTA()') 
-          bm_vectorY=TSDELTA(bm_vectorY,ifelse(currentBehavioral$lhsFun$argsCount>1,as.numeric(currentBehavioral$lhsFun$args[2]),1)) 
+          
+          if (currentBehavioral$lhsFun$argsCount>1) tmpV=as.numeric(currentBehavioral$lhsFun$args[2])
+          else tmpV=1
+          
+          bm_vectorY=TSDELTA(bm_vectorY,tmpV) 
           
         } else if (currentBehavioral$lhsFun$funName=='TSDELTAP' )
         {
           if (currentBehavioral$lhsFun$argsCount>1 && ! is.finite(as.numeric(currentBehavioral$lhsFun$args[2])))
             stop('Non-numeric lag in TSDELTAP()') 
-          bm_vectorY=TSDELTAP(bm_vectorY,ifelse(currentBehavioral$lhsFun$argsCount>1,as.numeric(currentBehavioral$lhsFun$args[2]),1)) 
+          
+          if (currentBehavioral$lhsFun$argsCount>1) tmpV=as.numeric(currentBehavioral$lhsFun$args[2])
+          else tmpV=1
+          
+          bm_vectorY=TSDELTAP(bm_vectorY,tmpV) 
+          
         } else if (currentBehavioral$lhsFun$funName=='TSDELTALOG' )
         {
           if (currentBehavioral$lhsFun$argsCount>1 && ! is.finite(as.numeric(currentBehavioral$lhsFun$args[2])))
             stop('Non-numeric lag in TSDELTALOG()') 
-          bm_vectorY=TSDELTALOG(bm_vectorY,ifelse(currentBehavioral$lhsFun$argsCount>1,as.numeric(currentBehavioral$lhsFun$args[2]),1)) 
+          
+          if (currentBehavioral$lhsFun$argsCount>1) tmpV=as.numeric(currentBehavioral$lhsFun$args[2])
+          else tmpV=1
+          
+          bm_vectorY=TSDELTALOG(bm_vectorY,tmpV) 
         }
         
       },error=function(e)
@@ -3717,8 +4176,8 @@ ESTIMATE <- function(model=NULL,
       stop('ESTIMATE(): LHS expression "',
            currentBehavioral$lhsFun$raw, '" in behavioral "',eqList[eqIdx],'" does not overlap with TSRANGE ',
            paste0(localTSRANGE,collapse=','),': ',e$message) 
-    }
-    ) 
+    })
+    
     #check Y has NA
     if (any(! is.finite(bm_vectorY))) 
       stop('\n ESTIMATE(): there are undefined values in LHS expression "',
@@ -3751,7 +4210,7 @@ ESTIMATE <- function(model=NULL,
         
         bm_matrixR=currentBehavioral$pdlRestrictionMatrix 
         bm_vectorR=currentBehavioral$pdlRestrictionVector 
-        thereAreRestrictions = TRUE 
+        thereAreRestrictions=TRUE 
       } else {
         #extract restriction from model definition
         bm_matrixR=currentBehavioral$matrixR 
@@ -3787,28 +4246,28 @@ ESTIMATE <- function(model=NULL,
         #CO transformation
         
         #backup original vector and matrix
-        bm_vectorY_bk = bm_vectorY 
-        bm_matrixX_bk = bm_matrixX 
-        if (estTech=='IV') bm_matrixZ_bk = bm_matrixZ 
+        bm_vectorY_bk=bm_vectorY 
+        bm_matrixX_bk=bm_matrixX 
+        if (estTech=='IV') bm_matrixZ_bk=bm_matrixZ 
         
         #CO transform
-        bm_vectorY = bm_resP %*% bm_vectorY 
-        bm_matrixX = bm_resP %*% bm_matrixX 
+        bm_vectorY=bm_resP %*% bm_vectorY 
+        bm_matrixX=bm_resP %*% bm_matrixX 
         
         #in CO betaHat is calculated on original tsrange
-        bm_vectorY = bm_vectorY[(1+bm_errorDim):length(bm_vectorY)] 
-        bm_matrixX = bm_matrixX[(1+bm_errorDim):nrow(bm_matrixX),] 
-        if (estTech=='IV') bm_matrixZ = bm_matrixZ[(1+bm_errorDim):nrow(bm_matrixZ),] 
+        bm_vectorY=bm_vectorY[(1+bm_errorDim):length(bm_vectorY)] 
+        bm_matrixX=bm_matrixX[(1+bm_errorDim):nrow(bm_matrixX),] 
+        if (estTech=='IV') bm_matrixZ=bm_matrixZ[(1+bm_errorDim):nrow(bm_matrixZ),] 
       }
       
       bm_betaHat=c()   
-      
+     
       #if restriction or pdl with length>degree+1 else OLS
       if (thereAreRestrictions == TRUE || 
           (thereArePDL == TRUE && (! is.null(currentBehavioral$pdlRestrictionMatrix))))
       {
         if (estTech=='OLS') 
-        {
+        { 
           bm_WpX=t(bm_matrixX) %*% bm_matrixX 
         }
         
@@ -3819,12 +4278,10 @@ ESTIMATE <- function(model=NULL,
             bm_matrixXZ=bm_matrixZ %*% solve( crossprod( bm_matrixZ ),
                                               crossprod( bm_matrixZ, bm_matrixX ),
                                               tol=tol)
-            
           },error=function(e)
           {
             stop('ESTIMATE(): given Z = the matrix of the instrumental variables as columns, Z\'*Z is not invertible. Behavioral: "',eqList[eqIdx],'". Check regressors and "IV" or try to reduce tolerance "tol" value. ',e$message) 
-          }
-          ) 
+          }) 
           bm_WpX=t(bm_matrixXZ) %*% bm_matrixXZ 
         }
         
@@ -3853,14 +4310,13 @@ ESTIMATE <- function(model=NULL,
                            tol=tol) 
           bm_betaHat=bm_AAWpXi %*% bm_AvectorY
           
-          bm_betaHat=bm_betaHat[1:dim(bm_matrixX)[2],,drop=FALSE] 
+          bm_betaHat=bm_betaHat[1:dim(bm_matrixX)[2],,drop=F] 
           
         },error=function(e)
         {
           stop('ESTIMATE(): in restriction ',currentBehavioral$restrictRaw,
                ' given betaHat = (W\'X)^(-1) * (W\'Y), W\'X is not invertible. Behavioral: "',eqList[eqIdx],'". Check regressors or try to reduce tolerance "tol" value. ',e$message) 
-        }
-        ) 
+        }) 
         
         #get f-statistics for restrictions
         #unrestricted beta OLS
@@ -3874,8 +4330,7 @@ ESTIMATE <- function(model=NULL,
           },error=function(e)
           {
             stop('ESTIMATE(): given y = X * b + u, X\'*X is not invertible (un-restricted case in F-test). Behavioral: "',eqList[eqIdx],'". Check regressors or try to reduce tolerance "tol" value. ',e$message) 
-          }
-          ) 
+          }) 
           
           #OLS unrestricted :)
           bm_betaHat_unrestricted=bm_matrixXpXinv %*% t(bm_matrixX) %*% bm_vectorY 
@@ -3895,15 +4350,14 @@ ESTIMATE <- function(model=NULL,
           },error=function(e)
           {
             stop('ESTIMATE(): given y = X * b + u and given Z = the matrix of the instrumental variables as columns, and X_hat = Z * ( Z\' * Z )^(-1) * Z\' * X, X_hat\'*X_hat is not invertible (un-restricted case in F-test). Behavioral: "',eqList[eqIdx],'". Check regressors or try to reduce tolerance "tol" value. ',e$message) 
-          }
-          ) 
+          }) 
         }
         
       } else 
       {  
         #no restriction           
         #default OLS
-        
+         
         if (estTech=='OLS') {
           #check inverse exist
           bm_matrixXpXinv=NULL 
@@ -3913,8 +4367,7 @@ ESTIMATE <- function(model=NULL,
           },error=function(e)
           {
             stop('ESTIMATE(): given y = X * b + u, X\'*X is not invertible. Behavioral: "',eqList[eqIdx],'". Check regressors or try to reduce tolerance "tol" value. ',e$message) 
-          }
-          ) 
+          }) 
           
           #OLS :)
           bm_betaHat=bm_matrixXpXinv %*% t(bm_matrixX) %*% bm_vectorY 
@@ -3933,8 +4386,8 @@ ESTIMATE <- function(model=NULL,
           },error=function(e)
           {
             stop('ESTIMATE(): given Z = the matrix of the instrumental variables as columns, Z\'*Z is not invertible. Behavioral: "',eqList[eqIdx],'". Check regressors and "IV" or try to reduce tolerance "tol" value. ',e$message) 
-          }
-          ) 
+          })
+          
           tryCatch({
             bm_matrixXpXinv=solve( crossprod( bm_matrixXZ ),
                                    tol=tol) 
@@ -3942,8 +4395,7 @@ ESTIMATE <- function(model=NULL,
           },error=function(e)
           {
             stop('ESTIMATE(): given y = X * b + u and given Z = the matrix of the instrumental variables as columns, and X_hat = Z * ( Z\' * Z )^(-1) * Z\' * X, X_hat\'*X_hat is not invertible. Behavioral: "',eqList[eqIdx],'". Check regressors and "IV" or try to reduce tolerance "tol" value. ',e$message) 
-          }
-          ) 
+          }) 
         }
         
       } # end if no restriction
@@ -3959,9 +4411,9 @@ ESTIMATE <- function(model=NULL,
       if ((thereAreErrorCorr==TRUE) && (bm_COcurrentIter>1))
       {         
         #restore original Y and X (the longer ones...): we need extended regressor in order to have coherent errors lags         
-        bm_vectorY = bm_vectorY_bk 
-        bm_matrixX = bm_matrixX_bk 
-        if (estTech=='IV') bm_matrixZ = bm_matrixZ_bk 
+        bm_vectorY=bm_vectorY_bk 
+        bm_matrixX=bm_matrixX_bk 
+        if (estTech=='IV') bm_matrixZ=bm_matrixZ_bk 
       }       
       
       #exit from loop if convergence reached (variable set later...)
@@ -4005,8 +4457,7 @@ ESTIMATE <- function(model=NULL,
         {
           stop('ESTIMATE(): given u = LAG(u) * rho + z, LAG(u)\'*LAG(u) is not invertible (Cochrane-Orcutt). Behavioral: "',
                eqList[eqIdx],'". Check residuals or try to reduce tolerance "tol" value. ',e$message) 
-        }
-        ) 
+        }) 
         
         #there are error autocorrelation coefficients
         bm_rhoHat=bm_matrixresXpresXinv %*% t(bm_resX) %*% bm_resY 
@@ -4019,13 +4470,20 @@ ESTIMATE <- function(model=NULL,
         bm_COnumObs=1+NUMPERIOD(c(localTSRANGE_bk[1],localTSRANGE_bk[2]),c(localTSRANGE_bk[3],localTSRANGE_bk[4]),frequency) 
         
         #bm_COser=sqrt(bm_COssr/(bm_COnumObs-bm_COcoeffNum))
-        bm_COser=ifelse(bm_COnumObs - bm_COcoeffNum - bm_coeffNum +bm_restrictionsNum==0,0,sqrt((bm_COssr-(sum(bm_COunSquare)^2)/bm_COnumObs)/
-                                                                                                  (bm_COnumObs - bm_COcoeffNum - bm_coeffNum +bm_restrictionsNum)) #...dont know why bm_COcoeffNum and bm_restrictionsNum
-        ) 
+        if (bm_COnumObs - bm_COcoeffNum - bm_coeffNum +bm_restrictionsNum==0) tmpV=0
+        else tmpV=sqrt((bm_COssr-(sum(bm_COunSquare)^2)/bm_COnumObs)/
+                         (bm_COnumObs - bm_COcoeffNum - bm_coeffNum + bm_restrictionsNum)) #...dont know why bm_COcoeffNum and bm_restrictionsNum
+          
+        bm_COser=tmpV 
+        
         bm_COserAdj=bm_COser 
-        if (!centerCOV) bm_COserAdj=ifelse(bm_COnumObs - bm_COcoeffNum - bm_coeffNum +bm_restrictionsNum==0,0,sqrt((bm_COssr)/
-                                                                                                                     (bm_COnumObs - bm_COcoeffNum - bm_coeffNum +bm_restrictionsNum) #...dont know why bm_COcoeffNum and bm_restrictionsNum
-        )) 
+        
+        if (bm_COnumObs - bm_COcoeffNum - bm_coeffNum +bm_restrictionsNum==0) tmpV=0
+        else tmpV=sqrt((bm_COssr)/
+                         (bm_COnumObs - bm_COcoeffNum - bm_coeffNum + bm_restrictionsNum)) #...dont know why bm_COcoeffNum and bm_restrictionsNum
+        
+        if (!centerCOV) bm_COserAdj=tmpV 
+        
         bm_COvcov=(bm_COserAdj*bm_COserAdj) * bm_matrixresXpresXinv 
         bm_COstderr=sqrt(diag(bm_COvcov)) 
         statsOut$RhosCovariance=bm_COvcov 
@@ -4045,12 +4503,9 @@ ESTIMATE <- function(model=NULL,
             if (idxP>idxRS) bm_resP[idxP,idxP-idxRS]=-bm_rhoHat[idxRS] 
           }
         }
-      }
       
-      #set flag if convergence (we need another cycle in order to get betahat with current rho)
-      if (thereAreErrorCorr==TRUE)
-      {
-        if (bm_COcurrentIter>1)
+      #set flag if convergence (we need at least 1 iteration in order to get betahat with current rho)
+      if (bm_COcurrentIter>1)
         {
           #convergence check
           if (all(abs(bm_rhoHat-bm_COprevRho)<bm_COconvergence)) bm_COlastIter=TRUE 
@@ -4059,7 +4514,8 @@ ESTIMATE <- function(model=NULL,
         
         #save results for next iteration
         bm_COprevRho=bm_rhoHat 
-      }
+        
+      }#end thereAreErrorCorr
       
       #take stop between iterations
       
@@ -4067,25 +4523,24 @@ ESTIMATE <- function(model=NULL,
     
     # CO end --------------------------------------------------
     
-    
     if (thereAreErrorCorr==TRUE)
     { 
       #restore localRANGE
       localTSRANGE=localTSRANGE_bk 
-      .MODEL_outputText(outputText=outputText,'\nConvergence was reached in ',bm_COcurrentIter,' / ',bm_COmaxIters,' iterations.\n\n')
+      .MODEL_outputText(outputText=outputText,'\nConvergence reached in ',bm_COcurrentIter,' iterations.\n\n')
     }
     
     bm_unSquare_no_error_correction=NULL 
-    #in error correlation cases, u must be calculated by using tranformed y and x
-    if ((thereAreErrorCorr==TRUE) )
+    #in error correlation cases, u must be calculated by using transformed y and x
+    if ((thereAreErrorCorr==TRUE))
     {
-      #transorm with matrix P
-      bm_vectorY = bm_resP %*% bm_vectorY 
-      bm_matrixX = bm_resP %*% bm_matrixX 
+      #transom with matrix P
+      bm_vectorY=bm_resP %*% bm_vectorY 
+      bm_matrixX=bm_resP %*% bm_matrixX 
       
       #project on localTSRANGE
-      bm_vectorY = bm_vectorY[(1+bm_errorDim):length(bm_vectorY)] 
-      bm_matrixX = bm_matrixX[(1+bm_errorDim):nrow(bm_matrixX),] 
+      bm_vectorY=bm_vectorY[(1+bm_errorDim):length(bm_vectorY)] 
+      bm_matrixX=bm_matrixX[(1+bm_errorDim):nrow(bm_matrixX),] 
       
       #save regressors and y (with ERROR> we save the modified ones)
       statsOut$matrixX_error_corrected=as.matrix(bm_matrixX) 
@@ -4102,10 +4557,10 @@ ESTIMATE <- function(model=NULL,
         bm_unSquare_unrestricted=bm_vectorY - bm_matrixX %*% bm_betaHat_unrestricted 
       
       #restore vectors
-      bm_vectorY = bm_vectorY_bk 
-      bm_matrixX = bm_matrixX_bk 
-      bm_vectorY = bm_vectorY[(1+bm_errorDim):length(bm_vectorY)]
-      bm_matrixX = bm_matrixX[(1+bm_errorDim):nrow(bm_matrixX),]   
+      bm_vectorY=bm_vectorY_bk 
+      bm_matrixX=bm_matrixX_bk 
+      bm_vectorY=bm_vectorY[(1+bm_errorDim):length(bm_vectorY)]
+      bm_matrixX=bm_matrixX[(1+bm_errorDim):nrow(bm_matrixX),]   
       
       bm_unSquare_no_error_correction=bm_vectorY - bm_matrixX %*% bm_betaHat 
     }
@@ -4128,8 +4583,8 @@ ESTIMATE <- function(model=NULL,
     }
     
     #time series for residuals
-    bm_unSquareTS=TSERIES(bm_unSquare,START=localTSRANGE[1:2],FREQ=frequency,avoidCompliance = TRUE) 
-    if ((thereAreErrorCorr==TRUE) ) bm_unSquare_no_error_correctionTS=TSERIES(bm_unSquare_no_error_correction,START=localTSRANGE[1:2],FREQ=frequency,avoidCompliance = TRUE) 
+    bm_unSquareTS=TSERIES(bm_unSquare,START=localTSRANGE[1:2],FREQ=frequency,avoidCompliance=TRUE) 
+    if ((thereAreErrorCorr==TRUE) ) bm_unSquare_no_error_correctionTS=TSERIES(bm_unSquare_no_error_correction,START=localTSRANGE[1:2],FREQ=frequency,avoidCompliance=TRUE) 
     statsOut$estimationTechnique=estTech 
     statsOut$TSRANGE=localTSRANGE 
     statsOut$InstrumentalVariablesRaw=IV 
@@ -4140,11 +4595,20 @@ ESTIMATE <- function(model=NULL,
     #standard error regression    
     #bm_ser=sqrt(bm_ssr/(bm_numObs-bm_coeffNum+bm_restrictionsNum)) 
     #here below is centered
-    bm_ser=ifelse(bm_DoF==0,0,sqrt((bm_ssr-(sum(bm_unSquare)^2)/bm_numObs)/(bm_DoF))) 
+    if (bm_DoF==0) tmpV=0
+    else tmpV=sqrt((bm_ssr-(sum(bm_unSquare)^2)/bm_numObs)/(bm_DoF))
+    bm_ser=tmpV
+    
     bm_serAdj=bm_ser 
-    if (!centerCOV) bm_serAdj=ifelse(bm_DoF==0,0,sqrt((bm_ssr)/(bm_DoF))) 
+    if (bm_DoF==0) tmpV=0
+    else tmpV=sqrt((bm_ssr)/(bm_DoF))
+    if (!centerCOV) bm_serAdj=tmpV
+    
     statsOut$StandardErrorRegression=bm_ser 
-    statsOut$StandardErrorRegressionNotCentered=ifelse(bm_DoF==0,0,sqrt((bm_ssr)/(bm_DoF))) 
+    
+    if (bm_DoF==0) tmpV=0
+    else tmpV=sqrt((bm_ssr)/(bm_DoF))
+    statsOut$StandardErrorRegressionNotCentered=tmpV
     
     #var-covar coeff
     if ( ! thereAreRestrictions)
@@ -4158,12 +4622,14 @@ ESTIMATE <- function(model=NULL,
     #in model with restrictions, diagonal cov elements can be very small but negatives... so abs(diag()) here below
     #coeff of variation betaHat
     #if restrictions size vcov != size betaHat
-    bm_vcov=bm_vcov[1:length(bm_betaHat),1:length(bm_betaHat),drop=FALSE] 
-    suppressWarnings({bm_betaHatStdErr=sqrt(abs(diag(bm_vcov)))}) #warnings if restrictions due to NAs
+    bm_vcov=bm_vcov[1:length(bm_betaHat),1:length(bm_betaHat),drop=F] 
+    suppressWarnings({bm_betaHatStdErr=sqrt(abs(diag(bm_vcov)))}) #we have warnings if restrictions due to NAs
     #bm_betaHatStdErr=bm_betaHatStdErr[1:length(bm_betaHat)] 
     
     #remove 0/0 cases
-    bm_betaHatCoV=ifelse(bm_betaHatStdErr==0,Inf,bm_betaHat/bm_betaHatStdErr) 
+    bm_betaHatCoV=bm_betaHat/bm_betaHatStdErr
+    if (any(is.nan(bm_betaHatCoV))) bm_betaHatCoV[which(is.nan(bm_betaHatCoV))]=Inf
+    
     names(bm_betaHatCoV)=currentBehavioral$eqCoefficientsNames 
     #bm_vcovOut=bm_vcov[1:length(bm_betaHat),1:length(bm_betaHat),drop=FALSE] 
     rownames(bm_vcov)=currentBehavioral$eqCoefficientsNames 
@@ -4172,17 +4638,52 @@ ESTIMATE <- function(model=NULL,
     statsOut$CoeffTstatistic=bm_betaHatCoV 
     
     # R & SPK differs in Rsquared, we choosed R 
-    bm_rSquared=1-(bm_ssr)/(sum((bm_vectorY-ifelse(bm_ConstTermExist,ave(bm_vectorY),0))^2))
+    if (bm_ConstTermExist) tmpV=ave(bm_vectorY)
+    else tmpV=0
+    bm_rSquared=1-(bm_ssr)/(sum((bm_vectorY-tmpV)^2))
+    
+    #we keep old code just as reminder
+    # #r-squared
+    # if (thereAreErrorCorr==TRUE  )
+    # {
+    #   #this is ok even without error correlation - DEFAULT R lm formula
+    #   bm_rSquared=1-(bm_ssr)/(sum((bm_vectorY - ave(bm_vectorY)  )^2)) #eq by wiki works fine with error autocorrelation
+    #   
+    # }   
+    # 
+    # if ((thereAreRestrictions == TRUE || 
+    #      (thereArePDL == TRUE && (! is.null(currentBehavioral$pdlRestrictionMatrix)))))
+    # { 
+    #     # DEFAULT SPK 
+    # 
+    #     #eq by user guide
+    #     bm_rSquared_tempY=bm_matrixX %*% bm_betaHat 
+    #    
+    #     bm_rSquared=(sum((bm_vectorY-base::mean(bm_vectorY))*(((bm_rSquared_tempY)-base::mean(bm_rSquared_tempY))))^2)/
+    #          ((sum((((bm_rSquared_tempY)-base::mean(bm_rSquared_tempY))^2)))*(sum((bm_vectorY-base::mean(bm_vectorY))^2))) 
+    #   
+    # }
     
     statsOut$RSquared=bm_rSquared 
     #adj r-squared
     #R lm default formula
-    bm_adjrSquared=ifelse(bm_DoF==0,1,1-(1-bm_rSquared)*(bm_numObs-ifelse(bm_ConstTermExist,1,0))/(bm_DoF))  #+1-1
+    
+    if (bm_ConstTermExist) tmpV2=1
+    else tmpV2=0
+    
+    if (bm_DoF==0) tmpV=1
+    else tmpV=1-(1-bm_rSquared)*(bm_numObs-tmpV2)/(bm_DoF)
+      
+    bm_adjrSquared=tmpV  #+1-1
     
     if ((thereAreErrorCorr==TRUE  ) || ((thereAreRestrictions == TRUE || 
-                                         (thereArePDL == TRUE && (! is.null(currentBehavioral$pdlRestrictionMatrix))))))
-      bm_adjrSquared=ifelse(bm_DoF==0,1,1-(1-bm_rSquared)*(bm_numObs- 1)/(bm_DoF))  #+1-1
-    
+        (thereArePDL == TRUE && (! is.null(currentBehavioral$pdlRestrictionMatrix))))))
+    {
+      if (bm_DoF==0) tmpV=1
+      else tmpV=1-(1-bm_rSquared)*(bm_numObs- 1)/(bm_DoF)
+            
+      bm_adjrSquared=tmpV  #+1-1
+    }
     
     statsOut$AdjustedRSquared=bm_adjrSquared 
     
@@ -4212,8 +4713,13 @@ ESTIMATE <- function(model=NULL,
       #f-test for restrictions
       if( thereAreRestrictions==TRUE ) 
       {
-        bm_Ftest_restriction=ifelse(bm_numObs-bm_coeffNum-bm_errorDim<=0,NA,((bm_ssr-bm_ssr_unrestricted )/bm_restrictionsNum)/((bm_ssr_unrestricted)/(bm_numObs-bm_coeffNum-bm_errorDim))) 
-        bm_Ftest_probability=ifelse(bm_numObs-bm_coeffNum-bm_errorDim<=0,NA,((1-pf(bm_Ftest_restriction,bm_restrictionsNum,bm_numObs-bm_coeffNum)))) 
+        if (bm_numObs-bm_coeffNum-bm_errorDim<=0) tmpV=NA
+        else tmpV=((bm_ssr-bm_ssr_unrestricted )/bm_restrictionsNum)/((bm_ssr_unrestricted)/(bm_numObs-bm_coeffNum-bm_errorDim))
+        bm_Ftest_restriction=tmpV
+        
+        if (bm_numObs-bm_coeffNum-bm_errorDim<=0) tmpV=NA
+        else tmpV=((1-pf(bm_Ftest_restriction,bm_restrictionsNum,bm_numObs-bm_coeffNum)))
+        bm_Ftest_probability=tmpV
       }
     }
     
@@ -4314,13 +4820,13 @@ ESTIMATE <- function(model=NULL,
       
       if (thereAreErrorCorr==TRUE)
       {
-        bm_vectorY = bm_vectorY_bk
-        bm_matrixX = bm_matrixX_bk
+        bm_vectorY=bm_vectorY_bk
+        bm_matrixX=bm_matrixX_bk
         
-        bm_vectorY = bm_resP %*% bm_vectorY 
-        bm_matrixX = bm_resP %*% bm_matrixX 
-        bm_vectorY = bm_vectorY[(1+bm_errorDim):length(bm_vectorY)] 
-        bm_matrixX = bm_matrixX[(1+bm_errorDim):nrow(bm_matrixX),] 
+        bm_vectorY=bm_resP %*% bm_vectorY 
+        bm_matrixX=bm_resP %*% bm_matrixX 
+        bm_vectorY=bm_vectorY[(1+bm_errorDim):length(bm_vectorY)] 
+        bm_matrixX=bm_matrixX[(1+bm_errorDim):nrow(bm_matrixX),] 
       }      
       
       bm_tmp_dw=bm_vectorY - bm_matrixX %*% bm_betaHat 
@@ -4332,11 +4838,11 @@ ESTIMATE <- function(model=NULL,
       #restore originals
       if (thereAreErrorCorr==TRUE)
       {
-        bm_vectorY = bm_vectorY_bk
-        bm_matrixX = bm_matrixX_bk
+        bm_vectorY=bm_vectorY_bk
+        bm_matrixX=bm_matrixX_bk
         
-        bm_vectorY = bm_vectorY[(1+bm_errorDim):length(bm_vectorY)]
-        bm_matrixX = bm_matrixX[(1+bm_errorDim):nrow(bm_matrixX),]  
+        bm_vectorY=bm_vectorY[(1+bm_errorDim):length(bm_vectorY)]
+        bm_matrixX=bm_matrixX[(1+bm_errorDim):nrow(bm_matrixX),]  
       }
     }
     
@@ -4352,9 +4858,19 @@ ESTIMATE <- function(model=NULL,
       .MODEL_outputText(outputText=outputText,'\nERROR STRUCTURE: ',bm_errorRaw,'\n') 
     }
     
-    bm_fStat=ifelse(bm_DoF==0,+Inf,(bm_rSquared/(bm_coeffNum-ifelse(bm_ConstTermExist,1,0)+bm_errorDim-bm_restrictionsNum))*
-                      ((bm_DoF)/(1-bm_rSquared))) 
-    bm_fProb=ifelse(is.finite(bm_fStat) && bm_DoF>0,1-pf(bm_fStat,bm_coeffNum-ifelse(bm_ConstTermExist,1,0)+bm_errorDim-bm_restrictionsNum,bm_DoF),1)
+    if (bm_ConstTermExist) tmpV2=1
+    else tmpV2=0
+      
+    if (bm_DoF==0) tmpV=+Inf
+    else tmpV=(bm_rSquared/(bm_coeffNum-tmpV2+bm_errorDim-bm_restrictionsNum))*
+      ((bm_DoF)/(1-bm_rSquared))
+      
+    bm_fStat=tmpV
+    
+    if (is.finite(bm_fStat) && bm_DoF>0) tmpV=1-pf(bm_fStat,bm_coeffNum-tmpV2+bm_errorDim-bm_restrictionsNum,bm_DoF)
+    else tmpV=1
+    
+    bm_fProb=tmpV
     
     if (thereAreRestrictions && (! is.null(currentBehavioral$restrictRaw)))
     {
@@ -4404,8 +4920,15 @@ ESTIMATE <- function(model=NULL,
                               sprintf(paste0("%-",digits+8,"s"),'RESTRICT'),'\n',sep='') 
           } else {
             localErr=bm_betaHatStdErr[posCoeffInCoeffArray+idxPrintSinglePDL] 
-            tStat=ifelse(localErr==0,Inf,(tmpValue)/localErr) 
-            pValue=ifelse(bm_DoF==0,0,2*pt(-abs(tStat),bm_DoF)) 
+            
+            if (localErr==0) tmpV=Inf
+            else tmpV=(tmpValue)/localErr
+            tStat=tmpV
+            
+            if (bm_DoF==0) tmpV=0
+            else tmpV=2*pt(-abs(tStat),bm_DoF)
+            pValue=tmpV
+            
             localPvalueS='' 
             if (pValue<0.05) localPvalueS='*' 
             if (pValue<0.01) localPvalueS='**' 
@@ -4470,7 +4993,6 @@ ESTIMATE <- function(model=NULL,
       rownames(statsOut$RhosPvalues)=paste0("RHO_",1:bm_COcoeffNum) 
       for (idxRho in 1:length(bm_rhoHat))
       {
-        
         localPvalueS='' 
         if (pValue[idxRho]<0.05) localPvalueS='*' 
         if (pValue[idxRho]<0.01) localPvalueS='**' 
@@ -4541,8 +5063,8 @@ ESTIMATE <- function(model=NULL,
         tryCatch({
           
           second_model=ESTIMATE(model=model
-                                ,TSRANGE = c(first_estimation_tsrange[1],first_estimation_tsrange[2],CHOWPAR[1],CHOWPAR[2])
-                                ,forceTSRANGE = TRUE
+                                ,TSRANGE=c(first_estimation_tsrange[1],first_estimation_tsrange[2],CHOWPAR[1],CHOWPAR[2])
+                                ,forceTSRANGE=TRUE
                                 ,eqList=eqList[eqIdx]
                                 ,quietly=TRUE
                                 ,digits=digits
@@ -4550,8 +5072,8 @@ ESTIMATE <- function(model=NULL,
                                 ,tol=tol
                                 ,IV=IV
                                 ,forceIV=forceIV
-                                ,centerCOV = centerCOV
-                                ,avoidCompliance = TRUE
+                                ,centerCOV=centerCOV
+                                ,avoidCompliance=TRUE
                                 ,...) 
         },error=function(e){
           stop('ESTIMATE(): error in extended estimation of "',eqList[eqIdx],'", during the CHOW test: ',e$message) 
@@ -4567,8 +5089,8 @@ ESTIMATE <- function(model=NULL,
         tryCatch({
           
           second_model=ESTIMATE(model=model
-                                ,TSRANGE = c(first_estimation_tsrange[1],first_estimation_tsrange[2],CHOWPAR[1],CHOWPAR[2])
-                                ,forceTSRANGE = TRUE
+                                ,TSRANGE=c(first_estimation_tsrange[1],first_estimation_tsrange[2],CHOWPAR[1],CHOWPAR[2])
+                                ,forceTSRANGE=TRUE
                                 ,eqList=eqList[eqIdx]
                                 ,quietly=TRUE
                                 ,digits=digits
@@ -4576,8 +5098,8 @@ ESTIMATE <- function(model=NULL,
                                 ,tol=tol
                                 ,IV=IV
                                 ,forceIV=forceIV
-                                ,centerCOV = centerCOV
-                                ,avoidCompliance = TRUE
+                                ,centerCOV=centerCOV
+                                ,avoidCompliance=TRUE
                                 ,...) 
         },error=function(e){
           stop('ESTIMATE(): cannot extend TSRANGE during CHOW test in estimation of "',eqList[eqIdx],'": ',e$message) 
@@ -4586,13 +5108,13 @@ ESTIMATE <- function(model=NULL,
         tryCatch({
           
           #cycle until error in extended range
-          while(TRUE)          {
+          while(TRUE) {
             
             #try incremental chow pars.
             CHOWPAR_tmp=normalizeYP(c(CHOWPAR[1],CHOWPAR[2]+1),f=frequency) 
             second_model=ESTIMATE(model=model
-                                  ,TSRANGE = c(first_estimation_tsrange[1],first_estimation_tsrange[2],CHOWPAR_tmp[1],CHOWPAR_tmp[2])
-                                  ,forceTSRANGE = TRUE
+                                  ,TSRANGE=c(first_estimation_tsrange[1],first_estimation_tsrange[2],CHOWPAR_tmp[1],CHOWPAR_tmp[2])
+                                  ,forceTSRANGE=TRUE
                                   ,eqList=eqList[eqIdx]
                                   ,quietly=TRUE
                                   ,digits=digits
@@ -4601,8 +5123,9 @@ ESTIMATE <- function(model=NULL,
                                   ,tol=tol
                                   ,IV=IV
                                   ,forceIV=forceIV
-                                  ,centerCOV = centerCOV
+                                  ,centerCOV=centerCOV
                                   ,...) 
+            
             #if estimation completes, update the CHOWPAR
             CHOWPAR=CHOWPAR_tmp 
           }
@@ -4613,14 +5136,14 @@ ESTIMATE <- function(model=NULL,
       extendedBehavioral=second_model$behaviorals[[eqList[eqIdx]]] 
       
       #get first SSR and df
-      SSR = baseBehavioral$statistics$SumSquaresResiduals 
-      df  = baseBehavioral$statistics$DegreesOfFreedom 
+      SSR=baseBehavioral$statistics$SumSquaresResiduals 
+      df=baseBehavioral$statistics$DegreesOfFreedom 
       if (!is.finite(SSR)) .MODEL_outputText(outputText=!quietly,paste0('ESTIMATE(): warning, SSR in first estimation of ',eqList[eqIdx],' is not finite.\n')) 
       if (!quietly && !is.finite(df)) .MODEL_outputText(outputText=!quietly,paste0('ESTIMATE(): warning, degrees of freedom in first estimation of ',eqList[eqIdx],' are not finite.\n')) 
       
       #get second SSR and df
-      chow_SSR = extendedBehavioral$statistics$SumSquaresResiduals 
-      chow_df  = extendedBehavioral$statistics$DegreesOfFreedom 
+      chow_SSR=extendedBehavioral$statistics$SumSquaresResiduals 
+      chow_df=extendedBehavioral$statistics$DegreesOfFreedom 
       if ( !is.finite(SSR)) .MODEL_outputText(outputText=!quietly,paste0('ESTIMATE(): warning, SSR in second estimation of ',eqList[eqIdx],' is not finite.\n')) 
       if ( !is.finite(df)) .MODEL_outputText(outputText=!quietly,paste0('ESTIMATE(): warning, degrees of freedom in second estimation of ',eqList[eqIdx],' are not finite.\n')) 
       if (chow_df==df) .MODEL_outputText(outputText=!quietly,paste0('ESTIMATE(): warning, base and extended estimations of ',eqList[eqIdx],' have the same degrees of freedom\n')) 
@@ -4640,25 +5163,27 @@ ESTIMATE <- function(model=NULL,
       chowOut$Fprob=ProbFchow 
       
       #out of sample simulation RESCHECK
-      outOfSampleTSRANGE=c(normalizeYP(c(first_estimation_tsrange[3],first_estimation_tsrange[4]+1),f = model$frequency),CHOWPAR) 
+      outOfSampleTSRANGE=c(normalizeYP(c(first_estimation_tsrange[3],first_estimation_tsrange[4]+1),f=model$frequency),CHOWPAR) 
       predOutSample=NULL 
+      
       tryCatch({
-        predOutSample <- SIMULATE(model,
-                                  TSRANGE = outOfSampleTSRANGE,
-                                  simType = 'RESCHECK',
-                                  simIterLimit = 100,
-                                  quietly=TRUE,
-                                  RESCHECKeqList=eqList[eqIdx],
-                                  avoidCompliance=TRUE) 
+        predOutSample=SIMULATE( model,
+                                TSRANGE=outOfSampleTSRANGE,
+                                simType = 'RESCHECK',
+                                simIterLimit=100,
+                                quietly=TRUE,
+                                RESCHECKeqList=eqList[eqIdx],
+                                avoidCompliance=TRUE) 
       },error=function(e){
         stop('ESTIMATE(): error in out-of-sample prediction (extended RESCHECK simulation) of "',eqList[eqIdx],'" during CHOW test: ',e$message) 
       }) 
+      
       PREDICT =predOutSample$simulation[[eqList[eqIdx]]] 
       ACTUAL  =predOutSample$modelData[[eqList[eqIdx]]] 
       ERROR   =ACTUAL-PREDICT 
       
       #fitted standard error calc
-      fit_se = vector(mode="numeric", length=length(PREDICT))
+      fit_se=vector(mode="numeric", length=length(PREDICT))
       
       #get matrices and sers
       base_ser       =baseBehavioral$statistics$StandardErrorRegression 
@@ -4696,18 +5221,18 @@ ESTIMATE <- function(model=NULL,
         }  
       },error=function(e){
         stop('ESTIMATE(): cannot calculate the standard error of "',eqList[eqIdx],'" in year-period ',
-             paste(normalizeYP(c(outOfSampleTSRANGE[1],outOfSampleTSRANGE[2]+k-1),f = model$frequency),collapse = '-'),' during CHOW test: ',e$message) 
+             paste(normalizeYP(c(outOfSampleTSRANGE[1],outOfSampleTSRANGE[2]+k-1),f=model$frequency),collapse = '-'),' during CHOW test: ',e$message) 
       }) 
       
-      STDERR=TSERIES(fit_se,START=outOfSampleTSRANGE[1:2],FREQ=model$frequency,avoidCompliance = TRUE) 
+      STDERR=TSERIES(fit_se,START=outOfSampleTSRANGE[1:2],FREQ=model$frequency,avoidCompliance=TRUE) 
       TSTAT=ERROR/STDERR 
       
       #project on tsrange
-      ACTUAL=TSPROJECT(ACTUAL,TSRANGE=outOfSampleTSRANGE,avoidCompliance = TRUE)
-      PREDICT=TSPROJECT(PREDICT,TSRANGE=outOfSampleTSRANGE,avoidCompliance = TRUE)
-      ERROR=TSPROJECT(ERROR,TSRANGE=outOfSampleTSRANGE,avoidCompliance = TRUE)
-      STDERR=TSPROJECT(STDERR,TSRANGE=outOfSampleTSRANGE,avoidCompliance = TRUE)
-      TSTAT=TSPROJECT(TSTAT,TSRANGE=outOfSampleTSRANGE,avoidCompliance = TRUE)
+      ACTUAL=TSPROJECT(ACTUAL,TSRANGE=outOfSampleTSRANGE,avoidCompliance=TRUE)
+      PREDICT=TSPROJECT(PREDICT,TSRANGE=outOfSampleTSRANGE,avoidCompliance=TRUE)
+      ERROR=TSPROJECT(ERROR,TSRANGE=outOfSampleTSRANGE,avoidCompliance=TRUE)
+      STDERR=TSPROJECT(STDERR,TSRANGE=outOfSampleTSRANGE,avoidCompliance=TRUE)
+      TSTAT=TSPROJECT(TSTAT,TSRANGE=outOfSampleTSRANGE,avoidCompliance=TRUE)
       
       chowOut$PredictivePower=list()
       chowOut$PredictivePower$ACTUAL=ACTUAL 
@@ -4738,7 +5263,7 @@ ESTIMATE <- function(model=NULL,
         Error=ERROR 
         `Std. Error`=STDERR 
         `T-stat`=TSTAT 
-        TABIT(Actual, Predict, Error, `Std. Error`, `T-stat`, digits = digits)
+        TABIT(Actual, Predict, Error, `Std. Error`, `T-stat`, digits=digits)
       }
       
       #store results
@@ -4749,12 +5274,12 @@ ESTIMATE <- function(model=NULL,
   }#end requested eqs cycle
   
   .MODEL_outputText(outputText=!quietly,'...ESTIMATE OK\n') 
+  
   return(model) 
   
 }
 
-
-# RENORM code ---------------------------------------
+# RENORM code ------------------------------------------------------------------
 
 RENORM <- function(model=NULL,
                    simAlgo='GAUSS-SEIDEL',
@@ -4763,6 +5288,7 @@ RENORM <- function(model=NULL,
                    simConvergence=0.01,
                    simIterLimit=100,
                    ZeroErrorAC=FALSE,
+                   BackFill=0,
                    Exogenize=NULL,
                    ConstantAdjustment=NULL,
                    verbose=FALSE,
@@ -4778,12 +5304,10 @@ RENORM <- function(model=NULL,
                    tol=1e-28,
                    JACOBIAN_SHOCK=1e-4,
                    JacobianDrop=NULL,
+                   forceForwardLooking=FALSE,
                    avoidCompliance=FALSE,
                    ...)
 {
-  #reset status
-  model$renorm=NULL 
-  model$simulation=NULL 
   #checks...
   if (is.null(model) ) stop('RENORM(): NULL model.') 
   if (is.null(class( model )) || !(inherits( model ,'BIMETS_MODEL')) )
@@ -4799,6 +5323,10 @@ RENORM <- function(model=NULL,
   
   if (quietly) quietlyMULTMATRIX=quietly
   
+  if (! (
+    is.numeric(BackFill) &&  (BackFill >= 0) &&  (BackFill %% 1 == 0)
+  ) ) stop('RENORM(): "BackFill" must be zero or a positive integer number.') 
+  
   if (!(is.logical(verbose))) stop('RENORM(): "verbose" must be TRUE or FALSE.')
   
   if (! avoidCompliance)
@@ -4808,23 +5336,29 @@ RENORM <- function(model=NULL,
       
       .CHECK_MODEL_DATA(model,showWarnings=verbose,'RENORM(): ') 
     },error=function(e){stop('RENORM(): ',e$message)}) 
-  } 
+  }
+  
+  #reset status
+  model$renorm=NULL 
+  model$simulation=NULL 
+  
   #get data frequecy
   frequency=frequency(model$modelData[[1]]) 
+  
   #check TSRANGE is consistent
   if (! is.null(TSRANGE)) {
     tryCatch({
       if (! ( is.numeric(TSRANGE) && length(TSRANGE)==4 && 
               .isCompliantYP(c(TSRANGE[1],TSRANGE[2]),frequency) && 
               .isCompliantYP(c(TSRANGE[3],TSRANGE[4]),frequency) &&
-              NUMPERIOD(c(TSRANGE[1],TSRANGE[2]),c(TSRANGE[3],TSRANGE[4]),frequency)>=0
-      )
+              NUMPERIOD(c(TSRANGE[1],TSRANGE[2]),c(TSRANGE[3],TSRANGE[4]),frequency)>=0)
       ) stop() 
     },error=function(e) {stop('RENORM(): syntax error in TSRANGE: ',e$message)}) 
   }
   
   #periods in TSRANGE
   TSRANGEextension=NUMPERIOD(c(TSRANGE[1],TSRANGE[2]),c(TSRANGE[3],TSRANGE[4]),frequency)+1 
+  
   #check TARGET 
   if (is.null(TARGET)) stop('RENORM(): "TARGET" must be defined.') 
   if (! is.list(TARGET) || length(TARGET)==0) 
@@ -4837,14 +5371,12 @@ RENORM <- function(model=NULL,
   #check TARGET is consistent in TSRANGE
   for (idxT in 1:length(TARGET))
   {
-    
-    
     if (! is.bimets(TARGET[[idxT]])) 
       stop('RENORM(): "TARGET" must be a list of BIMETS time series: "',names(TARGET)[idxT],'" time series is not compliant.') 
     if (frequency(TARGET[[idxT]])!=frequency) 
       stop('RENORM(): time series have not the same frequency. Check TARGET time series "',names(TARGET)[idxT],'".') 
     #project TARGET on TSRANGE
-    TARGET[[idxT]]=TSPROJECT(TARGET[[idxT]],TSRANGE = TSRANGE,EXTEND = TRUE,avoidCompliance = TRUE) 
+    TARGET[[idxT]]=TSPROJECT(TARGET[[idxT]],TSRANGE=TSRANGE,EXTEND=TRUE,avoidCompliance=TRUE) 
     #deal with missings
     if (any(! is.finite(coredata(TARGET[[idxT]])))) 
       stop('RENORM(): there are undefined values in TSRANGE ',paste0(TSRANGE,collapse='-'),' in TARGET time series "',names(TARGET)[idxT],'"') 
@@ -4875,7 +5407,6 @@ RENORM <- function(model=NULL,
         #CA has to be a vendog
         if (! idxCA %in% model$vendog)
           stop(paste0('RENORM(): requested to add a constant adjustment to "',idxCA,'" but it is not a model endogenous variable.'))
-        
         
         if (! is.bimets(ConstantAdjustment[[idxCA]])) 
           stop('RENORM(): constant adjustment must be a list of BIMETS time series: "',idxCA,'" time series is not compliant.') 
@@ -4916,7 +5447,7 @@ RENORM <- function(model=NULL,
                      '" is not a model exogenous variable.')) 
   }
   
-  
+  #export some stuff to model
   model$renorm[['__RENORM_PARAMETERS__']]$Exogenize=Exogenize 
   model$renorm[['__RENORM_PARAMETERS__']]$ConstantAdjustment=ConstantAdjustment 
   model$renorm[['__RENORM_PARAMETERS__']]$renormIterLimit=renormIterLimit
@@ -4928,11 +5459,8 @@ RENORM <- function(model=NULL,
   for (idxN in names(TARGET))
   {
     #get data from historical
-    model$simulation[[idxN]]=TSPROJECT(model$modelData[[idxN]],TSRANGE = TSRANGE,EXTEND = TRUE,avoidCompliance = TRUE) 
-    
-    #stop if missings
-    #if (any(! is.finite(model$simulation[[idxN]]))) 
-    #  stop(paste0('RENORM(): there are undefined values in TARGET "',idxN,'".')) 
+    model$simulation[[idxN]]=TSPROJECT(model$modelData[[idxN]],TSRANGE=TSRANGE,EXTEND=TRUE,avoidCompliance=TRUE) 
+   
   }
   
   #main cycle index
@@ -4954,7 +5482,6 @@ RENORM <- function(model=NULL,
   #main cycle
   for (renormNIter in 0:renormIterLimit)
   {
-    
     #names on unconverged TARGETs
     unConvergedTARGET=c() 
     convergenceRenorm=TRUE 
@@ -4962,7 +5489,15 @@ RENORM <- function(model=NULL,
     #check differences in TARGETs
     if (renormNIter>0) for (tmpN in names(TARGET))
     {
-      DIFF_[[tmpN]]=(TARGET[[tmpN]]-coredata(model$simulation[[tmpN]]))/ifelse(TARGET[[tmpN]]==0,1,TARGET[[tmpN]])
+      tmpTs=TSPROJECT(model$simulation[[tmpN]],TSRANGE=TSRANGE,avoidCompliance=TRUE)
+      
+      DIFF_[[tmpN]]=(TARGET[[tmpN]]-tmpTs)/TARGET[[tmpN]]
+      
+      if (any(TARGET[[tmpN]]==0)) 
+      {
+        zeroLoc=which(TARGET[[tmpN]]==0)
+        DIFF_[[tmpN]][zeroLoc]=(TARGET[[tmpN]][zeroLoc]-tmpTs[zeroLoc])
+      }
       
       #verify convergence
       if (sqrt(sum(DIFF_[[tmpN]]^2))>=renormConvergence) 
@@ -4975,13 +5510,19 @@ RENORM <- function(model=NULL,
     #no convergence
     if (convergenceRenorm==FALSE && renormNIter==renormIterLimit)
     {
-      
       .MODEL_outputText(outputText=!quietly,paste0('\nRENORM(): warning, no convergence in ',renormNIter,' iterations.\n')) 
       
       #export unconverged symbols
       model$renorm$unConvergedTARGET=unConvergedTARGET 
       break 
     }
+    
+    # enable this code to enable initial TARGET check
+    # if (convergenceRenorm==TRUE && renormNIter==0)
+    # {
+    #   .MODEL_outputText(outputText=!quietly,paste0('\nRENORM(): all TARGET are equal to model data. This procedure will exit.\n')) 
+    #   break 
+    # }			
     
     #convergence
     if (convergenceRenorm==TRUE && renormNIter>0)
@@ -4992,7 +5533,7 @@ RENORM <- function(model=NULL,
       tmpL=list() 
       for (idxI in 1:length(INSTRUMENT))
       {
-        tmpL[[INSTRUMENT[idxI]]]=TSERIES(SINSTR_[idxI,],START=c(TSRANGE[1],TSRANGE[2]),FREQ=frequency,avoidCompliance = TRUE) 
+        tmpL[[INSTRUMENT[idxI]]]=TSERIES(SINSTR_[idxI,],START=c(TSRANGE[1],TSRANGE[2]),FREQ=frequency,avoidCompliance=TRUE) 
       }
       model$renorm$INSTRUMENT=tmpL 
       
@@ -5018,12 +5559,15 @@ RENORM <- function(model=NULL,
       }
       
       #project in TSRANGE
-      INSTRUMENT_CURRENT[[tmpI]]=TSPROJECT(INSTRUMENT_CURRENT[[tmpI]],TSRANGE = TSRANGE,EXTEND = TRUE,avoidCompliance = TRUE) 
+      INSTRUMENT_CURRENT[[tmpI]]=TSPROJECT(INSTRUMENT_CURRENT[[tmpI]],TSRANGE=TSRANGE,EXTEND=TRUE,avoidCompliance=TRUE) 
       xxx_[idxI,]=coredata(INSTRUMENT_CURRENT[[tmpI]]) 
     }
     INSTR_=c(xxx_) 
+    
     tryCatch({
       
+      # multmatrix -------------------------------------------------------------------------------
+     
       #calc MM
       model=MULTMATRIX(model=model,
                        simAlgo=simAlgo,
@@ -5033,6 +5577,7 @@ RENORM <- function(model=NULL,
                        simConvergence=simConvergence,
                        simIterLimit=simIterLimit,
                        ZeroErrorAC=ZeroErrorAC,
+                       BackFill=BackFill,
                        Exogenize=Exogenize,
                        ConstantAdjustment=ConstantAdjustment,
                        verbose=verbose,
@@ -5044,19 +5589,19 @@ RENORM <- function(model=NULL,
                        quietly=quietlyMULTMATRIX,
                        JACOBIAN_SHOCK=JACOBIAN_SHOCK,
                        JacobianDrop=JacobianDrop,
+                       forceForwardLooking=forceForwardLooking,
                        avoidCompliance=TRUE,
-                       ...
-      ) 
+                       ...) 
     }, error=function(err){
       
       stop(paste0('\nRENORM(): error in iteration #',renormNIter+1,': ',err$message)) 
     })
-    
+   
     #get simulated TARGETs
     for (idxT in 1:length(TARGET))
     {
       #in MULTMAT we have multiple simulation column results, so [,1]
-      xxx_[idxT,]=coredata(model$simulation[[names(TARGET)[idxT]]]) 
+      xxx_[idxT,]=coredata(TSPROJECT(model$simulation[[names(TARGET)[idxT]]],TSRANGE=TSRANGE,avoidCompliance=TRUE))
     }
     TARG0_=c((xxx_)) 
     
@@ -5068,7 +5613,7 @@ RENORM <- function(model=NULL,
       
       INSTR_=as.vector(INSTR_+solve(model$MultiplierMatrix,
                                     tol=tol) %*% NTARG_) 
-    }, error=function(err){
+    },error=function(err){
       
       stop(paste0('RENORM(): cannot invert multipliers matrix in iteration #',renormNIter+1,': ',err$message)) 
     })  
@@ -5110,18 +5655,20 @@ RENORM <- function(model=NULL,
   for (idxN in names(TARGET))
   {
     #...probably TSPROJECT not required								
-    tmpL[[idxN]]=TSPROJECT(model$simulation[[idxN]],TSRANGE = TSRANGE,EXTEND = TRUE,avoidCompliance = TRUE) 
+    tmpL[[idxN]]=TSPROJECT(model$simulation[[idxN]],TSRANGE=TSRANGE,EXTEND=TRUE,avoidCompliance=TRUE) 
   }
   model$renorm$TARGET=tmpL 
+  
   #export renorm parameters 
   model$renorm[['__RENORM_PARAMETERS__']]$TSRANGE=TSRANGE 
   model$renorm[['__RENORM_PARAMETERS__']]$TARGET=TARGET 
   model$renorm[['__RENORM_PARAMETERS__']]$INSTRUMENT=INSTRUMENT 
   
   return(model)
+  
 }
 
-# MULTMATRIX code ---------------------------------------
+# MULTMATRIX code --------------------------------------------------------------
 
 MULTMATRIX <- function(model=NULL,
                        simAlgo='GAUSS-SEIDEL',
@@ -5130,6 +5677,7 @@ MULTMATRIX <- function(model=NULL,
                        simConvergence=0.01,
                        simIterLimit=100,
                        ZeroErrorAC=FALSE,
+                       BackFill=0,
                        Exogenize=NULL,
                        ConstantAdjustment=NULL,
                        verbose=FALSE,
@@ -5141,11 +5689,11 @@ MULTMATRIX <- function(model=NULL,
                        quietly=FALSE,
                        JACOBIAN_SHOCK=1e-4,
                        JacobianDrop=NULL,
+                       forceForwardLooking=FALSE,
                        avoidCompliance=FALSE,
                        ...)
 {
   tryCatch({
-    
     
     model=SIMULATE(model=model,
                    simAlgo=simAlgo,
@@ -5154,6 +5702,7 @@ MULTMATRIX <- function(model=NULL,
                    simConvergence=simConvergence,
                    simIterLimit=simIterLimit,
                    ZeroErrorAC=ZeroErrorAC,
+                   BackFill=BackFill,
                    Exogenize=Exogenize,
                    ConstantAdjustment=ConstantAdjustment,
                    verbose=verbose,
@@ -5166,16 +5715,18 @@ MULTMATRIX <- function(model=NULL,
                    quietly=quietly,
                    JACOBIAN_SHOCK=JACOBIAN_SHOCK,
                    JacobianDrop=JacobianDrop,
+                   forceForwardLooking=forceForwardLooking,
                    avoidCompliance=avoidCompliance,
                    ...) 
   }, error=function(err){
     
     stop('\n',err$message)
   })
+  
   return(model)
 }
 
-# OPTIMIZE code ---------------------------------------
+# OPTIMIZE code ----------------------------------------------------------------
 
 OPTIMIZE <- function(model=NULL,
                      simAlgo='GAUSS-SEIDEL',
@@ -5184,6 +5735,7 @@ OPTIMIZE <- function(model=NULL,
                      simConvergence=0.01,
                      simIterLimit=100,
                      ZeroErrorAC=FALSE,
+                     BackFill=0,
                      Exogenize=NULL,
                      ConstantAdjustment=NULL,
                      verbose=FALSE,
@@ -5198,14 +5750,12 @@ OPTIMIZE <- function(model=NULL,
                      RESCHECKeqList=NULL,
                      JACOBIAN_SHOCK=1e-4,
                      JacobianDrop=NULL,
+                     forceForwardLooking=FALSE,
                      avoidCompliance=FALSE,
                      ...)
 {
-  
-  
   tryCatch({
-    
-    
+ 
     model=SIMULATE(model=model,
                    simAlgo=simAlgo,
                    OPTIMIZE=TRUE,
@@ -5214,6 +5764,7 @@ OPTIMIZE <- function(model=NULL,
                    simConvergence=simConvergence,
                    simIterLimit=simIterLimit,
                    ZeroErrorAC=ZeroErrorAC,
+                   BackFill=BackFill,
                    Exogenize=Exogenize,
                    ConstantAdjustment=ConstantAdjustment,
                    verbose=verbose,
@@ -5228,17 +5779,18 @@ OPTIMIZE <- function(model=NULL,
                    RESCHECKeqList=RESCHECKeqList,
                    JACOBIAN_SHOCK=JACOBIAN_SHOCK,
                    JacobianDrop=JacobianDrop,
+                   forceForwardLooking=forceForwardLooking,
                    avoidCompliance=avoidCompliance,
                    ...) 
   }, error=function(err){
     
     stop('\n',err$message)
   })
+  
   return(model)
 }
 
-
-# STOCHSIMULATE code ---------------------------------------
+# STOCHSIMULATE code -----------------------------------------------------------
 
 STOCHSIMULATE <- function(model=NULL,
                           simAlgo='GAUSS-SEIDEL',
@@ -5247,6 +5799,7 @@ STOCHSIMULATE <- function(model=NULL,
                           simConvergence=0.01,
                           simIterLimit=100,
                           ZeroErrorAC=FALSE,
+                          BackFill=0,
                           Exogenize=NULL,
                           ConstantAdjustment=NULL,
                           verbose=FALSE,
@@ -5259,11 +5812,11 @@ STOCHSIMULATE <- function(model=NULL,
                           RESCHECKeqList=NULL,
                           JACOBIAN_SHOCK=1e-4,
                           JacobianDrop=NULL,
+                          forceForwardLooking=FALSE,
                           avoidCompliance=FALSE,
                           ...)
 {
   tryCatch({
-    
     
     model=SIMULATE(model=model,
                    simAlgo=simAlgo,
@@ -5273,6 +5826,7 @@ STOCHSIMULATE <- function(model=NULL,
                    simConvergence=simConvergence,
                    simIterLimit=simIterLimit,
                    ZeroErrorAC=ZeroErrorAC,
+                   BackFill=BackFill,
                    Exogenize=Exogenize,
                    ConstantAdjustment=ConstantAdjustment,
                    verbose=verbose,
@@ -5285,16 +5839,18 @@ STOCHSIMULATE <- function(model=NULL,
                    RESCHECKeqList=RESCHECKeqList,
                    JACOBIAN_SHOCK=JACOBIAN_SHOCK,
                    JacobianDrop=JacobianDrop,
+                   forceForwardLooking=forceForwardLooking,
                    avoidCompliance=avoidCompliance,
                    ...) 
   }, error=function(err){
     
     stop('\n',err$message)
   })
+  
   return(model)
 }
 
-# SIMULATE code ---------------------------------------
+# SIMULATE code ----------------------------------------------------------------
 
 SIMULATE <- function(model=NULL,
                      simAlgo='GAUSS-SEIDEL',
@@ -5326,21 +5882,13 @@ SIMULATE <- function(model=NULL,
                      RESCHECKeqList=NULL,
                      JACOBIAN_SHOCK=1e-4,
                      JacobianDrop=NULL,
+                     forceForwardLooking=FALSE,
                      avoidCompliance=FALSE,
                      ...)
 { 
-  #get regex definitions
-  regExDefs=.RegExGlobalDefinition() 
-  reservedKeyw=regExDefs$reservedKeyw 
-  symOnEqCleaner=regExDefs$symOnEqCleaner 
-  symOnIfCleaner=regExDefs$symOnIfCleaner 
-  allowedCharOnName=regExDefs$allowedCharOnName 
-  charsOnNumbs=regExDefs$charsOnNumbs 
-  charsOnNumWithSign=regExDefs$charsOnNumWithSign 
-  strongCharOnNumbs=regExDefs$strongCharOnNumbs 
-  strongCharOnNumbsWithSign=regExDefs$strongCharOnNumbsWithSign 
-  allowedLhsEQfuns=regExDefs$allowedLhsEQfuns 
-  allowedLhsEQfunsPub=regExDefs$allowedLhsEQfunsPub 
+  if (is.null(model) ) stop(callerName,'NULL model.') 
+  if (is.null(class( model )) || !(inherits( model ,'BIMETS_MODEL')) )
+    stop(callerName,'model must be instance of "BIMETS_MODEL" class.') 
   
   #parent function call name
   callerName='SIMULATE'
@@ -5364,27 +5912,23 @@ SIMULATE <- function(model=NULL,
   if (STOCHSIMULATE) callerName='STOCHSIMULATE'
   if (OPTIMIZE) callerName='OPTIMIZE'
   
+  .checkModelBimetsVersion(model, callerName)
+  
   callerName=paste0(callerName,'(): ')
   
-  #check arguments
-  if (is.null(model) ) stop(callerName,'NULL model.') 
   if (is.null(TSRANGE) ) stop(callerName,'"TSRANGE" must be defined.') 
-  if (is.null(class( model )) || !(inherits( model ,'BIMETS_MODEL')) )
-    stop(callerName,'model must be instance of "BIMETS_MODEL" class.') 
-  if (! (
-    is.numeric(simIterLimit) &&  (simIterLimit > 0) 
-  ) ) stop(callerName,'"simIterLimit" must be a positive number.') 
-  if (! (
-    is.numeric(BackFill) &&  (BackFill >= 0) &&  (BackFill %% 1 == 0)
-  ) ) stop(callerName,'"BackFill" must be zero or a positive integer number.') 
-  if (! (
-    is.numeric(simConvergence) && (simConvergence > 0) 
-  ) ) stop(callerName,'"simConvergence" must be a positive number.') 
+  
+  if (! ( is.numeric(simIterLimit) &&  (simIterLimit > 0) )) 
+    stop(callerName,'"simIterLimit" must be a positive number.') 
+  if (! ( is.numeric(BackFill) &&  (BackFill >= 0) &&  (BackFill %% 1 == 0) )) 
+    stop(callerName,'"BackFill" must be zero or a positive integer number.') 
+  if (! ( is.numeric(simConvergence) && (simConvergence > 0) )) 
+    stop(callerName,'"simConvergence" must be a positive number.') 
   if (! is.character(simType) || ! toupper(simType) %in% c('DYNAMIC','STATIC','RESCHECK','FORECAST')) 
     stop(callerName,'"simType" must be "DYNAMIC", "STATIC", "FORECAST" or "RESCHECK"') 
   simType=toupper(simType) 
-  if (! is.character(simAlgo) || ! toupper(simAlgo) %in% c('GAUSS-SEIDEL', 'NEWTON'
-                                                           ,'FULLNEWTON')) 
+  
+  if (! is.character(simAlgo) || ! toupper(simAlgo) %in% c('GAUSS-SEIDEL', 'NEWTON','FULLNEWTON')) 
     stop(callerName,'"simAlgo" must be "GAUSS-SEIDEL", "NEWTON" or "FULLNEWTON".') 
   if (simAlgo=='FULLNEWTON' && MULTMATRIX==FALSE && RENORM==FALSE && OPTIMIZE==FALSE && STOCHSIMULATE==FALSE)  
     stop(callerName,'"FULLNEWTON" algorithm cannot be used in SIMULATE procedure. Please switch to "NETWON" or "GAUSS-SEIDEL".')
@@ -5395,6 +5939,8 @@ SIMULATE <- function(model=NULL,
     stop(callerName,'"JACOBIAN_SHOCK" must be numeric and positive.')
   
   if (! is.logical(verbose) || is.na(verbose)) stop(callerName,'"verbose" must be logical.') 
+  if (! is.logical(forceForwardLooking) || is.na(forceForwardLooking)) stop(callerName,'"forceForwardLooking" must be logical.') 
+  
   if (! is.logical(quietly) || is.na(quietly)) stop(callerName,'"quietly" must be logical.') 
   if (MULTMATRIX && simType=='RESCHECK')																			   
     stop(callerName,'a "RESCHECK" simulation is not allowed in a MULTMATRIX() operation.')
@@ -5411,10 +5957,30 @@ SIMULATE <- function(model=NULL,
   {
     #check model data
     tryCatch({
-      
       .CHECK_MODEL_DATA(model,showWarnings=verbose,callerName) 
     },error=function(e){stop(callerName,'',e$message)}) 
   }
+  
+  #get regex definitions
+  regExDefs=.RegExGlobalDefinition() 
+  reservedKeyw=regExDefs$reservedKeyw 
+  symOnEqCleaner=regExDefs$symOnEqCleaner 
+  symOnIfCleaner=regExDefs$symOnIfCleaner 
+  allowedCharOnName=regExDefs$allowedCharOnName 
+  allowedCharOnNameToken=regExDefs$allowedCharOnNameToken 
+  charsOnNumbs=regExDefs$charsOnNumbs 
+  charsOnNumWithSign=regExDefs$charsOnNumWithSign 
+  strongCharOnNumbs=regExDefs$strongCharOnNumbs 
+  strongCharOnNumbsWithSign=regExDefs$strongCharOnNumbsWithSign 
+  allowedLhsEQfuns=regExDefs$allowedLhsEQfuns 
+  allowedLhsEQfunsPub=regExDefs$allowedLhsEQfunsPub 
+  
+  #main tryCatch for compliance speedup
+  tryCatch({
+  
+  #get compliance status
+  complianceStatus=getBIMETSconf('BIMETS_CONF_NOC')
+  setBIMETSconf('BIMETS_CONF_NOC',TRUE, suppressOutput=TRUE)
   
   #get data frequency
   frequency=frequency(model$modelData[[1]]) 
@@ -5459,6 +6025,9 @@ SIMULATE <- function(model=NULL,
   #check RESCHECKeqList vendog exists in model 
   if (! is.null(RESCHECKeqList))
   {
+    if (OPTIMIZE)
+      stop(callerName,'"RESCHECKeqList" in not available in a OPTIMIZE operation.')
+    
     if (simType!='RESCHECK')
     {
       .MODEL_outputText(outputText=!quietly,paste0(callerName,'simulation of type "',simType,'" requested. "RESCHECKeqList" will be set to NULL.\n')) 
@@ -5472,6 +6041,26 @@ SIMULATE <- function(model=NULL,
         stop(callerName,'request to RESCHECK the following "',
              paste0(base::setdiff((RESCHECKeqList),model$vendog),collapse=', '),
              '", not endogenous variable(s) of the model.')
+      
+      if (length(Exogenize)>0) 
+        for (idxEL in names(Exogenize))
+        {
+          if (! idxEL %in% RESCHECKeqList)
+          {
+            .MODEL_outputText(outputText=!quietly,paste0(callerName,'warning, request to exogenize "',idxEL,'", but it is not in "RESCHECKeqList". It will be removed from "Exogenize" list.\n'))
+            Exogenize[[idxEL]]=NULL
+          }
+        }
+      
+      if (length(ConstantAdjustment)>0) 
+        for (idxCA in names(ConstantAdjustment))
+        {
+          if (! idxCA %in% RESCHECKeqList)
+          {
+            .MODEL_outputText(outputText=!quietly,paste0(callerName,'warning, constant adjustment "',idxCA,'" is not in "RESCHECKeqList". It will be removed from "ConstantAdjustment" list.\n'))
+            ConstantAdjustment[[idxCA]]=NULL
+          }
+        }
     }
   } 
   
@@ -5504,12 +6093,7 @@ SIMULATE <- function(model=NULL,
                                 names(Exogenize)[idxEL],'". ',e$message)
       }) 
     } 
-  
-  #check JacobianDrop
-  if (length(JacobianDrop)>0)
-    for (idx in 1:length(JacobianDrop))
-      if (! JacobianDrop[idx] %in% model$vfeed ) stop(callerName, '"',JacobianDrop[idx],'" is not a model feedback variable.')
-  
+
   #sim steps count
   simSteps=NUMPERIOD(TSRANGE[1:2],TSRANGE[3:4],frequency)+1 
   
@@ -5524,50 +6108,8 @@ SIMULATE <- function(model=NULL,
       if (verbose && any(! is.finite(coredata(ConstantAdjustment[[idxCA]])))) .MODEL_outputText(outputText = !quietly,callerName,'warning, there are undefined values in constant adjustment time series "',names(ConstantAdjustment)[idxCA],'".\n',sep='') 
     }
   
-  #check TARGET if MM is T
-  if (MULTMATRIX==TRUE && (is.null(TARGET) || length(TARGET)==0) )
-    stop(callerName,'impact multipliers matrix requested but TARGET names are NULL.')
-  
-  if (MULTMATRIX==TRUE && length(TARGET)>0) 
-    if (length(base::setdiff(TARGET,model$vendog))>0)
-      stop(callerName,'TARGET variables "',paste0(base::setdiff(TARGET,model$vendog),collapse=', ') ,
-           '" are not endogenous variables of the model.')
-  
-  #check INSTRUMENT if MM is T
-  if (MULTMATRIX==TRUE && (is.null(INSTRUMENT) || length(INSTRUMENT)==0) )
-    stop(callerName,'impact multipliers matrix requested but INSTRUMENT names are NULL.')
-  
-  #vendog variables that are used as instruments
-  instrumentVendogs=NULL 
-  if (anyDuplicated(INSTRUMENT)>0) stop(callerName,'there are duplicated entries on INSTRUMENT namelist: "',INSTRUMENT[anyDuplicated(INSTRUMENT)],'".')
-  if (anyDuplicated(TARGET)>0) stop(callerName,'there are duplicated entries on TARGET namelist: "',TARGET[anyDuplicated(TARGET)],'".')
-  
-  if (MULTMATRIX==TRUE && length(INSTRUMENT)>0) 
-  { 
-    instrumentVendogs=base::intersect(INSTRUMENT,model$vendog) 
-    for (idxT in 1:length(INSTRUMENT))
-    {
-      #if instrument is endogenous then we use related add-factor
-      if (INSTRUMENT[idxT] %in% model$vendog) 
-      {
-        INSTRUMENT[idxT]=paste0(INSTRUMENT[idxT],'__ADDFACTOR') 
-        next 
-      }
-      
-      #check tragets in vendog list
-      if (! INSTRUMENT[idxT] %in% model$vexog) stop(callerName,'INSTRUMENT variable "',INSTRUMENT[idxT] ,
-                                                    '" is not a model variable.')
-    }
-  }
-  
-  #set replica if MULTMATRIX selected
-  if (MULTMATRIX==TRUE) 
-  {
-    replica=length(INSTRUMENT)*simSteps+1 
-  } else replica=1 
-  
   #check intersection between Simulation TSRANGE and Exogenize TSRANGE
-  #remove items whose exogination TSRANGE is outside Simulation TSRANGE
+  #remove items whose exogenation TSRANGE is outside Simulation TSRANGE
   idxToBeRemoved=c() 
   if (length(Exogenize)>0) 
     for (idxEL in 1:length(Exogenize))
@@ -5622,16 +6164,60 @@ SIMULATE <- function(model=NULL,
       }
     }
   
+  #check TARGET if MM is T
+  if (MULTMATRIX==TRUE && (is.null(TARGET) || length(TARGET)==0) )
+    stop(callerName,'impact multipliers matrix requested but TARGET names are NULL.')
+  
+  if (MULTMATRIX==TRUE && length(TARGET)>0) 
+    if (length(base::setdiff(TARGET,model$vendog))>0)
+      stop(callerName,'TARGET variables "',paste0(base::setdiff(TARGET,model$vendog),collapse=', ') ,
+           '" are not endogenous variables of the model.')
+  
+  #check INSTRUMENT if MM is T
+  if (MULTMATRIX==TRUE && (is.null(INSTRUMENT) || length(INSTRUMENT)==0) )
+    stop(callerName,'impact multipliers matrix requested but INSTRUMENT names are NULL.')
+  
+  #vendog variables that are used as instruments
+  instrumentVendogs=NULL 
+  if (anyDuplicated(INSTRUMENT)>0) stop(callerName,'there are duplicated entries on INSTRUMENT namelist: "',INSTRUMENT[anyDuplicated(INSTRUMENT)],'".')
+  if (anyDuplicated(TARGET)>0) stop(callerName,'there are duplicated entries on TARGET namelist: "',TARGET[anyDuplicated(TARGET)],'".')
+  
+  if (MULTMATRIX==TRUE && length(INSTRUMENT)>0) 
+  { 
+    instrumentVendogs=base::intersect(INSTRUMENT,model$vendog) 
+    for (idxT in 1:length(INSTRUMENT))
+    {
+      #if instrument is endogenous then we use related add-factor
+      if (INSTRUMENT[idxT] %in% model$vendog) 
+      {
+        INSTRUMENT[idxT]=paste0(INSTRUMENT[idxT],'__ADDFACTOR') 
+        next 
+      }
+      
+      #check tragets in vendog list
+      if (! INSTRUMENT[idxT] %in% model$vexog) stop(callerName,'INSTRUMENT variable "',INSTRUMENT[idxT] ,
+                                                    '" is not a model variable.')
+    }
+  }
+  
+  #set replica if MULTMATRIX selected
+  if (MULTMATRIX==TRUE) 
+  {
+    #in lead case replica count is the same
+    replica=length(INSTRUMENT)*simSteps+1 
+  } else replica=1 
+ 
   # local var localE speedup -----------------------------------------------
   
   #a local env will contains model time series in assign(), get() and eval()
-  #it will speed up calc
-  localE = new.env() 
+  #it will speed up calculus
+  localE=new.env() 
   
-  #we need at least 1 lag in order to start simulation in case simTYPE=FORECAST 
+  #we need at least 1 lag in order to start simulation in case simType=FORECAST 
   model_max_lag=max(model$max_lag,1) 
   model_max_lag_1=model_max_lag+1
-  
+  model_max_lead=model$max_lead
+   
   #use local var for speedup
   model_vendog=model$vendog 
   model_vexog=model$vexog 
@@ -5640,13 +6226,15 @@ SIMULATE <- function(model=NULL,
   model_names_identity=names(model$identities) 
   model_fullComponentList=c(model$vendog,model$vexog) 
   model_vpre=model$vpre
-  model_vsim=model$vsim
-  model_vpost=model$vpost
-  model_vfeed=model$vfeed
-  length_model_vpre=length(model$vpre)
-  length_model_vsim=length(model$vsim)
-  length_model_vpost=length(model$vpost)
-  length_model_vfeed=length(model$vfeed)
+  length_model_vpre=length(model_vpre)
+  length_model_vblocks=length(model$vblocks)
+  model_vblocks=model$vblocks
+  model_vsim=list()
+  model_vpost=list()
+  model_vfeed=list()
+  length_model_vsim=c()
+  length_model_vpost=c()
+  length_model_vfeed=c()
   
   if (length(ConstantAdjustment)>0) 
     CA_names=paste0(names(ConstantAdjustment),'__ADDFACTOR')
@@ -5654,14 +6242,19 @@ SIMULATE <- function(model=NULL,
     instrum_names=paste0(instrumentVendogs,'__ADDFACTOR')
   
   # check STOCHSIMULATE ------------------------------------------------------------
-  
+ 
   if (STOCHSIMULATE)
   {
     #check arguments
-    if (!is.list(StochStructure) || is.null(names(StochStructure))) stop(callerName,'"StochStructure" must be a named list.') 
-    if (length(names(StochStructure)) != length(unique(names(StochStructure)))) stop(callerName,'there are duplicated names in "StochStructure"') 
-    for (idxN in names(StochStructure))
+    if (!is.list(StochStructure) || is.null(names(StochStructure))) 
+      stop(callerName,'"StochStructure" must be a named list.') 
+    if (length(names(StochStructure)) != length(unique(names(StochStructure)))) 
+      stop(callerName,'there are duplicated names in "StochStructure"') 
+    
+    for (idxI in 1:length(StochStructure))
     {
+      idxN=names(StochStructure)[idxI]
+      
       if (! idxN %in% c(model$vendog,model$vexog))
         stop(callerName,'"StochStructure" has a named element "',idxN,'" that is not a model variable.')
       
@@ -5733,28 +6326,30 @@ SIMULATE <- function(model=NULL,
     #project stoch TSRANGE in sim TSRANGE
     if (length(StochStructure)>0) 
     {  for (idxN in 1:length(StochStructure))
-    {
-      tmpTSRANGE=StochStructure[[idxN]]$TSRANGE
-      if (NUMPERIOD(c(tmpTSRANGE[1],tmpTSRANGE[2]),
-                    c(TSRANGE[1],TSRANGE[2]),frequency)>0)
       {
-        .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, "StochStructure$',names(StochStructure)[idxN],'$TSRANGE" starts before the simulation TSRANGE\n')) 
-        tmpTSRANGE[1]=TSRANGE[1] 
-        tmpTSRANGE[2]=TSRANGE[2] 
+        tmpTSRANGE=StochStructure[[idxN]]$TSRANGE
+        if (NUMPERIOD(c(tmpTSRANGE[1],tmpTSRANGE[2]),
+                      c(TSRANGE[1],TSRANGE[2]),frequency)>0)
+        {
+          .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, "StochStructure$',names(StochStructure)[idxN],'$TSRANGE" starts before the simulation TSRANGE\n')) 
+          tmpTSRANGE[1]=TSRANGE[1] 
+          tmpTSRANGE[2]=TSRANGE[2] 
+        }
+        
+        if (NUMPERIOD(c(tmpTSRANGE[3],tmpTSRANGE[4]),
+                      c(TSRANGE[3],TSRANGE[4]),frequency)<0) 
+        {
+          .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, "StochStructure$',names(StochStructure)[idxN],'$TSRANGE" ends after the simulation TSRANGE\n')) 
+          tmpTSRANGE[3]=TSRANGE[3] 
+          tmpTSRANGE[4]=TSRANGE[4] 
+        }
+        StochStructure[[idxN]]$TSRANGE=tmpTSRANGE
       }
       
-      if (NUMPERIOD(c(tmpTSRANGE[3],tmpTSRANGE[4]),
-                    c(TSRANGE[3],TSRANGE[4]),frequency)<0) 
+      for (idxI in 1:length(StochStructure))
       {
-        .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, "StochStructure$',names(StochStructure)[idxN],'$TSRANGE" ends after the simulation TSRANGE\n')) 
-        tmpTSRANGE[3]=TSRANGE[3] 
-        tmpTSRANGE[4]=TSRANGE[4] 
-      }
-      StochStructure[[idxN]]$TSRANGE=tmpTSRANGE
-    }
-      
-      for (idxN in names(StochStructure))
-      {
+        idxN=names(StochStructure)[idxI]
+        
         if (! is.character(StochStructure[[idxN]]$TYPE) 
             || ! StochStructure[[idxN]]$TYPE %in% c('NORM','UNIF','MATRIX')
         ) stop(callerName,'"StochStructure$',idxN,'$TYPE" must be NORM or UNIF or MATRIX.')
@@ -5821,10 +6416,15 @@ SIMULATE <- function(model=NULL,
     replica=StochReplica+1 
     
     #check argument OptimizeBounds
-    if (!is.list(OptimizeBounds) || is.null(names(OptimizeBounds))) stop(callerName,'"OptimizeBounds" must be a named list.') 
-    if (length(names(OptimizeBounds)) != length(unique(names(OptimizeBounds)))) stop(callerName,'there are duplicated names in "OptimizeBounds".') 
-    for (idxN in names(OptimizeBounds))
+    if (!is.list(OptimizeBounds) || is.null(names(OptimizeBounds))) 
+      stop(callerName,'"OptimizeBounds" must be a named list.') 
+    if (length(names(OptimizeBounds)) != length(unique(names(OptimizeBounds)))) 
+      stop(callerName,'there are duplicated names in "OptimizeBounds".') 
+    
+    for (idxI in 1:length(OptimizeBounds))
     {
+      idxN=names(OptimizeBounds)[idxI]
+      
       if (! idxN %in% model_fullComponentList)
         stop(callerName,'"OptimizeBounds" has a named element "',idxN,'" that is not a model variable.')
       
@@ -5917,8 +6517,9 @@ SIMULATE <- function(model=NULL,
         OptimizeBounds[[idxN]]$TSRANGE=tmpTSRANGE
       }
       
-      for (idxN in names(OptimizeBounds))
+      for (idxI in 1:length(OptimizeBounds))
       {
+        idxN=names(OptimizeBounds)[idxI]
         if (any(is.null(OptimizeBounds[[idxN]]$BOUNDS)) 
             || any(! is.finite(OptimizeBounds[[idxN]]$BOUNDS))
             || length(OptimizeBounds[[idxN]]$BOUNDS) !=2) 
@@ -5936,10 +6537,13 @@ SIMULATE <- function(model=NULL,
     #check argument OptimizeRestrictions
     if (! is.null(OptimizeRestrictions))
     {
-      if (!is.list(OptimizeRestrictions)) stop(callerName,'"OptimizeRestrictions" must be a named list.') 
+      if (!is.list(OptimizeRestrictions) || is.null(names(OptimizeRestrictions))) stop(callerName,'"OptimizeRestrictions" must be a named list.') 
       if (length(names(OptimizeRestrictions)) != length(unique(names(OptimizeRestrictions)))) stop(callerName,'there are duplicated names in "OptimizeRestrictions".') 
-      for (idxN in names(OptimizeRestrictions))
+      
+      for (idxI in 1:length(OptimizeRestrictions))
       {
+        idxN=names(OptimizeRestrictions)[idxI]
+        
         if (! is.list(OptimizeRestrictions[[idxN]]) 
             || is.null(names(OptimizeRestrictions[[idxN]])) 
             || length(OptimizeRestrictions[[idxN]])!=2
@@ -6055,17 +6659,16 @@ SIMULATE <- function(model=NULL,
                             c(tmp2TSRANGE[3],tmp2TSRANGE[4])
                             ,frequency)>-1)
                 stop(callerName,'"OptimizeRestrictions$',names(OptimizeRestrictions)[idxN],'$TSRANGE" overlaps with "OptimizeRestrictions$',names(OptimizeRestrictions)[idxM],'$TSRANGE".')
-              
             }
           }
         }
         
-        for (idxN in names(OptimizeRestrictions))
+        for (idxI in 1:length(OptimizeRestrictions))
         {
-          if (any(is.null(OptimizeRestrictions[[idxN]]$INEQUALITY)) 
-              || any(! is.character(OptimizeRestrictions[[idxN]]$INEQUALITY))
-              || length(OptimizeRestrictions[[idxN]]$INEQUALITY) !=1) 
-            stop(callerName,'"OptimizeRestrictions$',idxN,'$INEQUALITY" must be a string.')
+          idxN=names(OptimizeRestrictions)[idxI]
+          
+          if (! .checkExpression(OptimizeRestrictions[[idxN]]$INEQUALITY))
+            stop(callerName,'syntax error in OptimizeRestrictions$',idxN,'$INEQUALITY".')
           
           #transform inequality raw text into suitable expression
           outIE=OptimizeRestrictions[[idxN]]$INEQUALITY
@@ -6128,6 +6731,7 @@ SIMULATE <- function(model=NULL,
                                    ,'0') 
           #explode model funs
           tempS=.explodeTSLAG(outIE)
+          tempS=.explodeTSLEAD(tempS$output)
           tempS=.explodeTSDELTA(tempS$output)
           tempS=.explodeTSDELTAP(tempS$output)
           tempS=.explodeTSDELTALOG(tempS$output)
@@ -6137,11 +6741,13 @@ SIMULATE <- function(model=NULL,
           outIE=tempS$output
           
           #stop if the inequality requires lagging time series more than model equations
-          if (-.getLowerLag(outIE)>model_max_lag) 
+          tempOut=.getLowerLagAndHigherLead(outIE)
+          if (-tempOut$outL>model_max_lag) 
             stop(callerName,'"OptimizeRestrictions$',idxN,'$INEQUALITY" expression "',OptimizeRestrictions[[idxN]]$INEQUALITY,'" requires to lag time series more than model equations do.')
+          if (tempOut$outH>model_max_lead) 
+            stop(callerName,'"OptimizeRestrictions$',idxN,'$INEQUALITY" expression "',OptimizeRestrictions[[idxN]]$INEQUALITY,'" requires to lead time series more than model equations do.')
           
           #add model lag to inequality expression
-          #max_lag_sim=max(model$max_lag,1)  
           outIE=.addToIndexInString(outIE,  model_max_lag_1)
           
           #append expression to list
@@ -6161,8 +6767,10 @@ SIMULATE <- function(model=NULL,
     #check argument OptimizeFunctions
     if (!is.list(OptimizeFunctions) || is.null(names(OptimizeFunctions))) stop(callerName,'"OptimizeFunctions" must be a named list.') 
     if (length(names(OptimizeFunctions)) != length(unique(names(OptimizeFunctions)))) stop(callerName,'there are duplicated names in "OptimizeFunctions".') 
-    for (idxN in names(OptimizeFunctions))
+    
+    for (idxI in 1:length(OptimizeFunctions))
     {
+      idxN=names(OptimizeFunctions)[idxI]
       
       if (! is.list(OptimizeFunctions[[idxN]]) 
           || is.null(names(OptimizeFunctions[[idxN]])) 
@@ -6187,9 +6795,7 @@ SIMULATE <- function(model=NULL,
                   .isCompliantYP(c(tmpTSRANGE[1],tmpTSRANGE[2]),frequency) && 
                   .isCompliantYP(c(tmpTSRANGE[3],tmpTSRANGE[4]),frequency) &&
                   NUMPERIOD(c(tmpTSRANGE[1],tmpTSRANGE[2]),
-                            c(tmpTSRANGE[3],tmpTSRANGE[4]),frequency)>=0
-          )
-          ) stop() 
+                            c(tmpTSRANGE[3],tmpTSRANGE[4]),frequency)>=0)) stop() 
         },error=function(e) {stop(callerName,'syntax error in "OptimizeFunctions$',idxN,'$TSRANGE". ',e$message)
         }) 
       }
@@ -6284,12 +6890,12 @@ SIMULATE <- function(model=NULL,
         }
       }
       
-      for (idxN in names(OptimizeFunctions))
+      for (idxI in 1:length(OptimizeFunctions))
       {
-        if (any(is.null(OptimizeFunctions[[idxN]]$FUNCTION)) 
-            || any(! is.character(OptimizeFunctions[[idxN]]$FUNCTION))
-            || length(OptimizeFunctions[[idxN]]$FUNCTION) !=1) 
-          stop(callerName,'"OptimizeFunctions$',idxN,'$FUNCTION" must be a string.')
+        idxN=names(OptimizeFunctions)[idxI]
+        
+        if (! .checkExpression(OptimizeFunctions[[idxN]]$FUNCTION))
+          stop(callerName,'syntax error in "OptimizeFunctions$',idxN,'$FUNCTION".')
         
         #transform fun raw text into suitable expression
         outFUN=OptimizeFunctions[[idxN]]$FUNCTION
@@ -6344,6 +6950,7 @@ SIMULATE <- function(model=NULL,
                                   ,'0') 
         #explode model funs
         tempS=.explodeTSLAG(outFUN)
+        tempS=.explodeTSLEAD(tempS$output)
         tempS=.explodeTSDELTA(tempS$output)
         tempS=.explodeTSDELTAP(tempS$output)
         tempS=.explodeTSDELTALOG(tempS$output)
@@ -6353,11 +6960,14 @@ SIMULATE <- function(model=NULL,
         outFUN=tempS$output
         
         #stop if the function requires lagging time series more than model equations
-        if (-.getLowerLag(outFUN)>model_max_lag) 
+        tempOut=.getLowerLagAndHigherLead(outFUN)
+       
+        if (-tempOut$outL>model_max_lag) 
           stop(callerName,'"OptimizeFunctions$',idxN,'$FUNCTION" expression "',OptimizeFunctions[[idxN]]$FUNCTION,'" requires to lag time series more than model equations do.')
+        if (tempOut$outH>model_max_lead) 
+          stop(callerName,'"OptimizeFunctions$',idxN,'$FUNCTION" expression "',OptimizeFunctions[[idxN]]$FUNCTION,'" requires to lead time series more than model equations do.')
         
-        #add model lag to function expression
-        #max_lag_sim=max(model$max_lag,1)  
+        #add model lag to function expression 
         outFUN=.addToIndexInString(outFUN,  model_max_lag_1)
         
         #append to list
@@ -6374,7 +6984,20 @@ SIMULATE <- function(model=NULL,
     
   }#end if OPTIMIZE
   
+  hasLeads=FALSE
+  if (model_max_lead>0 || forceForwardLooking) 
+  { 
+    hasLeads=TRUE
+  } 
+  
+  if (hasLeads && (! (simType %in% (c('RESCHECK','DYNAMIC'))))) stop(callerName,'in forward looking models "simType" must be "DYNAMIC", or "RESCHECK"')
+  if (hasLeads && verboseSincePeriod > 0) stop(callerName,'"verboseSincePeriod" must be zero in forward looking models.')   
+  
   # extended tsrange --------------------------------------
+  
+  #TSRANGE is the simulation range
+  #EXTENDED_TSRANGE is TSRANGE extended back by model_max_lag periods 
+  #and is used in simulation
   
   #extend TSRANGE by max lag required by model
   newStart=normalizeYP(c(TSRANGE[1],TSRANGE[2]-model_max_lag),frequency) 
@@ -6432,11 +7055,7 @@ SIMULATE <- function(model=NULL,
       }
     }
   }
-  
-  if (! is.null(verboseVars) &&
-      (! is.character(verboseVars) || ! all(verboseVars %in% model_fullComponentList)))
-    stop(callerName,'"verboseVars" must be a character array built of model variables.')
-  
+   
   #user requested a selection of endogenous rescheck
   if (!is.null(RESCHECKeqList))
   {
@@ -6446,7 +7065,8 @@ SIMULATE <- function(model=NULL,
       for (idx in 1:length(RESCHECK_behaviorals))
       {
         #add local components to list of variables to be proxied
-        model_fullComponentList=c(model_fullComponentList,model$behaviorals[[RESCHECK_behaviorals[idx]]]$eqComponentsNames)
+        model_fullComponentList=c(model_fullComponentList,
+                                  model$behaviorals[[RESCHECK_behaviorals[idx]]]$eqComponentsNames)
       }
     
     if (length(RESCHECK_identities)>0)
@@ -6471,9 +7091,9 @@ SIMULATE <- function(model=NULL,
   }
   
   #forecast does not propagate vendog with IF condition... 
-  #model_vendog_forecast contains all vendog excluded those with IF>
-  #model_vendog_exogenized == vendog - model_vendog_forecast
-  model_vendog_forecast=c() 
+  #model_vendog_no_if contains all vendog but those with IF>
+  #model_vendog_exogenized == vendog - model_vendog_no_if
+  model_vendog_no_if=c() 
   for (idx in 1:length(model_vendog))
   {
     if (model_vendog[idx] %in% model_names_identity)
@@ -6481,134 +7101,316 @@ SIMULATE <- function(model=NULL,
       if (model$identities[[model_vendog[idx]]]$hasIF==FALSE)
       {
         #no IF so add...
-        model_vendog_forecast=c(model_vendog_forecast,model_vendog[idx]) 
+        model_vendog_no_if=c(model_vendog_no_if,model_vendog[idx]) 
       }
     }
     else
     {
       #we are in behaviorals so no IF allowed
-      model_vendog_forecast=c(model_vendog_forecast,model_vendog[idx]) 
+      model_vendog_no_if=c(model_vendog_no_if,model_vendog[idx]) 
     }
   }
   
-  #get exogenized vendog with IF condition (vendog_forecast UNION vendog_exogenized = vendog)
-  model_vendog_exogenized = base::setdiff(model_vendog,model_vendog_forecast) 
+  #get exogenized vendog with IF condition (vendog_forecast UNION vendog_exogenized == vendog)
+  model_vendog_exogenized=base::setdiff(model_vendog,model_vendog_no_if) 
+  
+  if (length(ConstantAdjustment) >0) 
+    for (idxI in 1:length(ConstantAdjustment))
+    {
+      idxCA=names(ConstantAdjustment)[idxI]
+      tryCatch(
+        {
+          projectTS=TSPROJECT(ConstantAdjustment[[idxCA]],TSRANGE=EXTENDED_TSRANGE)
+          outTSL=TSLOOK(projectTS)
+          
+          .MODEL_outputText(outputText = !quietly,paste0(callerName,'endogenous variable "',
+                                                        idxCA,
+                                                        '" has a constant adjustment from year-period ',
+                                                        paste0(c(outTSL$STARTY,outTSL$STARTP),collapse='-'),
+                                                        ' to ',
+                                                        paste0(c(outTSL$ENDY,outTSL$ENDP),collapse='-'),'.\n')) 
+        },error=function(e){
+          
+          .MODEL_outputText(outputText = !quietly,
+                            paste0(callerName,'warning, constant adjustment "',idxCA,'" does not intersect with simulation TSRANGE.\n')) 
+        }
+      ) 
+    }
+  
+  if (length(Exogenize)>0) 
+    if (MULTMATRIX && length(base::intersect(names(Exogenize),TARGET))>0)
+    {
+      .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, the following TARGET have been exogenized, therefore related multiplier will be zero: ',paste(base::intersect(names(Exogenize),TARGET),collapse =', '),'.\n')) 
+    }
+  
+  # deal with leads ----------------------------------
+   
+  if (hasLeads) {
+    
+    #SUPER_EXTENDED_TSRANGE is EXTENDED_TSRANGE extended forward by model_max_lead periods
+    #and is used in matrices dataset building
+    SUPER_EXTENDED_TSRANGE=EXTENDED_TSRANGE
+    SUPER_EXTENDED_TSRANGE[3:4]=normalizeYP(c(EXTENDED_TSRANGE[3],EXTENDED_TSRANGE[4]+model_max_lead),frequency)
+    superExtSimSteps=NUMPERIOD(SUPER_EXTENDED_TSRANGE[1:2],SUPER_EXTENDED_TSRANGE[3:4],frequency)+1 
+    
+    #in case of leads, simulation is performed only on first TSRANGE period
+    #but simultaneously for all endogenous variable leaded in the whole TSRANGE)
+    EXTENDED_TSRANGE[3]=TSRANGE[1] 
+    EXTENDED_TSRANGE[4]=TSRANGE[2] 
+    extSimSteps=NUMPERIOD(EXTENDED_TSRANGE[1:2],EXTENDED_TSRANGE[3:4],frequency)+1 
+    
+  }
   
   # create proxies -----------------------------------
+   
+  #create local proxies (i.e. model variables stored in matrices)
+  #for all references (i.e. component names used in eq) in behaviorals/identities
+  #and stores each var as "name"__ORIGINAL__EXTENDED 
   
-  tryCatch(
-    {
-      #create local proxies (i.e. model variables stored in matrices)
-      #for all references (i.e. component names used in eq) in behaviorals/identities
-      #and stores each var as "name"__ORIGINAL
-      for (tempName in model_fullComponentList)
+  #deal also with forceForwardLooking, so we need model_max_lead>0
+  #all components must be project into simSteps+model_max_lead
+  if (hasLeads && (model_max_lead>0 || simSteps>1)) { 
+    
+     tryCatch(
+     {
+      for (idxI in 1:length(model_fullComponentList))
       {
+        tempName=model_fullComponentList[idxI]
+        
         #project ts in ext TSRANGE
         tsValues=TSPROJECT(model$modelData[[tempName]],
-                           TSRANGE=EXTENDED_TSRANGE,
+                           TSRANGE=SUPER_EXTENDED_TSRANGE,
                            ARRAY=TRUE,
-                           EXTEND=TRUE,
-                           avoidCompliance = TRUE) 
+                           EXTEND=TRUE) 
         #build matrices (in case of parallel sims)
+        tempValues=matrix(tsValues,ncol=replica,nrow=superExtSimSteps) 
+        
+        #create proxy for full original time series (on EXTENDED TSRANGE)
+        #__ORIGINAL__EXTENDED series wont be modified during sim 
+        localE[[paste0(tempName,'__ORIGINAL__EXTENDED')]]=tempValues[1:extSimSteps,,drop=F]
+        
+        for (idxSS in 1:(model_max_lead+simSteps-1)) 
+        {
+          localE[[paste0(tempName,'__LEAD__',idxSS)]]=tempValues[idxSS+(1:extSimSteps),,drop=F]
+        }
+      }
+        
+      },error=function(e){
+        stop(callerName,'model data must contain time series "',tempName,'".') 
+      }) 
+     } else 
+     {
+       #no leads
+       tryCatch(
+         {
+           for ( idxI in 1:length(model_fullComponentList))
+           {
+             tempName=model_fullComponentList[idxI]
+             
+             #project ts in ext TSRANGE
+             tsValues=TSPROJECT(model$modelData[[tempName]],
+                                TSRANGE=EXTENDED_TSRANGE,
+                                ARRAY=TRUE,
+                                EXTEND=TRUE) 
+             #build matrices (in case of parallel sims)
+             tempValues=matrix(tsValues,ncol=replica,nrow=extSimSteps) 
+             
+             #create proxy for full original time series (on EXTENDED_TSRANGE)
+             #__ORIGINAL__EXTENDED series wont be modified during sim
+             localE[[paste0(tempName,'__ORIGINAL__EXTENDED')]]=tempValues
+             
+           }
+           
+         },error=function(e){
+           stop(callerName,'model data must contain time series "',tempName,'".') 
+         })
+     }
+  
+    #we need ADDFACTOR only in simulation TSRANGE
+    tryCatch(
+      {
+        #add factor all set to 0
+        tsValues=rep(0,extSimSteps) 
         tempValues=matrix(tsValues,ncol=replica,nrow=extSimSteps) 
         
-        #create proxy for full original time series (on EXTENDED_TSRANGE)
-        #__ORIGINAL wont be modified during sim
-        localE[[paste0(tempName,'__ORIGINAL')]]=tempValues
-        
-      }
-      
-    },error=function(e){
-      stop(callerName,'model data must contain time series "',tempName,'".') 
-    }) 
-  
-  tryCatch(
-    {
-      #add factor all set to 0
-      tsValues=rep(0,extSimSteps) 
-      tempValues=matrix(tsValues,ncol=replica,nrow=extSimSteps) 
-      for (tempName in paste0(model_vendog,'__ADDFACTOR'))
-      {
-        #create proxy for full original time series (on EXTENDED_TSRANGE)
-        localE[[paste0(tempName,'__ORIGINAL')]]=tempValues
-        
-        #this is needed if tmpName time series is not in CA, INSTRUMENT or StochStructure
-        localE[[paste0(tempName)]]=tempValues
-      } 
-      
-    },error=function(e){
-      stop(callerName,'cannot initialize the constant adjustment of "',tempName,'".') 
-    }) 
-  
-  tryCatch(
-    {
-      #... create proxies for explicit Constant Adjustment
-      if (length(ConstantAdjustment)>0) 
-        for (idxAF in 1:length(ConstantAdjustment))
+        tempS=paste0(model_vendog,'__ADDFACTOR')
+        for (idxI in 1:length(tempS))
         {
-          tempName=paste0(names(ConstantAdjustment)[idxAF],'__ADDFACTOR') 
-          #assign from input list to local environment
-          #project to ext TSRANGE
-          tsValues=TSPROJECT(ConstantAdjustment[[idxAF]],
-                             TSRANGE=EXTENDED_TSRANGE,
-                             ARRAY=TRUE,
-                             EXTEND=TRUE,
-                             avoidCompliance = TRUE) 
-          #replace NA with 0 (EXTEND in TSPROJECT has just inserted NA)
-          tsValues[which(is.na(tsValues))]=0 
-          tempValues=matrix(tsValues,ncol=replica,nrow=extSimSteps) 
+          tempName=tempS[idxI]
           
           #create proxy for full original time series (on EXTENDED_TSRANGE)
-          localE[[paste0(tempName,'__ORIGINAL')]]=tempValues
+          localE[[paste0(tempName,'__ORIGINAL__EXTENDED')]]=tempValues
           
+          #this is needed if tmpName time series is not in CA, INSTRUMENT or StochStructure
+          localE[[paste0(tempName)]]=tempValues
+          
+          if (hasLeads && simSteps>1) {
+            
+            #we need ADDFACTOR only in simulation TSRANGE
+            for (idxSS in 1:(simSteps-1)) 
+            {
+              #create proxy for original time series (on EXTENDED_TSRANGE)
+              localE[[paste0(tempName,'__LEAD__',idxSS)]]=tempValues
+            } 
+          }
         } 
-      
-    },error=function(e){
-      stop(callerName,'"ConstantAdjustment" must contain time series "',tempName,'".') 
-    }) 
+        
+      },error=function(e){
+        stop(callerName,'cannot initialize the constant adjustment of "',tempName,'".') 
+      }) 
+  
+    #we need ADDFACTOR only in simulation TSRANGE
+    if (hasLeads && simSteps>1) {
+ 
+      tryCatch(
+      {
+        #... create proxies for explicit Constant Adjustment
+        if (length(ConstantAdjustment)>0) 
+          for (idxAF in 1:length(ConstantAdjustment))
+          {
+            tempName=paste0(names(ConstantAdjustment)[idxAF],'__ADDFACTOR') 
+            
+            #assign from input list to local environment
+            #project to ext TSRANGE
+            #we use SUPER_EXTENDED_TSRANGE because original EXTENDED_TSRANGE has been modified
+            #original EXTENDED_TSRANGE would have been be sufficient
+            tsValues=TSPROJECT(ConstantAdjustment[[idxAF]],
+                               TSRANGE=SUPER_EXTENDED_TSRANGE,
+                               ARRAY=TRUE,
+                               EXTEND=TRUE) 
+            
+            #replace NA with 0 (EXTEND in TSPROJECT has just inserted NA)
+            tsValues[which(is.na(tsValues))]=0 
+            tempValues=matrix(tsValues,ncol=replica,nrow=superExtSimSteps) 
+            
+            #create proxy for full original time series (on SUPER_EXTENDED_TSRANGE) 
+            localE[[paste0(tempName,'__ORIGINAL__EXTENDED')]]=tempValues[1:extSimSteps,,drop=F]
+            
+            #we need ADDFACTOR only in simulation TSRANGE
+            for (idxSS in 1:(simSteps-1)) 
+            {
+              #create proxy for original time series (on EXTENDED_TSRANGE)
+              localE[[paste0(tempName,'__LEAD__',idxSS)]]=tempValues[idxSS+(1:extSimSteps),,drop=F]
+            }
+          } 
+        
+      },error=function(e){
+        stop(callerName,'unknown error in "ConstantAdjustment" projection of time series "',names(ConstantAdjustment)[idxAF],'".') 
+      }) 
+
+    } else 
+    { #no (lead && simSteps>1)
+      tryCatch(
+        {
+          #... create proxies for explicit Constant Adjustment
+          if (length(ConstantAdjustment)>0) 
+            for (idxAF in 1:length(ConstantAdjustment))
+            {
+              tempName=paste0(names(ConstantAdjustment)[idxAF],'__ADDFACTOR') 
+              #assign from input list to local environment
+              #project to ext TSRANGE
+              tsValues=TSPROJECT(ConstantAdjustment[[idxAF]],
+                                 TSRANGE=EXTENDED_TSRANGE,
+                                 ARRAY=TRUE,
+                                 EXTEND=TRUE) 
+              #replace NA with 0 (EXTEND in TSPROJECT has just inserted NA)
+              tsValues[which(is.na(tsValues))]=0 
+              tempValues=matrix(tsValues,ncol=replica,nrow=extSimSteps) 
+              
+              #create proxy for full original time series (on EXTENDED_TSRANGE)
+              localE[[paste0(tempName,'__ORIGINAL__EXTENDED')]]=tempValues
+            } 
+          
+        },error=function(e){
+          stop(callerName,'unknown error in "ConstantAdjustment" projection of time series "',names(ConstantAdjustment)[idxAF],'".') 
+        }) 
+    }
   
   #if multipliers requested then modify INSTRUMENTS columns with SHOCKs...
   if (MULTMATRIX) 
   { 
     tmpI=0 
-    for (idxI in paste0(INSTRUMENT, '__ORIGINAL'))
+    for (idx in 1:length(INSTRUMENT))
     { 
+      idxI=INSTRUMENT[idx]
       
       #we need INSTRUMENT column index in matrix MM
       tmpI=tmpI+1 
-      #get instrument
-      tmpM=localE[[idxI]]
       
+      #get instrument
+      tmpM=localE[[paste0(idxI, '__ORIGINAL__EXTENDED')]]
+      
+      #we need shocked INSTRUMENT only in simulation TSRANGE
       for (idxR in 1:simSteps)
       {
         #shock related column
         #get base value
         tmpV=tmpM[model_max_lag+idxR,1] 
         #choice delta
-        tmpD=ifelse(tmpV<1,MM_SHOCK,tmpV*MM_SHOCK) 
+        if (tmpV<1) tmpD=MM_SHOCK
+        else tmpD=tmpV*MM_SHOCK
+        
         #apply shock to related column
-        #each matrix has simsteps x INSTRUMENT columns count
-        #as well as "replica"
+        #each matrix has simsteps x length(INSTRUMENT) columns count
+        #as well as replica==simsteps x length(INSTRUMENT)+1
         tmpM[model_max_lag+idxR,1+(tmpI-1)*simSteps+idxR]=tmpV+tmpD 
         #save back
-        localE[[idxI]]=tmpM
+        localE[[paste0(idxI, '__ORIGINAL__EXTENDED')]]=tmpM
+        
+        #deal with lead case
+        if (hasLeads) break
       }
-    } 
+      
+      if (hasLeads && simSteps>1)
+        for (idxR in 1:(simSteps-1))
+        {
+          #we need shocked INSTRUMENT only in simulation TSRANGE
+          
+          #get leaded instrument
+          tmpM=localE[[paste0(idxI,'__LEAD__',idxR)]]
+          
+          #shock related column
+          #get base value
+          tmpV=tmpM[model_max_lag_1,1] 
+          
+          #choice delta
+          if (tmpV<1) tmpD=MM_SHOCK
+          else tmpD=tmpV*MM_SHOCK
+          
+          #apply shock to related column
+          #each matrix has simsteps x length(INSTRUMENT) columns count
+          #as well as replica==simsteps x length(INSTRUMENT)+1
+          tmpM[model_max_lag_1,1+(tmpI-1)*simSteps+(idxR+1)]=tmpV+tmpD 
+          
+          #save back
+          localE[[paste0(idxI,'__LEAD__',idxR)]]=tmpM
+        }
+    }#end INSTRUMENT 
   }
   
   # check missings and lengths --------------------------------
   
+  #trailingTSRANGE  = EXTENDED_TSRANGE - TSRANGE
+  trailingTSRANGE=EXTENDED_TSRANGE 
+  trailingTSRANGE[3:4]=normalizeYP(c(TSRANGE[1],TSRANGE[2]-1),f=frequency) 
+  trailingSteps=extSimSteps-simSteps 
+  
+  #if leads fix trailingSteps
+  if (hasLeads) trailingSteps=extSimSteps-1
+  
   #missing check in first max_lag obs: NA allowed so in case print a warning
   
-  #leadingTSRANGE  = EXTENDED_TSRANGE - TSRANGE
-  leadingTSRANGE=EXTENDED_TSRANGE 
-  leadingTSRANGE[3:4]=normalizeYP(c(TSRANGE[1],TSRANGE[2]-1),f = frequency) 
-  leadingSteps=extSimSteps-simSteps 
+  #FOLLOWING CODE IS OK ALSO WITH LEADS: 
+  #we dont need to check missing of leaded vars 
+  #in TSRANGE+(1:model_max_lag) because same missings will issue an error 
+  #in check of related non-leaded var in TSRANGE
   
   if (length(model_fullComponentList)>0) 
-    for (idxName in (model_fullComponentList))    
+    for (idxI in 1:length(model_fullComponentList))    
     {
-      tmpProxy=localE[[paste0(idxName,'__ORIGINAL')]]
+      idxName=model_fullComponentList[idxI]
+      
+      tmpProxy=localE[[paste0(idxName,'__ORIGINAL__EXTENDED')]]
       
       #verify there are no missing values in first max_lag values
       localMissingIndexes=which(! is.finite(tmpProxy[(1:model_max_lag),])) 
@@ -6616,88 +7418,138 @@ SIMULATE <- function(model=NULL,
       #index in GETDATE accounts for replicas
       if (length(localMissingIndexes)>0 )
         .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, ',
-                                                       ifelse(idxName %in% model_vendog,'endogenous','exogenous'),' variable "',idxName,'" is not fully defined in extended TSRANGE. There are undefined values at year-period ',
+                                                       ifelse(idxName %in% model_vendog,'endogenous','exogenous'),' variable "',idxName,'" is not fully defined in extended TSRANGE. There are undefined values in year-period ',
                                                        paste0(date2yp(as.Date(
-                                                         GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=leadingTSRANGE,EXTEND=TRUE,avoidCompliance = TRUE),
-                                                                 (localMissingIndexes[length(localMissingIndexes)]-1) %% leadingSteps+1,avoidCompliance = TRUE)
+                                                         GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=trailingTSRANGE,EXTEND=TRUE),
+                                                                 (localMissingIndexes[length(localMissingIndexes)]-1) %% trailingSteps+1)
                                                        ),f=frequency),collapse = '-'),'.\n')) 
     }
   
   if (length(ConstantAdjustment)>0) 
-    for (idxCA in names(ConstantAdjustment))
+    for (idxI in 1:length(ConstantAdjustment))
     {
+      idxCA=names(ConstantAdjustment)[idxI]
       
-      tmpProxy=localE[[paste0(idxCA,'__ADDFACTOR__ORIGINAL')]]
+      tmpProxy=localE[[paste0(idxCA,'__ADDFACTOR__ORIGINAL__EXTENDED')]]
       
       #verify there are no missing values in first max_lag values
       localMissingIndexes=which(! is.finite(tmpProxy[(1:model_max_lag),])) 
       if (length(localMissingIndexes)>0 )
-        .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, constant adjustment of endogenous variable "',idxCA,'" is not fully defined in extended TSRANGE. There are undefined values at year-period ',
+        .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, constant adjustment of endogenous variable "',idxCA,'" is not fully defined in extended TSRANGE. There are undefined values in year-period ',
                                                        paste0(date2yp(as.Date(
-                                                         GETDATE(TSPROJECT(ConstantAdjustment[[idxCA]],TSRANGE=leadingTSRANGE,EXTEND=TRUE),
-                                                                 (localMissingIndexes[length(localMissingIndexes)]-1) %% leadingSteps+1,avoidCompliance = TRUE)
+                                                         GETDATE(TSPROJECT(ConstantAdjustment[[idxCA]],TSRANGE=trailingTSRANGE,EXTEND=TRUE),
+                                                                 (localMissingIndexes[length(localMissingIndexes)]-1) %% trailingSteps+1)
                                                        ),f=frequency),collapse = '-'),'.\n')) 
       }
   
-  #check missing and length in vexog time series inside TSRANGE : if NA then error
-  
+  #check missing and length in vexog time series in TSRANGE: if NA then error
   if (length(model_vexog)>0) 
-    for (idxName in (model_vexog))    
+    for (idxI in 1:length(model_vexog))    
     {
-      tmpProxy=localE[[paste0(idxName,'__ORIGINAL')]]
+      idxName = (model_vexog)[idxI]
       
+      tmpProxy=localE[[paste0(idxName,'__ORIGINAL__EXTENDED')]]
+     
       #verify there are no missing values
       #we cut first max_lag values that could be unused
       localMissingIndexes=which(! is.finite(tmpProxy[-(1:model_max_lag),])) 
       #index in GETDATE accounts for replicas
       if (length(localMissingIndexes)>0 )
-        stop(callerName,'exogenous variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values at year-period ',
-             paste0(date2yp(as.Date(
-               GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=TSRANGE,EXTEND=TRUE,avoidCompliance = TRUE),
-                       (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1,avoidCompliance = TRUE)
-             ),f=frequency),collapse = '-'),'\n')
+      {
+        if (hasLeads)
+        {
+          outDate=TSRANGE[1:2]
+        } else { 
+          outDate=date2yp(as.Date(
+            GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=TSRANGE,EXTEND=TRUE),
+                    (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1)
+          ),f=frequency)
+        }
+        
+        stop(callerName,'exogenous variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values in year-period ',
+             paste0(outDate,collapse = '-'),'\n')
+      }
     }
   
-  #check missing and length in vexogenized time series inside TSRANGE : if NA then error
-  if (length(model_vendog_exogenized)>0) 
-    for (idxName in (model_vendog_exogenized))
+  #deal also with forceForwardLooking
+  #vexog can be leaded too so we need to check up to model_max_lead
+  if (hasLeads && (simSteps>1 || model_max_lead>0))
+  {
+    #vexog in TSRANGE must be defined, after TSRANGE we issue a warning
+    if (length(model_vexog)>0) 
+      for (idxSS in 1:(model_max_lead+simSteps-1)) for (idxI in 1:length(model_vexog))    
+      {
+        idxName = (model_vexog)[idxI]
+        
+        tmpProxy=localE[[paste0(idxName,'__LEAD__',idxSS)]]
+        
+        #verify there are no missing values
+        #we cut first max_lag values that could be unused
+        #in replicas we could have not only just 1 but also up to 1:(replicas+1)
+        localMissingIndexes=which(! is.finite(tmpProxy[-(1:model_max_lag),])) 
+       
+        #index in GETDATE accounts for replicas
+        if (length(localMissingIndexes)>0 )
+        {
+          realYP=normalizeYP(c(TSRANGE[1],TSRANGE[2]+idxSS),frequency)
+          
+          if (idxSS <= simSteps-1)
+          {
+            #we are in TSRANGE so missing -> stop
+            stop(callerName,'exogenous variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values in year-period ',
+               paste0(realYP,collapse = '-'),'\n')
+          } else {
+            .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, exogenous variable "',idxName,'" is not fully defined in extended TSRANGE. There are undefined values in year-period ',
+                                                           paste0(realYP,collapse = '-'),'\n'))
+          }
+        }
+      }
+  }
+  
+  #check missing and length in endo exogenized time series (i.e. with IF) inside TSRANGE: if NA then error
+  #lead case is included in model_vendog check (later in code)
+  if (length(model_vendog_exogenized)>0  && hasLeads==FALSE) 
+    for (idxI in 1:length(model_vendog_exogenized))
     {
-      tmpProxy=localE[[paste0(idxName,'__ORIGINAL')]]
+      idxName=model_vendog_exogenized[idxI]
+      
+      tmpProxy=localE[[paste0(idxName,'__ORIGINAL__EXTENDED')]]
       
       #verify there are no missing values
       localMissingIndexes=which(! is.finite(tmpProxy[-(1:model_max_lag),])) 
       if (length(localMissingIndexes)>0  ) 
-        stop(callerName,'exogenized variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values at year-period ',
+        stop(callerName,'exogenized variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values in year-period ',
              paste0(date2yp(as.Date(
-               GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=TSRANGE,EXTEND=TRUE,avoidCompliance = TRUE),
-                       (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1,avoidCompliance = TRUE)
+               GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=TSRANGE,EXTEND=TRUE),
+                       (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1)
              ),f=frequency),collapse = '-'),'.\n')
     }
   
-  #check missing and length in vendog time series inside TSRANGE  : if NA then ...depends on simType
-  if (length(model_vendog)>0) 
-    for (idxName in (model_vendog))
+  #check missing and length in vendog time series inside TSRANGE: if NA then ...depends on simType
+  for ( idxI in 1:length(model_vendog))
     { 
-      tmpProxy=localE[[paste0(idxName, '__ORIGINAL')]]
+      idxName=model_vendog[idxI]
+      
+      tmpProxy=localE[[paste0(idxName, '__ORIGINAL__EXTENDED')]]
       
       #verify there are no missing values 
       localMissingIndexes=which(! is.finite(tmpProxy[-(1:model_max_lag),])) 
       
-      #in DYNAMIC and FORECAST sim we can allow missings in trailing obs
+      #in DYNAMIC and FORECAST sim we can allow missings in trailing obs, but not in leads model
       if (length(localMissingIndexes)>0  ) 
-      { if (simType != 'FORECAST') .MODEL_outputText(outputText = !quietly,
-                                                     paste0('\n',callerName,'warning, endogenous variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values at year-period ',
-                                                            paste0(date2yp(as.Date(
-                                                              GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=TSRANGE,EXTEND=TRUE,avoidCompliance = TRUE),
-                                                                      (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1,avoidCompliance = TRUE)
-                                                            ),f=frequency),collapse = '-'),'.\n')) 
-        if (simType=='DYNAMIC')
+      { 
+        if ((simType=='DYNAMIC' || simType == 'FORECAST') && hasLeads==FALSE)
         {
-          .MODEL_outputText(outputText = !quietly,paste0('\nSimulation will continue replicating last observation in time series "', idxName,'" over the full TSRANGE. Use the "FORECAST" option in "simType" argument to avoid this message.\n')) 
-        }
-        
-        if (simType=='DYNAMIC' || simType == 'FORECAST')
-        {
+          if (simType != 'FORECAST') .MODEL_outputText(outputText = !quietly,
+                                                       paste0('\n',callerName,'warning, endogenous variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values in year-period ',
+                                                              paste0(date2yp(as.Date(
+                                                                GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=TSRANGE,EXTEND=TRUE),
+                                                                        (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1)
+                                                              ),f=frequency),collapse = '-'),'.\n')) 
+          if (simType=='DYNAMIC')
+          {
+            .MODEL_outputText(outputText = !quietly,paste0('Simulation will continue replicating last observation in time series "', idxName,'" over the full TSRANGE. Use the "FORECAST" option in "simType" argument to avoid this message.\n')) 
+          }
           
           #should never happen
           if (all(! is.finite(tmpProxy))) 
@@ -6714,53 +7566,152 @@ SIMULATE <- function(model=NULL,
               if (any(! is.finite(tmpProxy[idxR,]))) tmpProxy[idxR,]=tmpProxy[idxR-1,]
           
           #update original and current time series
-          localE[[paste0(idxName,'__ORIGINAL')]]=tmpProxy
+          localE[[paste0(idxName,'__ORIGINAL__EXTENDED')]]=tmpProxy
           
           localMissingIndexes=which(! is.finite(tmpProxy[-(1:model_max_lag),])) 
           
           #check all missings are gone (may be we have NA inside TSRANGE but latest obs are ok)
           if (length(localMissingIndexes)>0  ) 
-            stop(paste0('\n',callerName,'endogenous variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values at year-period ',
+            stop(paste0('\n',callerName,'endogenous variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values in year-period ',
                         paste0(date2yp(as.Date(
                           GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=TSRANGE,EXTEND=TRUE),
-                                  (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1,avoidCompliance = TRUE)
+                                  (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1)
                         ),f=frequency),collapse = '-'),'.\n')) 
         }
         else
         {
-          #missings are not allowed on STATIC or RESCHECK
-          stop(callerName,'endogenous variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values at year-period ',
-               paste0(date2yp(as.Date(
-                 GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=TSRANGE,EXTEND=TRUE),
-                         (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1,avoidCompliance = TRUE)
-               ),f=frequency),collapse = '-'),'.\n')
+          #STATIC or RESCHECK or leads
+          
+          if (hasLeads)
+          {
+            #in leaded model TSRANGE[1:2] is the single and last simulation period
+            outDate=TSRANGE[1:2]
+          } else { 
+            outDate=date2yp(as.Date(
+              GETDATE(TSPROJECT(model$modelData[[idxName]],TSRANGE=TSRANGE,EXTEND=TRUE),
+                      (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1)
+            ),f=frequency)
+          }
+          
+          #missings are not allowed on STATIC or RESCHECK or leads
+          stop(callerName,'endogenous variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values in year-period ',
+               paste0(outDate,collapse = '-'),'.')
         }
       }
     }
+
+  #deal also with forceForwardLooking
+  #check leaded vendog
+  if (hasLeads && (simSteps>1 || model_max_lead>0))
+  {
+    #if we have leads, vendog in TSRANGE must be defined.
+    #we do not allow missings neither in DYNAMIC simulation 
+    #(i.e. no replication of last known finite value allowed:
+    #probably we need finite values also after TSRANGE
+    #so has no meaning to allow missing values inside TSRANGE).
+    #FORECAST simulation is not feasible with leads
+    if (length(model_vendog)>0) 
+      for (idxSS in 1:(model_max_lead+simSteps-1)) for (idxI in 1:length(model_vendog))
+      { 
+        idxName=model_vendog[idxI]
+        
+        tmpProxy=localE[[paste0(idxName,'__LEAD__',idxSS)]]
+        
+        #verify there are no missing values 
+        #in replicas we could have not only just 1 but up to 1:(replicas+1)
+        #note: all missings/NaNs are converted in zeros before in code 
+        #when dealing with add-factor projection in TSRANGE
+        #so probably this check is redundant
+        localMissingIndexes=which(! is.finite(tmpProxy[-(1:model_max_lag),])) 
+        
+        if (length(localMissingIndexes)>0  ) 
+        { 
+          #missings are not allowed 
+          realYP=normalizeYP(c(TSRANGE[1],TSRANGE[2]+idxSS),frequency)
+          
+          if (idxSS <= simSteps-1)
+          {
+            #we are in TSRANGE so missing -> stop
+            stop(callerName,'endogenous variable "',idxName,'" is not fully defined in TSRANGE. There are undefined values in year-period ',
+                 paste0(realYP,collapse = '-'),'\n')
+          } else {
+            .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, endogenous variable "',idxName,'" is not fully defined in extended TSRANGE. There are undefined values in year-period ',
+                                                           paste0(realYP,collapse = '-'),'\n'))
+          }
+        }
+      }
+  }
   
   #check missing and length in CA time series inside TSRANGE: if NA then stop
   if (length(ConstantAdjustment)>0) 
-    for (idxCA in names(ConstantAdjustment))
+    for ( idxI in 1:length(ConstantAdjustment))
     {
-      tmpProxy=localE[[paste0(idxCA,'__ADDFACTOR__ORIGINAL')]]
+      idxCA=names(ConstantAdjustment)[idxI]
+      
+      tmpProxy=localE[[paste0(idxCA,'__ADDFACTOR__ORIGINAL__EXTENDED')]]
       
       #verify there are no missing values
       localMissingIndexes=which(! is.finite(tmpProxy[-(1:model_max_lag),])) 
       if (length(localMissingIndexes)>0 )
-        stop(callerName,'constant adjustment of endogenous variable "',idxCA,'" is not fully defined in TSRANGE. There are undefined values at year-period ',
-             paste0(date2yp(as.Date(
-               GETDATE(TSPROJECT(ConstantAdjustment[[idxCA]],TSRANGE=TSRANGE,EXTEND=TRUE),
-                       (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1,avoidCompliance = TRUE)
-             ),f=frequency),collapse = '-'),'.\n')
+      {
+        if (hasLeads)
+        {
+          #this is only the base case; leads are analyzed later
+          outDate=TSRANGE[1:2]
+        } else { 
+          outDate=date2yp(as.Date(
+            GETDATE(TSPROJECT(ConstantAdjustment[[idxCA]],TSRANGE=TSRANGE,EXTEND=TRUE),
+                    (localMissingIndexes[length(localMissingIndexes)]-1) %% simSteps+1)
+          ),f=frequency)
+        }
+        
+        stop(callerName,'constant adjustment of endogenous variable "',idxCA,'" is not fully defined in TSRANGE. There are undefined values in year-period ',
+             paste0(outDate,collapse = '-'),'.\n')
+      }
     }
   
-  #backupped and later saved in simulate_parameters
+  if (hasLeads && simSteps>1)
+  {
+    #check missing and length in CA time series inside TSRANGE: if NA then stop
+    if (length(ConstantAdjustment)>0) 
+      for (idxSS in 1:(model_max_lead+simSteps-1)) for (idxI in 1:length(ConstantAdjustment))
+      {
+        idxCA=names(ConstantAdjustment)[idxI]
+        
+        tmpProxy=localE[[paste0(idxCA,'__ADDFACTOR__LEAD__',idxSS)]]
+        
+        #verify there are no missing values
+        #note: all missings/NaNs are converted in zeros before in code 
+        #when dealing with add-factor projection in TSRANGE
+        #so probably this check is redundant
+        localMissingIndexes=which(! is.finite(tmpProxy[-(1:model_max_lag),])) 
+       
+        if (length(localMissingIndexes)>0 )
+        {
+          realYP=normalizeYP(c(TSRANGE[1],TSRANGE[2]+idxSS),frequency)
+          
+          if (idxSS <= simSteps-1)
+          {
+            #we are in TSRANGE so missing -> stop
+            stop(callerName,'constant adjustment of endogenous variable "',idxCA,'" is not fully defined in TSRANGE. There are undefined values in year-period ',
+                 paste0(realYP,collapse = '-'),'\n')
+          } else {
+            .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, constant adjustment of endogenous variable "',idxCA,'" is not fully defined in extended TSRANGE. There are undefined values in year-period ',
+                                                           paste0(realYP,collapse = '-'),'\n'))
+          }
+        }
+      }
+  }
+  
+  #backupped and later saved in __SIM_PARAMETERS__
   Exogenize_original=Exogenize 
   
   #print messages....
-  if (length(Exogenize) >0) 
-    for (idxEL in names(Exogenize))
+  if (length(Exogenize_original) > 0) 
+    for (idxI in 1:length(Exogenize_original))
     {
+      idxEL=names(Exogenize_original)[idxI]
+      
       .MODEL_outputText(outputText = !quietly,paste0(callerName,'endogenous variable "',
                                                      idxEL,
                                                      '" has been exogenized from year-period ',
@@ -6771,40 +7722,39 @@ SIMULATE <- function(model=NULL,
       Exogenize[[idxEL]]  = c(
         (NUMPERIOD(TSRANGE[1:2],Exogenize[[idxEL]][1:2],frequency)+1):
           (NUMPERIOD(TSRANGE[1:2],Exogenize[[idxEL]][3:4],frequency)+1)
-      )
-    }
+            )
+   
   
-  if (length(ConstantAdjustment) >0) 
-    for (idxCA in names(ConstantAdjustment))
-    {
-      tryCatch(
-        {.MODEL_outputText(outputText = !quietly,paste0(callerName,'endogenous variable "',
-                                                        idxCA,
-                                                        '" has a constant adjustment from year-period ',
-                                                        paste0(start(TSPROJECT(ConstantAdjustment[[idxCA]],TSRANGE=EXTENDED_TSRANGE,avoidCompliance = TRUE)),collapse='-'),
-                                                        ' to ',
-                                                        paste0(end(TSPROJECT(ConstantAdjustment[[idxCA]],TSRANGE=EXTENDED_TSRANGE,avoidCompliance = TRUE)),collapse='-'),'.\n')) 
-        },error=function(e){
-          
-          .MODEL_outputText(outputText = !quietly,
-                            paste0(callerName,'warning, constant adjustment "',idxCA,'" does not intersect with simulation TSRANGE.\n')) 
+      #deal with exogenization in leads
+      #e.g. exogenize y=2,3 then
+      #y_lead_1=1, y_lead_2=1
+      if (hasLeads && simSteps>1 )
+      { 
+        preLeadValules=Exogenize[[idxEL]] #these are integers
+        Exogenize[[idxEL]]=NULL
+        
+          for (idxEP in preLeadValules) 
+          {
+            if (idxEP==1)
+            {
+              Exogenize[[idxEL]]=1
+            } else {
+              Exogenize[[paste0(idxEL,'__LEAD__',idxEP-1)]]=1
+            }
+          } 
         }
-      ) 
-    }
-  
-  if (length(Exogenize)>0) 
-    if (MULTMATRIX && length(base::intersect(names(Exogenize),TARGET))>0)
-    {
-      .MODEL_outputText(outputText = !quietly,paste0(callerName,'warning, the following TARGET have been exogenized, therefore related multiplier will be zero: ',paste(base::intersect(names(Exogenize),TARGET),collapse =', '),'.\n')) 
-    }
-  
+  }
+ 
   #backupped and later saved in simulate_parameters
-  StochStructure_original= StochStructure 
+  StochStructure_original=StochStructure 
+  OptimizeRestrictions_original=OptimizeRestrictions
   
   #print messages....
   if (STOCHSIMULATE && length(StochStructure)>0) 
-    for (idxSS in names(StochStructure))
+    for (idxI in 1:length(StochStructure))
     {
+      idxSS=names(StochStructure)[idxI]
+      
       typePertS=''
       if (StochStructure[[idxSS]]$TYPE=='UNIF') typePertS='uniformly'
       if (StochStructure[[idxSS]]$TYPE=='NORM') typePertS='normally'
@@ -6816,6 +7766,7 @@ SIMULATE <- function(model=NULL,
                                                      paste0(StochStructure[[idxSS]]$TSRANGE[1:2],collapse='-'),
                                                      ' to ',
                                                      paste0(StochStructure[[idxSS]]$TSRANGE[3:4],collapse='-'),'.\n')) 
+     
       #convert to indexes
       StochStructure[[idxSS]]$TSRANGE  = c(
         (NUMPERIOD(EXTENDED_TSRANGE[1:2],StochStructure[[idxSS]]$TSRANGE[1:2],frequency)+1):
@@ -6834,8 +7785,10 @@ SIMULATE <- function(model=NULL,
   {
     if(length(OptimizeBounds)>0) 
     {
-      for (idxSS in names(OptimizeBounds))
+      for (idxI in 1:length(OptimizeBounds))
       {
+        idxSS=names(OptimizeBounds)[idxI]
+        
         .MODEL_outputText(outputText = !quietly,paste0(callerName,'optimization boundaries for the ',ifelse(idxSS %in% model_vendog,'add-factor of endogenous variable "','exogenous variable "'),
                                                        idxSS,
                                                        '" are (',paste0(OptimizeBounds[[idxSS]]$BOUNDS[1:2],collapse=','),') from year-period ',
@@ -6852,8 +7805,10 @@ SIMULATE <- function(model=NULL,
     
     if(length(OptimizeRestrictions)>0) 
     {
-      for (idxSS in names(OptimizeRestrictions))
+      for (idxI in 1:length(OptimizeRestrictions))
       {
+        idxSS=names(OptimizeRestrictions)[idxI]
+        
         .MODEL_outputText(outputText = !quietly,paste0(callerName,'optimization restriction "',
                                                        idxSS,'" is active from year-period ',
                                                        paste0(OptimizeRestrictions[[idxSS]]$TSRANGE[1:2],collapse='-'),
@@ -6869,9 +7824,11 @@ SIMULATE <- function(model=NULL,
     
     if(length(OptimizeFunctions)>0) 
     {
-      for (idxSS in names(OptimizeFunctions))
+      for (idxI in 1:length(OptimizeFunctions))
       {
-        .MODEL_outputText(outputText = !quietly,paste0(callerName,'optimization objective function "',
+        idxSS=names(OptimizeFunctions)[idxI]
+        
+        .MODEL_outputText(outputText = !quietly,paste0(callerName,'objective function "',
                                                        idxSS,'" is active from year-period ',
                                                        paste0(OptimizeFunctions[[idxSS]]$TSRANGE[1:2],collapse='-'),
                                                        ' to ',
@@ -6890,13 +7847,23 @@ SIMULATE <- function(model=NULL,
   #add noise to selected vars
   if (STOCHSIMULATE)
   { 
-    #store perturbed instruments
+    #store var for perturbed instruments
     INSTRUMENT_MM=list()
     
     if (length(StochStructure)>0) 
     { 
-      for (idxN in names(StochStructure))
+      for (idxI in 1:length(StochStructure))
       {
+        idxN=names(StochStructure)[idxI]
+        
+        if ( (! is.null(RESCHECKeqList)) && length(base::intersect(idxN,model_fullComponentList))==0)
+        {
+          #with RESCHECK user can select eq to be simulated
+          #so idxN could be not in vendog nor in vexog
+          .MODEL_outputText(outputText =!quietly,paste0(callerName,'warning, "',idxN,'" appears in "StochStructure" but it is not required in order to perform the simulations requested in "RESCHECKeqList". It will be skipped.\n')) 
+          next 
+        }
+        
         #create uniform perturbation
         if (StochStructure[[idxN]]$TYPE=='UNIF')
           noise=matrix(
@@ -6923,57 +7890,147 @@ SIMULATE <- function(model=NULL,
           noise=StochStructure[[idxN]]$PARS
         }
         
-        if (idxN %in% model_vendog)
-        {
-          #get un-noised time series
-          tmpNoised_ORIG=localE[[paste0(idxN,'__ADDFACTOR__ORIGINAL')]]
+        if (hasLeads && simSteps>1)
+        { 
           
-        } else if(idxN %in% model_vexog)
-        {
-          #get un-noised time series
-          tmpNoised_ORIG=localE[[paste0(idxN,'__ORIGINAL')]]
+          for (idxSS in 1:(simSteps))
+          {
+            if (idxN %in% model_vendog)
+            {
+             
+              if (idxSS==1)
+              {
+                #get un-noised time series
+                tmpNoised_ORIG=localE[[paste0(idxN,'__ADDFACTOR__ORIGINAL__EXTENDED')]]
+                
+              } else {
+                
+                #get un-noised leaded time series
+                tmpNoised_ORIG=localE[[paste0(idxN,'__ADDFACTOR__LEAD__',(idxSS-1))]]
+              }
+              
+            } else if (idxN %in% model_vexog)
+            {
+              
+              if (idxSS==1)
+              {
+                #get un-noised time series
+                tmpNoised_ORIG=localE[[paste0(idxN,'__ORIGINAL__EXTENDED')]]
+                
+              } else {
+                
+                #get un-noised leaded time series
+                tmpNoised_ORIG=localE[[paste0(idxN,'__LEAD__',(idxSS-1))]]
+              }
+            } else 
+            {
+              stop(callerName,'unknown error while perturbing time series "',idxN,'".')
+            }
+            
+            if ((extSimSteps+idxSS-1) %in% StochStructure[[idxN]]$TSRANGE)
+            {
+              noise_lead=noise[(extSimSteps+idxSS-1)-StochStructure[[idxN]]$TSRANGE[1]+1,,drop=F]
+             
+              #add noise to matrix data (replace if MATRIX and EXOG)
+              if ((StochStructure[[idxN]]$TYPE=='MATRIX') && (idxN %in% model_vexog))
+              {
+                tmpNoised_ORIG[extSimSteps,2:replica]=noise_lead
+              } else
+              {
+                tmpNoised_ORIG[extSimSteps,2:replica]=tmpNoised_ORIG[extSimSteps,2:replica]+noise_lead
+              }
+              
+              if (idxN %in% model_vendog)
+              {
+                if (idxSS==1)
+                {
+                  #save noised ts
+                  localE[[paste0(idxN,'__ADDFACTOR','__ORIGINAL__EXTENDED')]]=tmpNoised_ORIG
+                  
+                } else {
+                  #save noised ts
+                  localE[[paste0(idxN,'__ADDFACTOR','__LEAD__',(idxSS-1))]]=tmpNoised_ORIG
+                }
+                
+              } else if (idxN %in% model_vexog)
+              {
+                if (idxSS==1)
+                {
+                  #save noised ts
+                  localE[[paste0(idxN,'__ORIGINAL__EXTENDED')]]=tmpNoised_ORIG
+                  
+                } else {
+                  #save noised ts
+                  localE[[paste0(idxN,'__LEAD__',(idxSS-1))]]=tmpNoised_ORIG
+                }
+                
+              }  else stop(callerName,'unknown error while storing perturbed time series "',idxN,'".')
+              
+            }#simStep is in TSRANGE
+            
+              if (idxSS==1)
+              {
+                #store perturbed ts for output
+                INSTRUMENT_MM[[idxN]]=tmpNoised_ORIG[extSimSteps,,drop=F]
+                
+              } else {
+                
+                #store perturbed ts for output
+                INSTRUMENT_MM[[paste0(idxN,'__LEAD__',(idxSS-1))]]=tmpNoised_ORIG[extSimSteps,,drop=F]
+              }
+            
+          }#cycle in simSteps
           
-        } else if (! is.null(RESCHECKeqList) && length(base::intersect(idxN,model_fullComponentList))==0)
-        {
-          #with RESCHECK user can select eq to be simulated
-          #so idxN could be not in vendog nor in vexog
-          .MODEL_outputText(outputText =!quietly,paste0(callerName,'warning, "',idxN,'" appears in "StochStructure" but it is not required in order to perform the simulations requested in "RESCHECKeqList". It will be skipped.\n')) 
-          next 
-        } else stop(callerName,'unknown error while perturbing time series "',idxN,'".')
-        
-        #add noise to matrix data (replace if MATRIX and EXOG)
-        if ((StochStructure[[idxN]]$TYPE=='MATRIX') && (idxN %in% model_vexog))
-        {
-          tmpNoised_ORIG[StochStructure[[idxN]]$TSRANGE,2:replica]=noise
-        } else
-        {
-          tmpNoised_ORIG[StochStructure[[idxN]]$TSRANGE,2:replica]=tmpNoised_ORIG[StochStructure[[idxN]]$TSRANGE,2:replica]+noise
-        }
-        
-        if (idxN %in% model_vendog)
-        {
-          #save noised ts
-          localE[[paste0(idxN,'__ADDFACTOR','__ORIGINAL')]]=tmpNoised_ORIG
+        } else {#hasleads=FALSE
           
-        } else if(idxN %in% model_vexog)
-        {
-          #save noised ts
-          localE[[paste0(idxN,'__ORIGINAL')]]=tmpNoised_ORIG
+          if (idxN %in% model_vendog)
+          {
+            #get un-noised time series
+            tmpNoised_ORIG=localE[[paste0(idxN,'__ADDFACTOR__ORIGINAL__EXTENDED')]]
+            
+          } else if(idxN %in% model_vexog)
+          {
+            #get un-noised time series
+            tmpNoised_ORIG=localE[[paste0(idxN,'__ORIGINAL__EXTENDED')]]
+            
+          } else stop(callerName,'unknown error while perturbing time series "',idxN,'".')
           
-        }  else stop(callerName,'unknown error while storing perturbed time series "',idxN,'".')
-        
-        #store perturbed ts for output
-        INSTRUMENT_MM[[idxN]]=tmpNoised_ORIG[drop=FALSE,-(1:model_max_lag),]
+          #add noise to matrix data (replace if MATRIX and EXOG)
+          if ((StochStructure[[idxN]]$TYPE=='MATRIX') && (idxN %in% model_vexog))
+          {
+            tmpNoised_ORIG[StochStructure[[idxN]]$TSRANGE,2:replica]=noise
+          } else
+          {
+            tmpNoised_ORIG[StochStructure[[idxN]]$TSRANGE,2:replica]=tmpNoised_ORIG[StochStructure[[idxN]]$TSRANGE,2:replica]+noise
+          }
+          
+          if (idxN %in% model_vendog)
+          {
+            #save noised ts
+            localE[[paste0(idxN,'__ADDFACTOR','__ORIGINAL__EXTENDED')]]=tmpNoised_ORIG
+            
+          } else if(idxN %in% model_vexog)
+          {
+            #save noised ts
+            localE[[paste0(idxN,'__ORIGINAL__EXTENDED')]]=tmpNoised_ORIG
+            
+          }  else stop(callerName,'unknown error while storing perturbed time series "',idxN,'".')
+          
+          #store perturbed ts for output
+          INSTRUMENT_MM[[idxN]]=tmpNoised_ORIG[-(1:model_max_lag),,drop=F]
+       
+        } #else has leads
       }
     }
   }
   
+ 
   # populate optimization search domain --------------------------------------------------------------
   
   #populate search domain
   if (OPTIMIZE)
   {
-    #store perturbed instruments
+    #store var for perturbed instruments
     INSTRUMENT_MM=list() 
     #columns to be kept after optimization restrictions
     optColsToBeKept=rep(TRUE,replica-1) 
@@ -6985,8 +8042,18 @@ SIMULATE <- function(model=NULL,
     
     if (length(OptimizeBounds)>0) 
     { 
-      for (idxN in names(OptimizeBounds))
+      for (idxI in 1:length(OptimizeBounds))
       {
+        idxN=names(OptimizeBounds)[idxI]
+        
+       if ( ! is.null(RESCHECKeqList) && length(base::intersect(idxN,model_fullComponentList))==0)
+          {
+            #with RESCHECK user can select eq to be simulated
+            #so idxN could be not in vendog nor in vexog
+            .MODEL_outputText(outputText =!quietly,paste0(callerName,'warning, "',idxN,'" appears in "OptimizeBounds" but it is not required in order to perform the simulations requested in "RESCHECKeqList". It will be skipped.\n')) 
+            next 
+          } 
+        
         #create unif noise in range
         noise=matrix(
           stats::runif(
@@ -6996,41 +8063,125 @@ SIMULATE <- function(model=NULL,
           ,nrow=length(OptimizeBounds[[idxN]]$TSRANGE)
         )
         
-        if (idxN %in% model_vendog)
-        {
-          #get un-noised time series
-          tmpNoised_ORIG=localE[[paste0(idxN,'__ADDFACTOR__ORIGINAL')]]
-          
-        } else if (idxN %in% model_vexog)
-        {
-          #get un-noised time series
-          tmpNoised_ORIG=localE[[paste0(idxN,'__ORIGINAL')]]
-          
-        } else
-          if (! is.null(RESCHECKeqList) && length(base::intersect(idxN,model_fullComponentList))==0)
+        if (hasLeads && simSteps>1)
+        { 
+          for (idxSS in 1:(simSteps))
           {
-            #with RESCHECK user can select eq to be simulated
-            #so idxN could be not in vendog nor in vexog
-            .MODEL_outputText(outputText =!quietly,paste0(callerName,'warning, "',idxN,'" appears in "OptimizeBounds" but it is not required in order to perform the simulations requested in "RESCHECKeqList". It will be skipped.\n')) 
-            next 
+            if (idxN %in% model_vendog)
+            {
+              if (idxSS==1)
+              {
+                #get un-noised time series
+                tmpNoised_ORIG=localE[[paste0(idxN,'__ADDFACTOR__ORIGINAL__EXTENDED')]]
+                
+              } else {
+                
+                #get un-noised leaded time series
+                tmpNoised_ORIG=localE[[paste0(idxN,'__ADDFACTOR__LEAD__',(idxSS-1))]]
+                
+              }
+              
+            } else if (idxN %in% model_vexog)
+            {
+              if (idxSS==1)
+              {
+                #get un-noised time series
+                tmpNoised_ORIG=localE[[paste0(idxN,'__ORIGINAL__EXTENDED')]]
+                
+              } else {
+                
+                #get un-noised leaded time series
+                tmpNoised_ORIG=localE[[paste0(idxN,'__LEAD__',(idxSS-1))]]
+                
+              }
+              
+            } else stop(callerName,'unknown error while populating time series "',idxN,'".')
+            
+            if ((extSimSteps+idxSS-1) %in% OptimizeBounds[[idxN]]$TSRANGE)
+            {
+              noise_lead=noise[(extSimSteps+idxSS-1)-OptimizeBounds[[idxN]]$TSRANGE[1]+1,,drop=F]
+              
+              #replace matrix data
+              tmpNoised_ORIG[extSimSteps,2:replica]=noise_lead 
+              
+              if (idxN %in% model_vendog)
+              {
+                if (idxSS==1)
+                {
+                  #save populated ts
+                  localE[[paste0(idxN,'__ADDFACTOR__ORIGINAL__EXTENDED')]]=tmpNoised_ORIG
+                  
+                } else {
+                  
+                  #save noised ts
+                  localE[[paste0(idxN,'__ADDFACTOR','__LEAD__',(idxSS-1))]]=tmpNoised_ORIG
+                  
+                }
+                
+              } else if (idxN %in% model_vexog)
+              {
+                
+                if (idxSS==1)
+                {
+                  #save populated ts
+                  localE[[paste0(idxN,'__ORIGINAL__EXTENDED')]]=tmpNoised_ORIG
+                  
+                } else {
+                  
+                  #save noised ts
+                  localE[[paste0(idxN,'__LEAD__',(idxSS-1))]]=tmpNoised_ORIG
+                  
+                }
+               
+              }  else stop(callerName,'unknown error while storing populated time series "',idxN,'".')
+              
+            }#simStep is in TSRANGE
+            
+            if (idxSS==1)
+            {
+              #store perturbed ts for output
+              INSTRUMENT_MM[[idxN]]=tmpNoised_ORIG[extSimSteps,,drop=F]
+              
+            } else {
+              
+              #store perturbed ts for output
+              INSTRUMENT_MM[[paste0(idxN,'__LEAD__',(idxSS-1))]]=tmpNoised_ORIG[extSimSteps,,drop=F]
+              
+            }
+            
+          } #end cycle idxSS simSteps
+          
+        } else { #hasleads==FALSE
+          
+          if (idxN %in% model_vendog)
+          {
+            #get un-noised time series
+            tmpNoised_ORIG=localE[[paste0(idxN,'__ADDFACTOR__ORIGINAL__EXTENDED')]]
+            
+          } else if (idxN %in% model_vexog)
+          {
+            #get un-noised time series
+            tmpNoised_ORIG=localE[[paste0(idxN,'__ORIGINAL__EXTENDED')]]
+            
           } else stop(callerName,'unknown error while populating time series "',idxN,'".')
-        
-        #replace matrix data
-        tmpNoised_ORIG[OptimizeBounds[[idxN]]$TSRANGE,2:replica]=noise 
-        if (idxN %in% model_vendog)
-        {
-          #save populated ts
-          localE[[paste0(idxN,'__ADDFACTOR__ORIGINAL')]]=tmpNoised_ORIG
           
-        } else if (idxN %in% model_vexog)
-        {
-          #save populated ts
-          localE[[paste0(idxN,'__ORIGINAL')]]=tmpNoised_ORIG
+          #replace matrix data
+          tmpNoised_ORIG[OptimizeBounds[[idxN]]$TSRANGE,2:replica]=noise 
+          if (idxN %in% model_vendog)
+          {
+            #save populated ts
+            localE[[paste0(idxN,'__ADDFACTOR__ORIGINAL__EXTENDED')]]=tmpNoised_ORIG
+            
+          } else if (idxN %in% model_vexog)
+          {
+            #save populated ts
+            localE[[paste0(idxN,'__ORIGINAL__EXTENDED')]]=tmpNoised_ORIG
+            
+          }  else stop(callerName,'unknown error while storing populated time series "',idxN,'".')
           
-        }  else stop(callerName,'unknown error while storing populated time series "',idxN,'".')
-        
-        #store perturbed ts for output
-        INSTRUMENT_MM[[idxN]]=tmpNoised_ORIG[drop=FALSE,-(1:model_max_lag),]
+          #store perturbed ts for output
+          INSTRUMENT_MM[[idxN]]=tmpNoised_ORIG[-(1:model_max_lag),,drop=F]
+        }
       }
     }
   }
@@ -7040,9 +8191,14 @@ SIMULATE <- function(model=NULL,
   #temp list with sim results
   simulation=list() 
   .MODEL_outputText(outputText=!quietly,"\n") 
+ 
   
-  for (currentVendog in model_names_behavioral)
-  { #cycle in endogenous
+  if (length(model_names_behavioral)>0)
+  for (idxI in 1:length(model_names_behavioral))
+  { 
+    currentVendog=model_names_behavioral[idxI]
+    
+    #cycle in endogenous
     
     #get eq components names and assign into them the behavioral coefficient values
     currentBehavioral=model$behaviorals[[currentVendog]] 
@@ -7083,103 +8239,337 @@ SIMULATE <- function(model=NULL,
   }#for in model_names_behaviorals
   
   # build sim expressions -------------------------------------------------------
+ 
+  if (hasLeads && simSteps>1)
+  {
+    #cycle behaviorals
+    if (simSteps>1 && length(model_names_behavioral)>0) for (idx in 1:length(model_names_behavioral))
+    {
+      currentVendog=model_names_behavioral[idx]
+      
+      #lead vendog sim eq up to simSteps, and convert to __LEAD__ when i>model_max_lax+1,
+      #given vendog[i,] in sim eq
+      model$behaviorals[[currentVendog]]$leadsEqSimExpText=.leadEqSim(currentVendog,
+                                                                  model$behaviorals[[currentVendog]]$eqSimExpText,
+                                                                  model_max_lag_1,
+                                                                  simSteps)
+      
+      #parse text eq
+      model$behaviorals[[currentVendog]]$leadsEqSimExp=lapply(model$behaviorals[[currentVendog]]$leadsEqSimExpText,
+                                                              function(x) parse(text=x))
+    }
+    
+    if (simSteps>1 && length(model_names_identity)>0) for (idx in 1:length(model_names_identity))
+    {
+     
+      currentVendog=model_names_identity[idx]
+      #lead vendog sim eq up to simSteps, and convert to __LEAD__ when i>model_max_lax+1,
+      #given vendog[i,] in sim eq
+      model$identities[[currentVendog]]$leadsEqSimExpText=.leadEqSim(currentVendog,
+                                                                 model$identities[[currentVendog]]$eqSimExpText, #ok with IF> in identity
+                                                                 model_max_lag_1,
+                                                                 simSteps)
+      
+      #parse text eq
+      model$identities[[currentVendog]]$leadsEqSimExp=lapply(model$identities[[currentVendog]]$leadsEqSimExpText,
+                                                              function(x) parse(text=x))
+    }
+  }
+  
+  # build lead incidence and order lists ---------------------------------------
+
+  #build incidence matrix with leads (RESCHECK excluded)
+  if (hasLeads && simType=='DYNAMIC')
+  {
+    .MODEL_outputText(outputText=!quietly,'Optimizing forward looking...\n')  
+    
+    #create empty incidence matrix
+    incidence_matrix_size=length(model_vendog)*simSteps
+    incidence_matrix=matrix(0,nrow=incidence_matrix_size, ncol=incidence_matrix_size) 
+    
+    if (simSteps==1)
+    {
+      colnames(incidence_matrix)=model_vendog 
+      rownames(incidence_matrix)=model_vendog 
+      
+    } else {
+     
+      tmpNames=model_vendog 
+      tmpS=paste0(model_vendog,'__LEAD__')
+      
+      for (idxSS in 1:(simSteps-1))
+      {
+        tmpNames=c(tmpNames,paste0(tmpS,idxSS))
+      }
+      
+      colnames(incidence_matrix)=tmpNames
+      rownames(incidence_matrix)=tmpNames
+    }
+    
+    #build ordered lists
+    if (length(model_names_behavioral)>0)
+    for (idxI in 1:length(model_names_behavioral))
+    {
+      currentVendog=model_names_behavioral[idxI]
+      
+      #get non vexogs components
+      baseVendogComponents=c(model$behaviorals[[currentVendog]]$eqComponentsNamesBehaviorals,
+        model$behaviorals[[currentVendog]]$eqComponentsNamesIdentities)
+      
+      vendogComponents=c()
+      
+      if (simSteps>1)
+      {
+        tmpS=paste0(baseVendogComponents,'__LEAD__')
+        
+        for (idxSS in 1:(simSteps-1))
+          vendogComponents=c(vendogComponents,paste0(tmpS,idxSS))
+      }
+      
+      #extend list with leaded components
+      vendogComponents=c(baseVendogComponents,vendogComponents)
+      
+      #extract current and leaded components that produce incidence
+      #current...
+      incidenceVendogs=.getIncidenceVendogs(currentVendog,
+                                            model$behaviorals[[currentVendog]]$eqSimExpLeadedText,
+                                            vendogComponents,
+                                            baseIndex=model_max_lag_1) 
+      
+      if (length(incidenceVendogs)>0)
+        for (idxIV in 1:length(incidenceVendogs))
+          incidence_matrix[currentVendog,
+                            incidenceVendogs[idxIV]]=1
+      
+       #leaded...
+       if (simSteps>1)
+       {
+         tmpNames=names(model$behaviorals[[currentVendog]]$leadsEqSimExp)
+         
+         for (idxII in 1:length(model$behaviorals[[currentVendog]]$leadsEqSimExp))
+         {
+           idxSE=tmpNames[idxII]
+           
+           incidenceVendogs=.getIncidenceVendogs(idxSE,
+                                model$behaviorals[[currentVendog]]$leadsEqSimExpText[[idxSE]],
+                                vendogComponents,
+                                baseIndex=model_max_lag_1) 
+           
+           if (length(incidenceVendogs)>0)
+             for (idxIV in 1:length(incidenceVendogs))
+               incidence_matrix[idxSE,
+                                 incidenceVendogs[idxIV]]=1
+         }
+       }
+    }
+  
+    if (length(model_names_identity)>0)
+    for (idxI in 1:length(model_names_identity))
+    {
+      currentVendog=model_names_identity[idxI]
+      
+      #get non vegoxs components
+      baseVendogComponents=c(model$identities[[currentVendog]]$eqComponentsNamesBehaviorals,
+                             model$identities[[currentVendog]]$eqComponentsNamesIdentities)
+      
+      vendogComponents=c()
+    
+      if (simSteps>1)
+      {
+        tmpS=paste0(baseVendogComponents,'__LEAD__')
+        
+        for (idxSS in 1:(simSteps-1))
+          vendogComponents=c(vendogComponents,paste0(tmpS,idxSS))
+      }
+      
+      #extend list with leaded component
+      vendogComponents=c(baseVendogComponents,vendogComponents)
+      
+      #extract current and leaded components that produce incidence
+      #current...
+      incidenceVendogs=.getIncidenceVendogs(currentVendog,
+                                            model$identities[[currentVendog]]$eqSimExpLeadedText,#ok with IF> in identity
+                                            vendogComponents,
+                                            baseIndex=model_max_lag_1) 
+    
+      if (length(incidenceVendogs)>0)
+        for (idxIV in 1:length(incidenceVendogs))
+          incidence_matrix[currentVendog,
+                            incidenceVendogs[idxIV]]=1
+        
+      #leaded...
+      if (simSteps>1)
+      {
+        tmpNames=names(model$identities[[currentVendog]]$leadsEqSimExp)
+          
+        for (idxII in 1:length(model$identities[[currentVendog]]$leadsEqSimExp))
+        {
+          idxSE=tmpNames[idxII]
+          
+          eqSimText=model$identities[[currentVendog]]$leadsEqSimExpText[[idxSE]]
+         
+          incidenceVendogs=.getIncidenceVendogs(idxSE,
+                                                eqSimText,
+                                                vendogComponents,
+                                                baseIndex=model_max_lag_1) 
+          
+          if (length(incidenceVendogs)>0)
+            for (idxIV in 1:length(incidenceVendogs))
+              incidence_matrix[idxSE,
+                                incidenceVendogs[idxIV]]=1
+        }
+      }
+    }
+    
+    #get vblocks from incidence matrix using Tarjan
+    modelBlocks=.buildBlocks(incidence_matrix) 
+    model_vblocks=modelBlocks$vblocks
+    length_model_vblocks=length(model_vblocks)
+    model_vpre=modelBlocks$vpre
+    length_model_vpre=length(model_vpre)
+    
+  }#end has leads
+  
+  # build sim expressions lists -------------------------------------------------------
+ 
+  if (length_model_vblocks>0)
+    for (idxB in 1:length_model_vblocks)
+    {
+      model_vsim[[idxB]]=model_vblocks[[idxB]]$vsim
+      model_vfeed[[idxB]]=model_vblocks[[idxB]]$vfeed
+      
+      length_model_vsim=c(length_model_vsim,length(model_vsim[[idxB]]))
+      length_model_vfeed=c(length_model_vfeed,length(model_vfeed[[idxB]]))
+      
+      model_vpost[[idxB]]=model_vblocks[[idxB]]$vpost
+      length_model_vpost=c(length_model_vpost,length(model_vblocks[[idxB]]$vpost))
+      
+    }
   
   if (! simType =='RESCHECK')
   {#full simulation required
     
+  #if leads then search for convergence in first period only
+   if (hasLeads && simSteps>1)
+    {
+      actualSimSteps=1
+      
+    } else {
+      
+      actualSimSteps=simSteps
+      
+    }
+    
     #array of expressions used in convergence algos
-    vpre_expressions=vector('list',simSteps) 
-    vsim_expressions=vector('list',simSteps)
-    vpost_expressions=vector('list',simSteps) 
+    vpre_expressions=vector('list',actualSimSteps) 
+    vsim_expressions=vector('list',actualSimSteps) 
+    vpost_expressions=vector('list',actualSimSteps) 
+    
+    #e.g. vsim_expression[[2]][[3]] is vendog list in simultaneous vblock 3 in simulation period 2
+    for (idxS in 1:actualSimSteps)
+    {
+      vsim_expressions[[idxS]]=vector('list',length_model_vblocks) 
+      vpost_expressions[[idxS]]=vector('list',length_model_vblocks) 
+    }
     
     #support variables, needed for convergence check on feedback variables
-    #new feedback values
-    localE$VFEED__NEXT=matrix(ncol=replica,nrow=length_model_vfeed)
+    localE$SIM__ALGO=simAlgo
     
-    #current feedback values
-    localE$VFEED__CURRENT=matrix(ncol=replica,nrow=length_model_vfeed)
+    #model vfeed proxy
+    localE$MODEL__VFEED__LIST=model_vfeed
     
-    #temp feedback values
-    localE$VFEED__TEMP=matrix(ncol=replica,nrow=length_model_vfeed)
+    #model vfeed length proxy
+    localE$LENGTH__MODEL__VFEED__LIST=length_model_vfeed
+    
+    #model_max_lag + 1 proxy
+    localE$MODEL__MAX__LAG__1=model_max_lag_1
+    
+    #model replica proxy
+    localE$REPLICA__=replica
     
     #newton methods, we need more info copied into localE
     if (simAlgo!='GAUSS-SEIDEL')
     {
-      #model vfeed proxy
-      localE$MODEL__VFEED=model_vfeed
-      
-      #model vfeed length proxy
-      localE$LENGTH__MODEL__VFEED=length_model_vfeed
-      
-      #model_max_lag + 1 proxy
-      localE$MODEL__MAX__LAG__1=model_max_lag_1
-      
-      #model replica proxy
-      localE$REPLICA__=replica
-      
-      #jacobian base line
-      localE$JACOBIAN__VFEED__BASELINE=matrix(ncol=replica,nrow=length_model_vfeed)
-      
-      #vfeed active in jacobian
-      localE$JACOBIAN__VFEED__ACTIVE=matrix(ncol=simSteps,nrow=length_model_vfeed)
-      
-      #init jacobian matrix
-      if (simAlgo=='NEWTON')
-      {
-        localE$JACOBIAN__SINGLE__MATRIX=matrix(ncol=length_model_vfeed,nrow=length_model_vfeed)
+      if (length_model_vblocks>0) {
         
-      } else { #FULLNEWTON
+        #vfeed active in jacobian
+        localE$JACOBIAN__VFEED__ACTIVE__LIST=list()
         
-        #this is a 3d array
-        localE$JACOBIAN__FULL__MATRIX=array(dim=c(length_model_vfeed,length_model_vfeed,replica))
+        for (idxB in 1:length_model_vblocks)
+          localE$JACOBIAN__VFEED__ACTIVE__LIST[[idxB]]=matrix(1,ncol=actualSimSteps,nrow=length_model_vfeed[idxB])
+        
+        #init jacobian matrix
+        if (simAlgo=='NEWTON')
+        {
+          localE$JACOBIAN__SINGLE__MATRIX__ACTIVE__LIST=list()
+           
+        } else { #FULLNEWTON
+          
+          localE$JACOBIAN__FULL__MATRIX__ACTIVE__LIST=list()
+          
+        }
+        
+        #assign default shock to jacobian (note double underscore)
+        localE$JACOBIAN__SHOCK=JACOBIAN_SHOCK
+        
+        #jacobian scale values
+        localE$JACOBIAN__SCALE__VALUE__LIST=list()
+        for (idxB in 1:length_model_vblocks)
+          localE$JACOBIAN__SCALE__VALUE__LIST[[idxB]]=matrix(1,ncol=replica,nrow=length_model_vfeed[idxB])
+        
+        #flag of jacobian recalculation
+        localE$RECALCULATE__JACOBIAN__ARRAY=vector(mode='logical',length=length_model_vblocks)
+        localE$RECALCULATE__JACOBIAN__ARRAY[]=TRUE
+      
       }
-      
-      #assign default shock to jacobian (note double underscore)
-      localE$JACOBIAN__SHOCK=JACOBIAN_SHOCK
-      
-      #jacobian scale values
-      localE$JACOBIAN__SCALE__VALUE=matrix(1,ncol=replica,nrow=length_model_vfeed)
-      
-      #jacobian relax value
-      localE$JACOBIAN__RELAX__VALUE=1
-      
-      #newton performance parameters
-      localE$JACOBIAN__DMAX__CURRENT=0
-      localE$JACOBIAN__DMAX__PREV=0
-      localE$JACOBIAN__RATIO__CURRENT=0.5
-      localE$JACOBIAN__RATIO__PREV=0
-      localE$JACOBIAN__GMRRP__=0
-      
-      #flag of jacobian recalculation
-      localE$RECALCULATE__JACOBIAN=TRUE
-      
     }
     
     #LAST__EVAL__EQ is used in debug and error message: it keeps name of last evaluated eq during sim
     localE$LAST__EVAL__EQ='unknown'
-    
+  
     #init newton stuff...
-    if (simAlgo!='GAUSS-SEIDEL')
+    if (simAlgo!='GAUSS-SEIDEL' && length_model_vblocks>0)
     {
       #populate matrix of active vfeed in jacobian
       #Exogenize or Drop can reduce the vfeed set active in Jacobian
-      localE$JACOBIAN__VFEED__ACTIVE[]=1
+      
+      #purge vfeed list from lead suffix
+      model_vfeed_prefix=c()
+        for (idxB in 1:length_model_vblocks) model_vfeed_prefix=c(model_vfeed_prefix,model_vfeed[[idxB]])
+          
+     if (hasLeads && simSteps>1) model_vfeed_prefix=unique(unlist(lapply(strsplit(model_vfeed_prefix,'__LEAD__'), function(x) return(x[1]))))
+      
+      #check JacobianDrop
+      idxToBeRemoved=c()
+      if (length(JacobianDrop)>0)
+        for (idx in 1:length(JacobianDrop))
+          if (! JacobianDrop[idx] %in% model_vfeed_prefix ) 
+          {
+            .MODEL_outputText(sep='',outputText=!quietly,callerName,'warning, "',JacobianDrop[idx],'" is not a model feedback variable. It will be removed from the "JacobianDrop" argument\n')
+            idxToBeRemoved=c(idxToBeRemoved,idx)
+          }
+      
+     if (length(idxToBeRemoved)>0) JacobianDrop=JacobianDrop[-idxToBeRemoved]
       
       #disable vfeed idxVF in iteration idxSP if exogenized
-      if (length_model_vfeed>0) for (idxVF in 1:length_model_vfeed)
+      for (idxB in 1:length_model_vblocks) 
+      for (idxVF in 1:length_model_vfeed[idxB])
       { 
+        vfeedTemp=model_vfeed[[idxB]][idxVF]
         #drop from jacobian if exogenized
-        if (model_vfeed[idxVF] %in% names(Exogenize))
-          for (idxSP in 1:simSteps)
+        if (vfeedTemp %in% names(Exogenize))
+          for (idxSP in 1:actualSimSteps)
           {
-            if ( idxSP %in% Exogenize[[model_vfeed[idxVF]]]) 
-              localE$JACOBIAN__VFEED__ACTIVE[idxVF,idxSP]=0
+            if ( idxSP %in% Exogenize[[vfeedTemp]]) 
+              localE$JACOBIAN__VFEED__ACTIVE__LIST[[idxB]][idxVF,idxSP]=0
           }
         
         #drop from jacobian if in JacobianDrop
-        if (model_vfeed[idxVF] %in% JacobianDrop)
+        #purge vfeed from __LEAD__ suffix
+        if (hasLeads && simSteps>1)  vfeedTemp=strsplit(vfeedTemp,'__LEAD__')[[1]][1]
+        if (vfeedTemp %in% JacobianDrop)
         {
-          localE$JACOBIAN__VFEED__ACTIVE[idxVF,]=0
+          localE$JACOBIAN__VFEED__ACTIVE__LIST[[idxB]][idxVF,]=0
         }
       } 
     }
@@ -7191,203 +8581,279 @@ SIMULATE <- function(model=NULL,
       {
         #init tmp var
         tmp_expressions=c() 
+        tmpVfull=tmpV
         
-        #append sim expression
-        if (tmpV %in% model_names_behavioral)
+        if (hasLeads && simSteps>1 && grepl('__LEAD__',tmpV))
         {
-          tmp_expressions=model$behaviorals[[tmpV]]$eqSimExp
-        } else
-        {
-          tmp_expressions=model$identities[[tmpV]]$eqSimExp
+          tmpV=strsplit(tmpVfull,'__LEAD__')[[1]][1]
+          
+          #append sim expression
+          if (tmpV %in% model_names_behavioral)
+          {
+            tmp_expressions=model$behaviorals[[tmpV]]$leadsEqSimExp[[tmpVfull]]
+          } else
+          {
+            tmp_expressions=model$identities[[tmpV]]$leadsEqSimExp[[tmpVfull]]
+          }
+          
+        } else {
+          
+          #append sim expression
+          if (tmpV %in% model_names_behavioral)
+          {
+            tmp_expressions=model$behaviorals[[tmpV]]$eqSimExp
+          } else
+          {
+            tmp_expressions=model$identities[[tmpV]]$eqSimExp
+          }
         }
         
         #append check on result
-        tmp_expressions=c(parse(text=paste0('LAST__EVAL__EQ="',tmpV,'";')),
+        tmp_expressions=c(parse(text=paste0('LAST__EVAL__EQ="',tmpVfull,'";')),
                           tmp_expressions,
-                          parse(text=paste0('if (any(! is.finite(',tmpV,'[',model_max_lag_1,',]))) stop(\'Uncomputable solution or numeric overflow while evaluating \"',tmpV,'\".\');')))
+                          parse(text=paste0('if (any(! is.finite(',tmpVfull,'[',model_max_lag_1,',]))) stop(\'Uncomputable solution or numeric overflow while evaluating \"',tmpV,'\".\');')))
         
-        #update vpre expressions, and deal with exonization
-        if (! tmpV %in% names(Exogenize)) 
+        #update vpre expressions, and deal with exogenization
+        if (! tmpVfull %in% names(Exogenize)) 
         {
-          for (idxSP in 1:simSteps)
+          for (idxSP in 1:actualSimSteps)
           {
             vpre_expressions[[idxSP]]=c(vpre_expressions[[idxSP]],tmp_expressions) 
           } 
         } else 
         {
-          for (idxSP in 1:simSteps)
+          for (idxSP in 1:actualSimSteps)
           {
-            if (! idxSP %in% Exogenize[[tmpV]])  vpre_expressions[[idxSP]]=c(vpre_expressions[[idxSP]],tmp_expressions) 
+            if (! idxSP %in% Exogenize[[tmpVfull]])  vpre_expressions[[idxSP]]=c(vpre_expressions[[idxSP]],tmp_expressions) 
           } 
         }
       }}#end vpre
     
-    #get index of first vfeed in vsim
-    if (length_model_vsim>0)
-    {
-      vfeedIndexInVsim=which(model_vsim == model_vfeed[1]) 
-      if (length(vfeedIndexInVsim)==0) stop(callerName,'unknown error while splitting vsim vs vfeed.')
-    }
-    
-    #build gauss vsim expression (needed also in netwon algos)
-    if (length_model_vsim>0) 
-    { 
-      #init vfeed__current to initial state (VFEED__NEXT in iteration 1 contains historical values)
-      tmp_expressions=parse(text='VFEED__CURRENT=VFEED__NEXT')
-      
-      for (idxSP in 1:simSteps)  vsim_expressions[[idxSP]]=c( vsim_expressions[[idxSP]],tmp_expressions) 
-      
-      for (idxE in 1:length_model_vsim)
+    if (length_model_vblocks>0)
+      for (idxB in 1:length_model_vblocks)
       {
-        #init tmp var
-        tmp_expressions=c() 
-        tmpV=model_vsim[idxE] 
-        
-        #append sim expression
-        if (tmpV %in% model_names_behavioral)
+        #get index of first vfeed in vsim
+        if (length_model_vsim[idxB]>0)
         {
-          tmp_expressions=c(tmp_expressions,model$behaviorals[[tmpV]]$eqSimExp) 
-        } else
-        {
-          tmp_expressions=c(tmp_expressions,model$identities[[tmpV]]$eqSimExp)
-        }
-        
-        #store vsim expressions
-        tmp_expressions=c(parse(text=paste0('LAST__EVAL__EQ="',tmpV,'";')),
-                          tmp_expressions,
-                          parse(text=paste0('if (any(! is.finite(',tmpV,'[',  model_max_lag_1,',]))) stop(\'Uncomputable solution or numeric overflow while evaluating \"',tmpV,'\".\');')))
-        
-        #deal with exogenization
-        if (! tmpV %in% names(Exogenize)) 
-        {
-          for (idxSP in 1:simSteps)
-          {
-            vsim_expressions[[idxSP]]=c( vsim_expressions[[idxSP]],tmp_expressions) 
-          } 
-        } else 
-        {
-          for (idxSP in 1:simSteps)
-          {
-            if (! idxSP %in% Exogenize[[tmpV]])   vsim_expressions[[idxSP]]=c( vsim_expressions[[idxSP]],tmp_expressions) 
-          } 
-        }
-        
-        #store next vfeed values (we need for convergence test and jacobian)
-        if (idxE>=vfeedIndexInVsim) 
-        {
-          tmp_expressions=parse(text=paste0('VFEED__NEXT[',1+idxE-vfeedIndexInVsim,',]=',tmpV,'[',  model_max_lag_1,',]'))
+          vfeedIndexInVsim=which(model_vsim[[idxB]] == model_vfeed[[idxB]][1]) 
+          if (length(vfeedIndexInVsim)==0) stop(callerName,'unknown error while splitting vsim vs vfeed in block ',idxB,'.')
+       
+          #init vfeed__current to initial state (VFEED__NEXT in iteration 1 contains historical values)
+          tmp_expressions=parse(text='VFEED__CURRENT=VFEED__NEXT')
           
-          for (idxSP in 1: simSteps)  vsim_expressions[[idxSP]]=c( vsim_expressions[[idxSP]],tmp_expressions) 
-        }
-      }#end idxE
-    }
-    
-    #build vpost expression
-    if (length_model_vpost>0) 
-    { 
-      for (tmpV in (model_vpost))
-      {
-        #init tmp vars
-        tmp_expressions=c() 
-        #append sim expr
-        if (tmpV %in% model_names_behavioral)
-        {
-          tmp_expressions=model$behaviorals[[tmpV]]$eqSimExp
-        } else
-        {
-          tmp_expressions=model$identities[[tmpV]]$eqSimExp
+          for (idxSP in 1:actualSimSteps)  vsim_expressions[[idxSP]][[idxB]]=c( vsim_expressions[[idxSP]][[idxB]],tmp_expressions) 
+          
+          for (idxE in 1:length_model_vsim[idxB])
+          {
+            #init tmp var
+            tmp_expressions=c() 
+            tmpV=model_vsim[[idxB]][idxE] 
+            tmpVfull=tmpV
+            
+            if (hasLeads && simSteps>1 && grepl('__LEAD__',tmpV))
+            {
+              tmpV=strsplit(tmpVfull,'__LEAD__')[[1]][1]
+              
+              #append sim expression
+              if (tmpV %in% model_names_behavioral)
+              {
+                tmp_expressions=model$behaviorals[[tmpV]]$leadsEqSimExp[[tmpVfull]]
+              } else
+              {
+                tmp_expressions=model$identities[[tmpV]]$leadsEqSimExp[[tmpVfull]]
+              }
+              
+            } else {
+              
+              #append sim expression
+              if (tmpV %in% model_names_behavioral)
+              {
+                tmp_expressions=model$behaviorals[[tmpV]]$eqSimExp
+              } else
+              {
+                tmp_expressions=model$identities[[tmpV]]$eqSimExp
+              }
+            }
+            
+            #store vsim expressions
+            tmp_expressions=c(parse(text=paste0('LAST__EVAL__EQ="',tmpVfull,'";')),
+                              tmp_expressions,
+                              parse(text=paste0('if (any(! is.finite(',tmpVfull,'[',  model_max_lag_1,',]))) stop(\'Uncomputable solution or numeric overflow while evaluating \"',tmpV,'\".\');')))
+            
+            #deal with exogenization
+            if (! tmpVfull %in% names(Exogenize)) 
+            {
+              for (idxSP in 1:actualSimSteps)
+              {
+                vsim_expressions[[idxSP]][[idxB]]=c( vsim_expressions[[idxSP]][[idxB]],tmp_expressions) 
+              } 
+            } else 
+            {
+              for (idxSP in 1:actualSimSteps)
+              {
+                if (! idxSP %in% Exogenize[[tmpVfull]])   vsim_expressions[[idxSP]][[idxB]]=c( vsim_expressions[[idxSP]][[idxB]],tmp_expressions) 
+              } 
+            }
+            
+            #store next vfeed values (we need for convergence test and jacobian)
+            if (idxE>=vfeedIndexInVsim) 
+            {
+              tmp_expressions=parse(text=paste0('VFEED__NEXT[',1+idxE-vfeedIndexInVsim,',]=',tmpVfull,'[',  model_max_lag_1,',]'))
+              
+              for (idxSP in 1:actualSimSteps)  vsim_expressions[[idxSP]][[idxB]]=c( vsim_expressions[[idxSP]][[idxB]],tmp_expressions) 
+            }
+          }#end idxE
         }
         
-        tmp_expressions=c(parse(text=paste0('LAST__EVAL__EQ="',tmpV,'";')),
-                          tmp_expressions,
-                          parse(text=paste0('if (any(! is.finite(',tmpV,'[',  model_max_lag_1,',]))) stop(\'Uncomputable solution or numeric overflow while evaluating \"',tmpV,'\".\');')))
-        
-        #deal with exogenization
-        if (! tmpV %in% names(Exogenize)) 
-        {
-          for (idxSP in 1: simSteps)
+        #build vpost expression
+        if (length_model_vpost[idxB]>0) 
+        { 
+          for (idxI in 1:length(model_vpost[[idxB]]))
           {
-            vpost_expressions[[idxSP]]=c(vpost_expressions[[idxSP]],tmp_expressions) 
-          } 
-        } else 
-        {
-          for (idxSP in 1: simSteps)
-          {
-            if (! idxSP %in% Exogenize[[tmpV]])  vpost_expressions[[idxSP]]=c(vpost_expressions[[idxSP]],tmp_expressions) 
-          } 
+            tmpV=model_vpost[[idxB]][idxI]
+            
+            #init tmp vars
+            tmp_expressions=c() 
+            tmpVfull=tmpV
+            
+            if (hasLeads && simSteps>1 && grepl('__LEAD__',tmpV))
+            {
+              tmpV=strsplit(tmpVfull,'__LEAD__')[[1]][1]
+              
+              #append sim expression
+              if (tmpV %in% model_names_behavioral)
+              {
+                tmp_expressions=model$behaviorals[[tmpV]]$leadsEqSimExp[[tmpVfull]]
+              } else
+              {
+                tmp_expressions=model$identities[[tmpV]]$leadsEqSimExp[[tmpVfull]]
+              }
+              
+            } else {
+              
+              #append sim expression
+              if (tmpV %in% model_names_behavioral)
+              {
+                tmp_expressions=model$behaviorals[[tmpV]]$eqSimExp
+              } else
+              {
+                tmp_expressions=model$identities[[tmpV]]$eqSimExp
+              }
+            }
+            
+            tmp_expressions=c(parse(text=paste0('LAST__EVAL__EQ="',tmpVfull,'";')),
+                              tmp_expressions,
+                              parse(text=paste0('if (any(! is.finite(',tmpVfull,'[',  model_max_lag_1,',]))) stop(\'Uncomputable solution or numeric overflow while evaluating \"',tmpV,'\".\');')))
+            
+            #deal with exogenization
+            if (! tmpVfull %in% names(Exogenize)) 
+            {
+              for (idxSP in 1:actualSimSteps)
+              {
+                vpost_expressions[[idxSP]][[idxB]]=c(vpost_expressions[[idxSP]][[idxB]],tmp_expressions) 
+              } 
+            } else 
+            {
+              for (idxSP in 1:actualSimSteps)
+              {
+                if (! idxSP %in% Exogenize[[tmpVfull]])  vpost_expressions[[idxSP]][[idxB]]=c(vpost_expressions[[idxSP]][[idxB]],tmp_expressions) 
+              } 
+            }
+          }
         }
-      }
-    }
+        
+      }#end vblocks for
     
     #set convergence value in local environment
     localE$CONVERGENCE__VALUE=simConvergence/100
     
   }#end block simType != RESCHECK
   
-  
-  if (simType!='RESCHECK' && length_model_vsim==0) 
-    .MODEL_outputText(sep='',outputText=!quietly,callerName,'warning, the incidence graph is not cyclic. There is no convergence to be achieved.\n')
-  
+  if (simType!='RESCHECK' && length_model_vblocks==0) 
+    .MODEL_outputText(sep='',outputText=!quietly,callerName,'warning, model\'s incidence graph is not cyclic. There is no convergence to be achieved.\n')
   
   # main loop --------------------------------------------------------------
   
-  
-  #proxies 4 speedup
-  if (STOCHSIMULATE )
-    noised_vendog=base::intersect(names(StochStructure),model_vendog) 
-  
-  if (OPTIMIZE )
-    optimized_vendog=base::intersect(names(OptimizeBounds),model_vendog) 
-  
-  #outer simulation tryCatch
+     #proxies 4 speedup - ok with leads too
+     if (STOCHSIMULATE )
+       noised_vendog=base::intersect(names(StochStructure),model_vendog) 
+     
+     if (OPTIMIZE )
+       optimized_vendog=base::intersect(names(OptimizeBounds),model_vendog) 
+ 
   tryCatch({
     
     #simrange loop
     for (simIterLoopIdx in 1:simSteps)
     {
-      if (MULTMATRIX)
-      {.MODEL_outputText(outputText=!quietly,paste0('\r','Multiplier Matrix:'),sprintf("%10.2f",simIterLoopIdx*100/simSteps),'%') 
-      } else if (STOCHSIMULATE)
-      {.MODEL_outputText(outputText=!quietly,paste0('\r','Stochastic Simulation:'),sprintf("%10.2f",simIterLoopIdx*100/simSteps),'%') 
-      } else if (OPTIMIZE)
-      {.MODEL_outputText(outputText=!quietly,paste0('\r','Optimize:'),sprintf("%10.2f",simIterLoopIdx*100/simSteps),'%') 
-      } else
-      {.MODEL_outputText(outputText=!quietly,paste0('\r','Simulation:'),sprintf("%10.2f",simIterLoopIdx*100/simSteps),'%') }
+      #in leaded model, only the very first period in TSRANGE is evaluated
+      if (hasLeads && simIterLoopIdx>1) break;
       
-      if (simType != 'RESCHECK' && (verbose)) {cat('\n') }
-      
-      #create local proxies for all references 
-      #(components names used in eq) in behaviorals/identities
-      #in sliding window (with range maxlag) starting from simIterLoopIdx
-      for (tempName in (model_fullComponentList))
+      if (! hasLeads)
       {
-        localE[[tempName]]=localE[[paste0(tempName,'__ORIGINAL')]][drop=FALSE,simIterLoopIdx+(0:model_max_lag),]
+        percentageCompletionPorxy=simIterLoopIdx
+        
+      } else {
+        
+          percentageCompletionPorxy=0
       }
       
+      if (MULTMATRIX)
+        {.MODEL_outputText(outputText=!quietly,paste0('\r','Multiplier Matrix:'),sprintf("%10.2f",percentageCompletionPorxy*100/simSteps),'%') 
+        } else if (STOCHSIMULATE)
+        {.MODEL_outputText(outputText=!quietly,paste0('\r','Stochastic Simulation:'),sprintf("%10.2f",percentageCompletionPorxy*100/simSteps),'%') 
+        } else if (OPTIMIZE)
+        {.MODEL_outputText(outputText=!quietly,paste0('\r','Optimize:'),sprintf("%10.2f",percentageCompletionPorxy*100/simSteps),'%') 
+        } else
+        {.MODEL_outputText(outputText=!quietly,paste0('\r','Simulation:'),sprintf("%10.2f",percentageCompletionPorxy*100/simSteps),'%') }
+     
+      #ok with leads too
+      if (simType != 'RESCHECK' && (verbose)) {cat('\n') }
+     
+      #create local proxies for all references 
+      #(i.e. components names used in eq) in behaviorals/identities
+      #in sliding window (with range == maxlag+tsrange) starting from simIterLoopIdx
+      
+      tempRange=simIterLoopIdx+(0:model_max_lag)
+      for (idxI in 1:length(model_fullComponentList))
+        {
+          tempName=model_fullComponentList[idxI]
+          
+          localE[[tempName]]=localE[[paste0(tempName,'__ORIGINAL__EXTENDED')]][tempRange,,drop=F]
+        }
+        
       #proxy for explicit constant adjustments
       if (length(ConstantAdjustment)>0) 
-        for (tempName in CA_names)
+        for (idxI in 1:length(CA_names))
         {
-          localE[[tempName]]=localE[[paste0(tempName,'__ORIGINAL')]][drop=FALSE,simIterLoopIdx+(0:model_max_lag),]
+          tempName=CA_names[idxI]
+          
+          localE[[tempName]]=localE[[paste0(tempName,'__ORIGINAL__EXTENDED')]][tempRange,,drop=F]
         } 
       
       #proxy for vendog constant adjustment as INSTRUMENT 
       #vendog can be in INSTRUMENT (e.g. modified endo with SHOCK in MULTMATRIX) but not in CA list
       if (length(instrumentVendogs)>0) 
-        for (tempName in instrum_names)
+        for (idxI in 1:length(instrum_names))
         {
-          localE[[tempName]]=localE[[paste0(tempName,'__ORIGINAL')]][drop=FALSE,simIterLoopIdx+(0:model_max_lag),]
+          tempName=instrum_names[idxI]
+          
+          localE[[tempName]]=localE[[paste0(tempName,'__ORIGINAL__EXTENDED')]][tempRange,,drop=F]
         } 
       
       #proxy for vendog noised in stochastic simulation 
       #vendog can be noised (e.g. in StochStructure) but not in CA list
       if (STOCHSIMULATE )
       {
-        if (length(noised_vendog)>0)
-          for (tempName in paste0(noised_vendog,'__ADDFACTOR'))
+        # if (length(noised_vendog)>0)
+        { 
+          tempS=paste0(noised_vendog,'__ADDFACTOR')
+          for (idxI in 1:length(tempS))
           {
-            localE[[tempName]]=localE[[paste0(tempName,'__ORIGINAL')]][drop=FALSE,simIterLoopIdx+(0:model_max_lag),]
+            tempName=tempS[idxI]
+            localE[[tempName]]=localE[[paste0(tempName,'__ORIGINAL__EXTENDED')]][tempRange,,drop=F]
           }
+        }
       }
       
       #proxy for vendog noised in optimize simulation 
@@ -7395,70 +8861,120 @@ SIMULATE <- function(model=NULL,
       if (OPTIMIZE )
       {
         if (length(optimized_vendog)>0)
-          for (tempName in paste0(optimized_vendog,'__ADDFACTOR'))
+        { 
+          tempS=paste0(optimized_vendog,'__ADDFACTOR')
+          for (idxI in 1:length(tempS))
           {
-            localE[[tempName]]=localE[[paste0(tempName,'__ORIGINAL')]][drop=FALSE,simIterLoopIdx+(0:model_max_lag),]
+            tempName=tempS[idxI]
+            
+            localE[[tempName]]=localE[[paste0(tempName,'__ORIGINAL__EXTENDED')]][tempRange,,drop=F]
           }
+        }
       }
       
       # check optimize restrictions --------------------------------------------------
       
       if (OPTIMIZE && length(OptimizeRestrictions)>0)
       {
-        for (idxIE in 1:length(OptimizeRestrictions))
-        {
-          #check if we are inside restriction tsrange
-          if ((model_max_lag+simIterLoopIdx) %in% OptimizeRestrictions[[idxIE]]$TSRANGE)
+          for (idxIE in 1:length(OptimizeRestrictions))
           {
-            tryCatch({
-              
-              localE$LAST__EVAL__EQ=paste0('OptimizeRestrictions$',names(OptimizeRestrictions)[idxIE])
-              
-              #eval current restriction using current INSTRUMENT data
-              currentRestrictionResults=eval(OptimizeRestrictions[[idxIE]]$inExpr,envir = localE)
-              
-              if (length(currentRestrictionResults)==0 || any(is.na(currentRestrictionResults)) || ! all(is.logical(currentRestrictionResults))) 
-                stop('restriction must be a computable inequality.')
-              
-              if (length(optColsToBeKept) != length(currentRestrictionResults[-1])) stop('unknown error.')
-              optColsToBeKept=optColsToBeKept & currentRestrictionResults[-1]
-              
-            },error=function(err) stop(paste0('Cannot evaluate "OptimizeRestrictions$',
-                                              names(OptimizeRestrictions)[idxIE],
-                                              '", inequality "',
-                                              OptimizeRestrictions[[idxIE]]$INEQUALITY,'": ',err$message))
-            ,warning=function(warn) cat(paste0('\n',callerName,'warning on evaluating "OptimizeRestrictions$',
-                                               names(OptimizeRestrictions)[idxIE],': ',warn$message),'\n')
-            )
+            #check if we are inside restriction tsrange
+            if ((model_max_lag+simIterLoopIdx) %in% OptimizeRestrictions[[idxIE]]$TSRANGE)
+            {
+              tryCatch({
+                
+                localE$LAST__EVAL__EQ=paste0('OptimizeRestrictions$',names(OptimizeRestrictions)[idxIE])
+                
+                #eval current restriction using current INSTRUMENT data
+                currentRestrictionResults=eval(OptimizeRestrictions[[idxIE]]$inExpr,envir=localE)
+                
+                if (length(currentRestrictionResults)==0 || any(is.na(currentRestrictionResults)) || ! all(is.logical(currentRestrictionResults))) 
+                  stop('restriction must be a computable inequality.')
+                
+                if (length(optColsToBeKept) != length(currentRestrictionResults[-1])) stop('unknown error.')
+                optColsToBeKept=optColsToBeKept & currentRestrictionResults[-1]
+                
+              },error=function(err) stop(paste0('Cannot evaluate "OptimizeRestrictions$',
+                                                names(OptimizeRestrictions)[idxIE],
+                                                '", inequality "',
+                                                OptimizeRestrictions[[idxIE]]$INEQUALITY,'": ',err$message))
+              ,warning=function(warn) cat(paste0('\n',callerName,'warning on evaluating "OptimizeRestrictions$',
+                                                 names(OptimizeRestrictions)[idxIE],': ',warn$message),'\n')
+              )
+            }
           }
-        }
-      }
-      
+        
+        if (hasLeads && simSteps>1)
+        {
+          for (idxIE in 1:length(OptimizeRestrictions))
+          {
+            eqInExprText=as.character(OptimizeRestrictions[[idxIE]]$inExpr)
+            
+            #build leaded inequalities
+            leadedInequalitiesTemp=lapply(.leadEqSim(names(OptimizeRestrictions)[idxIE],
+                       eqInExprText,
+                       model_max_lag_1,
+                       simSteps
+                       ),
+                       function(x) parse(text=x))
+           
+            for (idxSS in 1:(simSteps-1))
+            {
+              if ((model_max_lag+idxSS+1) %in% OptimizeRestrictions[[idxIE]]$TSRANGE)
+              {
+                tryCatch({
+                 
+                  tempName=paste0(names(OptimizeRestrictions)[idxIE],'__LEAD__',idxSS)
+                  localE$LAST__EVAL__EQ=paste0('OptimizeRestrictions$',tempName)
+                  
+                  #eval current restriction using current INSTRUMENT data
+                  currentRestrictionResults=eval(leadedInequalitiesTemp[[tempName]],envir=localE)
+                  
+                  if (length(currentRestrictionResults)==0 || any(is.na(currentRestrictionResults)) || ! all(is.logical(currentRestrictionResults))) 
+                    stop('restriction must be a computable inequality.')
+                  
+                  if (length(optColsToBeKept) != length(currentRestrictionResults[-1])) stop('unknown error.')
+                  optColsToBeKept=optColsToBeKept & currentRestrictionResults[-1]
+                  
+                  
+                },error=function(err) stop(paste0('Cannot evaluate "OptimizeRestrictions$',
+                                                  names(OptimizeRestrictions)[idxIE],
+                                                  '", inequality "',
+                                                  OptimizeRestrictions[[idxIE]]$INEQUALITY,'": ',err$message))
+                ,warning=function(warn) cat(paste0('\n',callerName,'warning on evaluating "OptimizeRestrictions$',
+                                                   names(OptimizeRestrictions)[idxIE],': ',warn$message),'\n')
+                )
+              }
+            }
+          }
+        } 
+      }#end if optimize
+     
       # rescheck loop ---------------------------------------
       
       if (simType=='RESCHECK') 
       {
+        #base behaviorals rescheck eval
         tryCatch(
           {    
             #cycle behaviorals
-            for (currentVendog in model_names_behavioral)
-            { #cycle in endogenous
-              
-              #get var name
-              #currentVendog=model_names_behavioral[idxB]
-              
+            if (length(model_names_behavioral)>0)
+            for (idxI in 1:length(model_names_behavioral))
+            {  
+              currentVendog=model_names_behavioral[idxI]
+               
               #backup historical value
               backupVendog=localE[[currentVendog]]
               
               #if not exoginated eval expression
-              if ( !   (  (simIterLoopIdx %in% Exogenize[[currentVendog]])) )
+              if ( ! ((simIterLoopIdx %in% Exogenize[[currentVendog]])))
               {
                 localE$LAST__EVAL__EQ=currentVendog
                 eval(model$behaviorals[[currentVendog]]$eqSimExp,envir=localE) 
               }
               
               #get evaluated current value
-              tmpResCheck=localE[[currentVendog]][drop=FALSE,  model_max_lag_1,] 
+              tmpResCheck=localE[[currentVendog]][model_max_lag_1,,drop=F] 
               
               #restore vendog (could be used in other eqs)
               localE[[currentVendog]]=backupVendog
@@ -7468,13 +8984,14 @@ SIMULATE <- function(model=NULL,
               if (localMissingIndexes) 
                 stop(paste0('Uncomputable solution or numeric overflow in residual checking of behavioral EQ "',
                             model$behaviorals[[currentVendog]]$eq,
-                            '" at year-period ',paste0(
+                            '" in year-period ',paste0(
                               normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),frequency)
                               ,collapse = '-'),
                             '.\nCheck equation computability, or lagged time series span.',
                             ifelse(! is.null(model$behaviorals[[currentVendog]]$errorRaw),paste0('\nBehavioral has "ERROR> ',model$behaviorals[[currentVendog]]$errorRaw,'", that lags the whole equation.'),''),
                             ifelse(! is.null(model$behaviorals[[currentVendog]]$pdlRaw),paste0('\nBehavioral has "PDL> ',model$behaviorals[[currentVendog]]$pdlRaw,'", that lags the whole regressor.'),'')
                 )) 
+              
               #append results
               simulation[[currentVendog]]=rbind(simulation[[currentVendog]],tmpResCheck) 
               
@@ -7483,26 +9000,81 @@ SIMULATE <- function(model=NULL,
           },error=function(err){
             stop(paste0(err$message))}
           
-        ) #end trycatch
+        )#base behavioral rescheck
         
+        if (hasLeads && simSteps>1  && length(model_names_behavioral)>0)
+        {
+          #leaded behaviorals rescheck eval
+          tryCatch(
+            {
+              #cycle behaviorals
+              for (idxSS in 1:(simSteps-1)) for (idxI in 1:length(model_names_behavioral) )
+              { 
+                currentVendog=model_names_behavioral[idxI]
+                
+                #backup historical value
+                tempName=paste0(currentVendog,'__LEAD__',idxSS)
+                backupVendog=localE[[tempName]]
+                
+                #if not exogenizated eval expression
+                if ( ! ((simIterLoopIdx %in% Exogenize[[tempName]])))
+                {
+                  localE$LAST__EVAL__EQ=tempName
+                  eval(model$behaviorals[[currentVendog]]$leadsEqSimExp[[tempName]],envir=localE) 
+                }
+                
+                #get evaluated current value
+                tmpResCheck=localE[[tempName]][model_max_lag_1,,drop=F] 
+                
+                #restore vendog (could be used in other eqs)
+                localE[[tempName]]=backupVendog
+                
+                #check missings     
+                localMissingIndexes=any(! is.finite(tmpResCheck)) 
+                if (localMissingIndexes) 
+                  stop(paste0('Uncomputable solution or numeric overflow in residual checking of behavioral EQ "',
+                              model$behaviorals[[currentVendog]]$eq,
+                              '" in year-period ',paste0(
+                                normalizeYP(c(TSRANGE[1],TSRANGE[2]+idxSS),frequency)
+                                ,collapse = '-'),
+                              '.\nCheck equation computability, or lagged time series span.',
+                              ifelse(! is.null(model$behaviorals[[currentVendog]]$errorRaw),paste0('\nBehavioral has "ERROR> ',model$behaviorals[[currentVendog]]$errorRaw,'", that lags the whole equation.'),''),
+                              ifelse(! is.null(model$behaviorals[[currentVendog]]$pdlRaw),paste0('\nBehavioral has "PDL> ',model$behaviorals[[currentVendog]]$pdlRaw,'", that lags the whole regressor.'),'')
+                  )) 
+                
+                #append results
+                simulation[[tempName]]=rbind(simulation[[tempName]],tmpResCheck) 
+                
+              }#end cycle behaviorals
+              
+            },error=function(err){
+              stop(paste0(err$message))}
+            
+          )#end trycatch
+            
+        }#has leads behavioral
+    
+        #base identity rescheck eval
         tryCatch(
           {   
             #cycle identities
-            for (currentVendog in model_names_identity)
-            { #cycle in endogenous
+            if (length(model_names_identity)>0)
+            for (idxI in 1:length(model_names_identity))
+            { 
+              currentVendog=model_names_identity[idxI]
               
               #backup historical value  
               backupVendog=localE[[currentVendog]]
               
               #if not exogenated eval expression
-              if ( ! (  (simIterLoopIdx %in% Exogenize[[currentVendog]])) ) 
+              if (!((simIterLoopIdx %in% Exogenize[[currentVendog]]))) 
               {
                 localE$LAST__EVAL__EQ=currentVendog
                 eval(model$identities[[currentVendog]]$eqSimExp,envir=localE) 
               }
               
               #get evaluated current value
-              tmpResCheck=localE[[currentVendog]][drop=FALSE,  model_max_lag_1,] 
+              tmpResCheck=localE[[currentVendog]][model_max_lag_1,,drop=F] 
               
               #restore historical  
               localE[[currentVendog]]=backupVendog
@@ -7511,7 +9083,7 @@ SIMULATE <- function(model=NULL,
               localMissingIndexes=any(! is.finite(tmpResCheck)) 
               if (localMissingIndexes) 
                 stop(paste0('Uncomputable solution or numeric overflow in residual checking of identity EQ "',model$identities[[currentVendog]]$eqFull,
-                            '" at year-period ',paste0(
+                            '" in year-period ',paste0(
                               normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),frequency)
                               ,collapse = '-'),
                             '.\nCheck equation computability or lagged time series span.'
@@ -7525,7 +9097,93 @@ SIMULATE <- function(model=NULL,
           },error=function(err){
             stop(paste0(err$message))
           }
+          
+        )#base identity rescheck
+        
+        #leaded identity rescheck eval
+        if (hasLeads && simSteps>1 && length(model_names_identity)>0)
+        {
+          tryCatch(
+          {   
+            #cycle identities
+            for (idxSS in 1:(simSteps-1)) for (idxI in 1:length(model_names_identity))
+            { 
+              currentVendog=model_names_identity[idxI]
+              
+              #backup historical value  
+              tempName=paste0(currentVendog,'__LEAD__',idxSS)
+              backupVendog=localE[[tempName]]
+              
+              #if not exogenated eval expression
+              if (!((simIterLoopIdx %in% Exogenize[[tempName]]))) 
+              {
+                localE$LAST__EVAL__EQ=tempName
+                eval(model$identities[[currentVendog]]$leadsEqSimExp[[tempName]],envir=localE) 
+              }
+              
+              #get evaluated current value
+              tmpResCheck=localE[[tempName]][model_max_lag_1,,drop=F] 
+              
+              #restore historical  
+              localE[[tempName]]=backupVendog
+              
+              #check missings  
+              localMissingIndexes=any(! is.finite(tmpResCheck)) 
+              if (localMissingIndexes) 
+                stop(paste0('Uncomputable solution or numeric overflow in residual checking of identity EQ "',model$identities[[currentVendog]]$eqFull,
+                            '" in year-period ',paste0(
+                              normalizeYP(c(TSRANGE[1],TSRANGE[2]+idxSS),frequency)
+                              ,collapse = '-'),
+                            '.\nCheck equation computability or lagged time series span.'
+                )) 
+              
+              #append results 
+              simulation[[tempName]]=rbind(simulation[[tempName]],tmpResCheck)  
+              
+            }#for in vendog
+            
+          },error=function(err){
+            stop(paste0(err$message))
+          }
         ) 
+          
+       }#hasleads identities
+        
+        if (hasLeads)
+        {
+          if (MULTMATRIX)
+          {.MODEL_outputText(outputText=!quietly,paste0('\r','Multiplier Matrix:'),sprintf("%10.2f",100),'%') 
+          } else if (STOCHSIMULATE)
+          {.MODEL_outputText(outputText=!quietly,paste0('\r','Stochastic Simulation:'),sprintf("%10.2f",100),'%') 
+          } else if (OPTIMIZE)
+          {.MODEL_outputText(outputText=!quietly,paste0('\r','Optimize:'),sprintf("%10.2f",100),'%') 
+          } else
+          {.MODEL_outputText(outputText=!quietly,paste0('\r','Simulation:'),sprintf("%10.2f",100),'%') }
+          
+        }
+       
+        if (verbose && verboseSincePeriod<=simIterLoopIdx && length(verboseVars)>0)
+        {
+          .printVerboseSim('RESCHECK',
+                           ConstantAdjustment,
+                           verboseVars,
+                           frequency,
+                           TSRANGE,
+                           simSteps,
+                           simIterLoopIdx,
+                           1,
+                           0,
+                           model_max_lag_1,
+                           length_model_vexog,
+                           model_vendog,
+                           model_vexog,
+                           replica,
+                           localE,
+                           model_vpre,
+                           model_vsim,
+                           model_vpost,
+                           hasLeads)
+        }
         
       }#end is RESCHECK
       
@@ -7535,14 +9193,16 @@ SIMULATE <- function(model=NULL,
       {
         #if FORECAST is requested, value in first iter is set equal to the previously simulated value
         #(in first period of TSRANGE we set endo equal to his previous historical value)
-        if (simType=='FORECAST') 
-          for (tempName in (model_vendog_forecast))
+        if (simType=='FORECAST' && length(model_vendog_no_if)>0) 
+          for (idxI in 1:length(model_vendog_no_if))
           {
+            tempName = (model_vendog_no_if)[idxI]
+            
             #if any error we save current vendog name to be printed out in messages
             localE$LAST__EVAL__EQ=tempName
             
             #NEEDED...deal with exogenization...
-            #model_vendog_forecast are endo with no IF but still can be exogenized
+            #model_vendog_no_if are endo with no IF... but still can be exogenized
             if ((simIterLoopIdx %in% Exogenize[[tempName]])) next 
             
             #get vendog values
@@ -7553,23 +9213,18 @@ SIMULATE <- function(model=NULL,
               stop(callerName,'cannot use FORECAST with endogenous variable "',tempName,'" that has a missing value in its last historical observation prior to TSRANGE.')
             
             #copy previous simulated (historical if first period) to current
-            tmpValues[  model_max_lag_1,]=tmpValues[drop=FALSE,model_max_lag,] 
+            tmpValues[  model_max_lag_1,]=tmpValues[model_max_lag,,drop=F] 
             
             #update time series
             localE[[tempName]]=tmpValues
             
-          } 
-        
-        
-        #flag for convergence
-        #flagConvergence=0 
-        flagConvergence=ifelse(length_model_vsim>0,0,1) 
-        
+          }
+      
         #iterations index
         idxIter=0 
         
         # eval vpre ------------------------------
-        
+         
         #eval vpre expression
         eval(vpre_expressions[[simIterLoopIdx]]
              ,envir=localE
@@ -7578,518 +9233,663 @@ SIMULATE <- function(model=NULL,
         #print stuff if required
         if (verbose && verboseSincePeriod<=simIterLoopIdx  && length(verboseVars)>0)
         {
-          cat('\nVPRE eval.:\n') 
-          cat('VPRE vars: ',paste0(model_vpre,collapse=', '),'\n') 
-          
-          .printVerboseSim(ConstantAdjustment,
-                           verboseVars,
-                           frequency,
-                           TSRANGE,
-                           simIterLoopIdx,
-                           idxIter,
-                           model_max_lag_1,
-                           length_model_vexog,
-                           model_vexog,
-                           replica,
-                           localE,
-                           model_vpre,
-                           model_vsim,
-                           model_vpost)
-          
-        }  
+            .printVerboseSim('VPRE',
+                             ConstantAdjustment,
+                             verboseVars,
+                             frequency,
+                             TSRANGE,
+                             simSteps,
+                             simIterLoopIdx,
+                             idxB,
+                             idxIter,
+                             model_max_lag_1,
+                             length_model_vexog,
+                             model_vendog,
+                             model_vexog,
+                             replica,
+                             localE,
+                             model_vpre,
+                             model_vsim,
+                             model_vpost,
+                             hasLeads)
+          }  
+       
+        #flag for convergence
+        flagConvergence=1
         
-        if ( length_model_vsim>0 )
+        localE$FC__=flagConvergence
+         
+        if (length_model_vblocks>0) for (idxB in 1:length_model_vblocks)
         {
-          for (idxE in 1:length_model_vfeed)
+          if (hasLeads)
           {
-            #init feedback proxy with historical values (we need it for convergence test)
-            #during iterations we assign VFEED_CURRENT=VFEED_NEXT
-            localE$VFEED__NEXT[idxE,]=localE[[model_vfeed[idxE]]][model_max_lag_1,,drop=F]
+            if (MULTMATRIX)
+            {.MODEL_outputText(outputText=!quietly,paste0('\r','Multiplier Matrix:'),sprintf("%10.2f",(idxB-1)*100/length_model_vblocks),'%') 
+            } else if (STOCHSIMULATE)
+            {.MODEL_outputText(outputText=!quietly,paste0('\r','Stochastic Simulation:'),sprintf("%10.2f",(idxB-1)*100/length_model_vblocks),'%') 
+            } else if (OPTIMIZE)
+            {.MODEL_outputText(outputText=!quietly,paste0('\r','Optimize:'),sprintf("%10.2f",(idxB-1)*100/length_model_vblocks),'%') 
+            } else
+            {.MODEL_outputText(outputText=!quietly,paste0('\r','Simulation:'),sprintf("%10.2f",(idxB-1)*100/length_model_vblocks),'%') }
           }
           
-          # init jacobian  ------------------------------
-          
-          if (simAlgo!='GAUSS-SEIDEL'  )
+          localE$IDXB__=idxB
+         
+          if ( length_model_vsim[idxB]>0 )
           {
-            #proxy var to localE
-            localE$SIM__ITER__LOOP__IDX=simIterLoopIdx
+            flagConvergence=0
             
+            localE$FC__=flagConvergence
+           
             with(localE,{
-              
-              #init performance parameter
-              JACOBIAN__RELAX__VALUE=1
-              JACOBIAN__DMAX__CURRENT=0
-              JACOBIAN__DMAX__PREV=0
-              JACOBIAN__RATIO__CURRENT=0.5
-              JACOBIAN__RATIO__PREV=0
-              JACOBIAN__GMRRP__=0
-              
-              #check there are active vfeed
-              VFEED__ACTIVE__JACOBIAN__IDXS=which(JACOBIAN__VFEED__ACTIVE[,SIM__ITER__LOOP__IDX]==1)
-              LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS=length(VFEED__ACTIVE__JACOBIAN__IDXS)
-              
+                
+              MODEL__VFEED=MODEL__VFEED__LIST[[IDXB__]]
                
-              if (LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS==0)
+              LENGTH__MODEL__VFEED=LENGTH__MODEL__VFEED__LIST[IDXB__]
+             
+              #new feedback values
+              VFEED__NEXT=matrix(ncol=REPLICA__,nrow=LENGTH__MODEL__VFEED)
+                
+              #current feedback values
+              VFEED__CURRENT=VFEED__NEXT
+                
+              #temp feedback values
+              VFEED__TEMP=VFEED__NEXT
+            
+              for (IDXE__ in 1:LENGTH__MODEL__VFEED)
               {
-                .MODEL_outputText(outputText = verbose,paste0('\n',callerName,'warning, a "NEWTON" algorithm is requested but all feedback variables have been exogenized or dropped from the Jacobian matrix, at year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' (simulation period ',simIterLoopIdx,').\n')) 
-                
-              } else {
-                
-                #check if a new Jacobian is required due to new vfeed exogenizations in current period
-                if(SIM__ITER__LOOP__IDX>1 && 
-                   any(xor(JACOBIAN__VFEED__ACTIVE[,SIM__ITER__LOOP__IDX],JACOBIAN__VFEED__ACTIVE[,SIM__ITER__LOOP__IDX-1]))
-                )
-                {
-                  RECALCULATE__JACOBIAN=TRUE
-                }
+                #init feedback proxy with historical values (we need it for convergence test)
+                #during iterations we assign VFEED_CURRENT=VFEED_NEXT
+                VFEED__NEXT[IDXE__,]=localE[[MODEL__VFEED[IDXE__]]][MODEL__MAX__LAG__1,,drop=F]
               }
-              
-            })#end with localE
+            })
             
-          }#end init jacobian
-          
-          # eval vsim ------------------------------
-          
-          #main sim stuff... cycle till convergence or max iter limit
-          #WARNING: THIS FOR-CYCLE MUST BE SUPER FAST
-          for (idxIter in 1:simIterLimit)
-          { 
-            #eval vsim expressions
-            eval( vsim_expressions[[simIterLoopIdx]],envir=localE) 
+            # init jacobian  ------------------------------
             
-            if (simAlgo!='GAUSS-SEIDEL')
+            if (simAlgo!='GAUSS-SEIDEL'  )
             {
-              
-              #proxy vars in localE
-              localE$IDX__ITER=idxIter
-              localE$SIM__ALGO=simAlgo
+              #proxy var to localE
+              localE$SIM__ITER__LOOP__IDX=simIterLoopIdx
               
               with(localE,{
-                
-                if (LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS > 0)
+              
+                #reset jacobian
+                if (!  RECALCULATE__JACOBIAN__ARRAY[IDXB__])
                 {
-                  # evaluate convergence speed --------------------------
-                  
-                  #backup current convergence speed indicators
-                  JACOBIAN__DMAX__PREV=JACOBIAN__DMAX__CURRENT
-                  JACOBIAN__DMAX__CURRENT=max(abs(VFEED__NEXT-VFEED__CURRENT))
-                  JACOBIAN__RATIO__PREV=JACOBIAN__RATIO__CURRENT
-                  
                   if (SIM__ALGO=='NEWTON')
                   {
-                    GMRRP__LIMIT__1=0.9
-                    GMRRP__LIMIT__2=0.75
+                    JACOBIAN__SINGLE__MATRIX__ACTIVE=JACOBIAN__SINGLE__MATRIX__ACTIVE__LIST[[IDXB__]]
                     
                   } else{#FULLNEWTON
                     
-                    GMRRP__LIMIT__1=0.6
-                    GMRRP__LIMIT__2=0.45
+                    JACOBIAN__FULL__MATRIX__ACTIVE=JACOBIAN__FULL__MATRIX__ACTIVE__LIST[[IDXB__]]
                   }
-                 
-                  if (IDX__ITER>1)
+                }
+                
+                JACOBIAN__SCALE__VALUE=JACOBIAN__SCALE__VALUE__LIST[[IDXB__]]
+                
+                #jacobian base line
+                JACOBIAN__VFEED__BASELINE=matrix(ncol=REPLICA__,nrow=LENGTH__MODEL__VFEED)
+                
+                JACOBIAN__VFEED__ACTIVE=JACOBIAN__VFEED__ACTIVE__LIST[[IDXB__]]
+                
+                #init performance parameter
+                JACOBIAN__RELAX__VALUE=1
+                JACOBIAN__DMAX__CURRENT=0
+                JACOBIAN__DMAX__PREV=0
+                JACOBIAN__RATIO__CURRENT=0.5
+                JACOBIAN__RATIO__PREV=0
+                JACOBIAN__GMRRP__=0
+                
+                #check there are active vfeed
+                VFEED__ACTIVE__JACOBIAN__IDXS=which(JACOBIAN__VFEED__ACTIVE[,SIM__ITER__LOOP__IDX]==1)
+                LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS=length(VFEED__ACTIVE__JACOBIAN__IDXS)
+                
+                if (LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS==0)
+                {
+                  .MODEL_outputText(outputText=verbose,paste0('\n',callerName,'warning, a "NEWTON" algorithm is requested but all feedback variables have been exogenized or dropped from the Jacobian matrix in simulation period ',SIM__ITER__LOOP__IDX,', year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+SIM__ITER__LOOP__IDX-1),f=frequency),collapse='-'),', block ',IDXB__,'.\n')) 
+                  
+                } else {
+                  
+                  #check if a new Jacobian is required due to new vfeed exogenizations in current period
+                  if(SIM__ITER__LOOP__IDX>1 && 
+                     any(xor(JACOBIAN__VFEED__ACTIVE[,SIM__ITER__LOOP__IDX],JACOBIAN__VFEED__ACTIVE[,SIM__ITER__LOOP__IDX-1]))
+                  )
                   {
-                    #recalculate convergence speed indicators
-                    JACOBIAN__RATIO__CURRENT=ifelse(JACOBIAN__DMAX__PREV>0,JACOBIAN__DMAX__CURRENT/JACOBIAN__DMAX__PREV,JACOBIAN__RATIO__CURRENT)
-                    JACOBIAN__GMRRP__=sqrt(JACOBIAN__RATIO__CURRENT*JACOBIAN__RATIO__PREV)
-                    
-                    if (! is.finite(JACOBIAN__GMRRP__)) stop('No convergence, due to numeric overflow in Newton optimization.')
-                    
-                    #convergence evaluation
-                    if (JACOBIAN__GMRRP__ > GMRRP__LIMIT__1)
-                    {
-                      #convergence is too slow, we need a new Jacobian
-                      RECALCULATE__JACOBIAN=TRUE
-                      
-                    } else if(JACOBIAN__GMRRP__ > GMRRP__LIMIT__2)
-                    {
-                      #convergence is slow, we try to relax vfeed updates
-                      JACOBIAN__RELAX__VALUE=max(JACOBIAN__RELAX__VALUE*0.8,0.5)
-                    }
+                    RECALCULATE__JACOBIAN__ARRAY[IDXB__]=TRUE
                   }
-                 
-                  # build jacobian ---------------------------------------
-                  
-                  if (RECALCULATE__JACOBIAN) {
-                    
-                    #reset jacobian
-                    if (SIM__ALGO=='NEWTON')
-                    {
-                      .MODEL_outputText(outputText = verbose,paste0('\n',callerName,'building a new Jacobian matrix (',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,'x',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,') at iter ',IDX__ITER,' of year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' (simulation period ',simIterLoopIdx,').\n')) 
-                      JACOBIAN__SINGLE__MATRIX[]=NA
-                      
-                    } else{#FULLNEWTON
-                      
-                      .MODEL_outputText(outputText = verbose,paste0('\n',callerName,'building a new Jacobian array (',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,'x',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,'x',REPLICA__,') at iter ',IDX__ITER,' of year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' (simulation period ',simIterLoopIdx,').\n')) 
-                      JACOBIAN__FULL__MATRIX[]=NA
-                    }
-                    
-                    #backup vfeed current 
-                    VFEED__CURRENT__BACKUP=VFEED__CURRENT 
-                    
-                    #log operations in case of error
-                    LAST__EVAL__EQ='Jacobian Base Solution'
-                    
-                    #store baseline vfeed value (atm we already phave erformed one vsim evaluation)
-                    JACOBIAN__VFEED__BASELINE=VFEED__NEXT
-                    
-                    #restore ALL vfeed value
-                    #(ALL vfeed changed during last vsim evaluation so ALL must be restored)
-                    for (IDX__ in 1:LENGTH__MODEL__VFEED)
-                    {
-                      localE[[MODEL__VFEED[IDX__]]][MODEL__MAX__LAG__1,]=VFEED__CURRENT__BACKUP[IDX__,]
-                    }
-                    
-                    #cycle to vfeed, shock them one by one, re-calculate vsim, then store derivative in jacobian column
-                    for (IDX__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
-                    {  
-                      #calculate local shock
-                      TEMP__DELTA=localE[[MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__]]]][MODEL__MAX__LAG__1,]*JACOBIAN__SHOCK
-                      TEMP__DELTA[which(abs(TEMP__DELTA)<JACOBIAN__SHOCK)]=JACOBIAN__SHOCK
-                      
-                      #shock vfeed IDX__
-                      localE[[MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__]]]][MODEL__MAX__LAG__1,]=
-                        TEMP__DELTA+localE[[MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__]]]][MODEL__MAX__LAG__1,]
-                      
-                      #calculate shocked vsim model
-                      eval( vsim_expressions[[simIterLoopIdx]] ) 
-                      
-                      #log operations in case of error
-                      LAST__EVAL__EQ='Jacobian Shocked Solution'
-                      
-                      #calculate single-jacobian single column (note the 1s on the column indexes)
-                      if (SIM__ALGO=='NEWTON')
-                      { 
-                        JACOBIAN__SINGLE__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS,VFEED__ACTIVE__JACOBIAN__IDXS[IDX__]] = 
-                        - (
-                          VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS,1,drop=F]-
-                            JACOBIAN__VFEED__BASELINE[VFEED__ACTIVE__JACOBIAN__IDXS,1,drop=F]
-                        )/
-                        TEMP__DELTA[1,drop=F]
-                        
-                        #deal with principal diagonal
-                        JACOBIAN__SINGLE__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],VFEED__ACTIVE__JACOBIAN__IDXS[IDX__]] = 
-                          1 + JACOBIAN__SINGLE__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],VFEED__ACTIVE__JACOBIAN__IDXS[IDX__]]
-                        
-                      } else {#FULLNEWTON
-                        
-                        #calculate derivatives for all replicas
-                        TEMP__MATRIX =  - (
-                            VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F]-
-                              JACOBIAN__VFEED__BASELINE[VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F]
-                          )/
-                          matrix(TEMP__DELTA[,drop=F],nrow = LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,ncol=REPLICA__,byrow = T)
-                        
-                        for (IDX2__ in 1:REPLICA__)
-                        {
-                          #insert values in 3d array JACOBIAN__FULL__MATRIX
-                          JACOBIAN__FULL__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS,VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],IDX2__]=
-                          TEMP__MATRIX[,IDX2__,drop=F]
-                        
-                          #deal with principal diagonal
-                          JACOBIAN__FULL__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],IDX2__] = 
-                            1 + JACOBIAN__FULL__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],IDX2__]
-                        }
-                        
-                      } #end FULLNEWTON
-                     
-                      #restore ALL vfeed value
-                      for (IDX2__ in 1:LENGTH__MODEL__VFEED)
-                      {
-                        localE[[MODEL__VFEED[IDX2__]]][ MODEL__MAX__LAG__1,]=VFEED__CURRENT__BACKUP[IDX2__,]
-                      }
-                    }
-                    
-                    #restore VFEED__NEXT to old VFEED__CURRENT in order to run again vsim
-                    #(in vsim we init VFEED__CURRENT=VFEED__NEXT)
-                    VFEED__NEXT=VFEED__CURRENT__BACKUP
-                    
-                    #recalculate current vsim
-                    #(we need to restore also all vsim not in vfeed)
-                    eval( vsim_expressions[[simIterLoopIdx]] ) 
-                    
-                    #log operations in case of error
-                    LAST__EVAL__EQ='Jacobian Scaling'
-                    
-                    if (SIM__ALGO=='NEWTON')
-                    {
-                      #extract active vfeed
-                      JACOBIAN__SINGLE__MATRIX__ACTIVE=JACOBIAN__SINGLE__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS,VFEED__ACTIVE__JACOBIAN__IDXS,drop=F]
-                      
-                      #scale jacobian with current scale value
-                      for (IDX1__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
-                        for (IDX2__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
-                        {
-                          JACOBIAN__SINGLE__MATRIX__ACTIVE[IDX1__,IDX2__]=JACOBIAN__SINGLE__MATRIX__ACTIVE[IDX1__,IDX2__]*
-                            JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX2__],1]/
-                            JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],1]
-                        }
-                      
-                      #check singularities and calculate new scale values
-                      #we try max 10 times to normalize jacobian
-                      for (IDX__ in 1:10)
-                      {
-                        DONE__=TRUE
-                        
-                        for (IDX1__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
-                        {
-                          SROW__=sum(JACOBIAN__SINGLE__MATRIX__ACTIVE[IDX1__,]^2)
-                          SCOL__=sum(JACOBIAN__SINGLE__MATRIX__ACTIVE[,IDX1__]^2)
-                          
-                          if (!(is.finite(SROW__) && is.finite(SCOL__))) stop('No convergence, due to numeric overflow in Jacobian matrix scaling.')
-                          
-                          if (SROW__ < 1e-6 || SCOL__ < 1e-6) 
-                            stop(paste0('Jacobian matrix is singular in the variable "',
-                                        MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__]],'". Try to drop "',MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__]],
-                                        '" variable from the Jacobian matrix by using the "JacobianDrop" argument.'))
-                          
-                          FAC__=sqrt(sqrt(SROW__ / SCOL__))
-                          
-                          if (FAC__ < 0.5 || FAC__ > 2)
-                          {
-                            DONE__=FALSE
-                            
-                            JACOBIAN__SINGLE__MATRIX__ACTIVE[IDX1__,]=JACOBIAN__SINGLE__MATRIX__ACTIVE[IDX1__,]/FAC__
-                            JACOBIAN__SINGLE__MATRIX__ACTIVE[,IDX1__]=JACOBIAN__SINGLE__MATRIX__ACTIVE[,IDX1__]*FAC__
-                            
-                            JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],]=JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],1]*FAC__
-                            
-                            if (any(! is.finite(JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],])))
-                              stop('No convergence, due to numeric overflow in Jacobian matrix scaling.')
-                          }
-                          
-                        }#end cycle in active vfeed
-                        
-                        if (DONE__) break
-                        
-                      }#end 10 tries
-                      
-                      if (IDX__==10) .MODEL_outputText(outputText = verbose,paste0('\n',callerName,'warning, 10 iterations not sufficent to normalize the Jacobian matrix at year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' (simulation period ',simIterLoopIdx,').\n')) 
-                    
-                    } else {#FULLNEWTON scaling
-                      
-                      #extract active vfeed
-                      JACOBIAN__FULL__MATRIX__ACTIVE=JACOBIAN__FULL__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS,VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F]
-                      
-                      #scale jacobian with current scale value
-                      for (IDX3__ in 1:REPLICA__)
-                        for (IDX1__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
-                          for (IDX2__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
-                          {
-                              JACOBIAN__FULL__MATRIX__ACTIVE[IDX1__,IDX2__,IDX3__]=JACOBIAN__FULL__MATRIX__ACTIVE[IDX1__,IDX2__,IDX3__]*
-                              JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX2__],IDX3__]/
-                              JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],IDX3__]
-                          }
-                      
-                      #check singularities and calculate new scale values
-                      #we try max 10 times to normalize jacobian
-                      for (IDX__ in 1:10)
-                      {
-                        DONE__=TRUE
-                        
-                        for (IDX3__ in 1:REPLICA__)
-                        for (IDX1__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
-                        {
-                          SROW__=sum(JACOBIAN__FULL__MATRIX__ACTIVE[IDX1__,,IDX3__]^2)
-                          SCOL__=sum(JACOBIAN__FULL__MATRIX__ACTIVE[,IDX1__,IDX3__]^2)
-                          
-                          if (!(is.finite(SROW__) && is.finite(SCOL__))) stop('No convergence, due to numeric overflow in Jacobian array scaling.')
-                          
-                          if (SROW__ < 1e-6 || SCOL__ < 1e-6) 
-                            stop(paste0('Jacobian array is singular in the variable "',
-                                        MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__]],'". Try to drop "',MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__]],
-                                        '" variable from the Jacobian array by using the "JacobianDrop" argument.'))
-                          
-                          FAC__=sqrt(sqrt(SROW__ / SCOL__))
-                          
-                          if (FAC__ < 0.5 || FAC__ > 2)
-                          {
-                            DONE__=FALSE
-                            
-                            JACOBIAN__FULL__MATRIX__ACTIVE[IDX1__,,IDX3__]=JACOBIAN__FULL__MATRIX__ACTIVE[IDX1__,,IDX3__]/FAC__
-                            JACOBIAN__FULL__MATRIX__ACTIVE[,IDX1__,IDX3__]=JACOBIAN__FULL__MATRIX__ACTIVE[,IDX1__,IDX3__]*FAC__
-                            
-                            JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],IDX3__]=JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],IDX3__]*FAC__
-                            
-                            if (any(! is.finite(JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],IDX3__])))
-                              stop('No convergence, due to numeric overflow in Jacobian array scaling.')
-                          }
-                          
-                        }#end cycle in active vfeed
-                        
-                        if (DONE__) break
-                        
-                      }#end 10 tries
-                      
-                    }
-                    
-                    RECALCULATE__JACOBIAN=FALSE
-                    
-                  }
-                  
-                  # eval Jacobian ----------------------------------------
-                  
-                  #log operations in case of error
-                  LAST__EVAL__EQ='Jacobian Inversion'
-                  
-                  if (SIM__ALGO=='NEWTON')
-                  { 
-                    #solve(J,X) works well also with replicas, given J a single Jacobian matrix and X a matrix(vfeed,replica) 
-                    VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS,]=solve(JACOBIAN__SINGLE__MATRIX__ACTIVE,
-                                                                          (VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F]-VFEED__CURRENT[VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F])/
-                                                                          JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F]
-                                                                      )*JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F]*
-                                                                JACOBIAN__RELAX__VALUE+
-                                                                VFEED__CURRENT[VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F]
-                    
-                  } else { #FULLNEWTON
-                  
-                    #must avoid drop=T in jacobian array in solve  
-                    for (IDX__ in 1:REPLICA__)
-                      VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS,IDX__]=solve(JACOBIAN__FULL__MATRIX__ACTIVE[,,IDX__],
-                                                                                (VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS,IDX__,drop=F]-VFEED__CURRENT[VFEED__ACTIVE__JACOBIAN__IDXS,IDX__,drop=F])/
-                                                                                JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS,IDX__,drop=F]
-                                                                            )*JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS,IDX__]*
-                                                                              JACOBIAN__RELAX__VALUE+
-                                                                              VFEED__CURRENT[VFEED__ACTIVE__JACOBIAN__IDXS,IDX__]
-                      
-                  }  
-                  
-                  if (any(!is.finite(VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS,]))) stop('No convergence, due to non-finite solution in Jacobian feedback variables update.')
-                  
-                  #update active vfeed
-                  for (IDX__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
-                  {
-                    localE[[MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__]]]][MODEL__MAX__LAG__1,]=VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],]
-                  }
-                  
-                }#end length vfeed active
+                }
                 
               })#end with localE
               
-            }
+            }#end init jacobian
+            
+            # eval vsim ------------------------------
+            
+            #main sim stuff... cycle till convergence or max iter limit
+            #WARNING: THIS FOR-CYCLE MUST BE SUPER FAST
+            
+            vsim_expressions_local=vsim_expressions[[simIterLoopIdx]][[idxB]]
+            for (idxIter in 1:simIterLimit)
+            { 
+              #eval vsim expressions
+              eval( vsim_expressions_local,envir=localE) 
+              
+              if (simAlgo!='GAUSS-SEIDEL')
+              {
+                #proxy vars in localE
+                localE$IDX__ITER=idxIter
+               
+                with(localE,{
+                  
+                  if (LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS > 0)
+                  {
+                    # evaluate convergence speed --------------------------
+                    
+                    #backup current convergence speed indicators
+                    JACOBIAN__DMAX__PREV=JACOBIAN__DMAX__CURRENT
+                    JACOBIAN__DMAX__CURRENT=max(abs(VFEED__NEXT-VFEED__CURRENT))
+                    JACOBIAN__RATIO__PREV=JACOBIAN__RATIO__CURRENT
+                    
+                    if (SIM__ALGO=='NEWTON')
+                    {
+                      GMRRP__LIMIT__1=0.9
+                      GMRRP__LIMIT__2=0.75
+                      
+                    } else{#FULLNEWTON
+                      
+                      GMRRP__LIMIT__1=0.6
+                      GMRRP__LIMIT__2=0.45
+                    }
+                   
+                    if (IDX__ITER>1)
+                    {
+                      #recalculate convergence speed indicators
+                      if (JACOBIAN__DMAX__PREV>0) JACOBIAN__RATIO__CURRENT=JACOBIAN__DMAX__CURRENT/JACOBIAN__DMAX__PREV
+                      
+                      JACOBIAN__GMRRP__=sqrt(JACOBIAN__RATIO__CURRENT*JACOBIAN__RATIO__PREV)
+                      
+                      if (! is.finite(JACOBIAN__GMRRP__)) stop('No convergence, due to numeric overflow in Newton optimization in block ',IDXB__,'.')
+                      
+                      #convergence evaluation
+                      if (JACOBIAN__GMRRP__ > GMRRP__LIMIT__1)
+                      {
+                        #convergence is too slow, we need a new Jacobian
+                        RECALCULATE__JACOBIAN__ARRAY[IDXB__]=TRUE
+                        
+                      } else if(JACOBIAN__GMRRP__ > GMRRP__LIMIT__2)
+                      {
+                        #convergence is slow, we try to relax vfeed updates
+                        JACOBIAN__RELAX__VALUE=max(JACOBIAN__RELAX__VALUE*0.8,0.5)
+                      }
+                    }
+                     
+                    # build jacobian ---------------------------------------
+                    
+                    if (RECALCULATE__JACOBIAN__ARRAY[IDXB__]) {
+                      
+                      #reset jacobian
+                      if (SIM__ALGO=='NEWTON')
+                      {
+                        .MODEL_outputText(outputText=verbose,paste0('\n',callerName,'building a new Jacobian matrix (',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,'x',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,') in ',ifelse(hasLeads,'',paste0('simulation period ',simIterLoopIdx,', year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),', ')),'block ',IDXB__,', iteration ',IDX__ITER,'.')) 
+                        JACOBIAN__SINGLE__MATRIX=matrix(ncol=LENGTH__MODEL__VFEED,nrow=LENGTH__MODEL__VFEED)
+                        
+                      } else{#FULLNEWTON
+                        
+                        .MODEL_outputText(outputText=verbose,paste0('\n',callerName,'building a new Jacobian array (',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,'x',LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,'x',REPLICA__,') in ',ifelse(hasLeads,'',paste0('simulation period ',simIterLoopIdx,', year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),', ')),'block ',IDXB__,', iteration ',IDX__ITER,'.')) 
+                        
+                        JACOBIAN__FULL__MATRIX=array(dim=c(LENGTH__MODEL__VFEED,LENGTH__MODEL__VFEED,REPLICA__))
+                      }
+                      
+                      #backup vfeed current 
+                      VFEED__CURRENT__BACKUP=VFEED__CURRENT 
+                      
+                      #log operations in case of error
+                      LAST__EVAL__EQ='Jacobian Base Solution'
+                      
+                      #store baseline vfeed value (atm we already have performed one vsim evaluation)
+                      JACOBIAN__VFEED__BASELINE=VFEED__NEXT
+                      
+                      #restore ALL vfeed value
+                      #(ALL vfeed changed during last vsim evaluation so ALL must be restored)
+                      for (IDX__ in 1:LENGTH__MODEL__VFEED)
+                      {
+                        localE[[MODEL__VFEED[IDX__]]][MODEL__MAX__LAG__1,]=VFEED__CURRENT__BACKUP[IDX__,]
+                      }
+                      
+                      #cycle to vfeed, shock them one by one, re-calculate vsim, then store derivative in jacobian column
+                      for (IDX__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
+                      {  
+                        #calculate local shock
+                        TEMP__DELTA=localE[[MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__]]]][MODEL__MAX__LAG__1,]*JACOBIAN__SHOCK
+                        TEMP__DELTA[which(abs(TEMP__DELTA)<JACOBIAN__SHOCK)]=JACOBIAN__SHOCK
+                        
+                        #shock vfeed IDX__
+                        localE[[MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__]]]][MODEL__MAX__LAG__1,]=
+                          TEMP__DELTA+localE[[MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__]]]][MODEL__MAX__LAG__1,]
+                        
+                        #calculate shocked vsim model
+                        eval( vsim_expressions_local ) 
+                        
+                        #log operations in case of error
+                        LAST__EVAL__EQ='Jacobian Shocked Solution'
+                        
+                        #calculate single-jacobian single column (note the 1s on the column indexes)
+                        if (SIM__ALGO=='NEWTON')
+                        { 
+                          JACOBIAN__SINGLE__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS,VFEED__ACTIVE__JACOBIAN__IDXS[IDX__]] = 
+                          - (
+                            VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS,1,drop=F]-
+                              JACOBIAN__VFEED__BASELINE[VFEED__ACTIVE__JACOBIAN__IDXS,1,drop=F]
+                          )/
+                          TEMP__DELTA[1,drop=F]
+                          
+                          #deal with principal diagonal
+                          JACOBIAN__SINGLE__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],VFEED__ACTIVE__JACOBIAN__IDXS[IDX__]] = 
+                            1 + JACOBIAN__SINGLE__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],VFEED__ACTIVE__JACOBIAN__IDXS[IDX__]]
+                          
+                        } else {#FULLNEWTON
+                          
+                          #calculate derivatives for all replicas
+                          TEMP__MATRIX =  - (
+                              VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F]-
+                                JACOBIAN__VFEED__BASELINE[VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F]
+                            )/
+                            matrix(TEMP__DELTA[,drop=F],nrow=LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS,ncol=REPLICA__,byrow=T)
+                          
+                          for (IDX2__ in 1:REPLICA__)
+                          {
+                            #insert values in 3d array JACOBIAN__FULL__MATRIX
+                            JACOBIAN__FULL__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS,VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],IDX2__]=
+                            TEMP__MATRIX[,IDX2__,drop=F]
+                          
+                            #deal with principal diagonal
+                            JACOBIAN__FULL__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],IDX2__] = 
+                              1 + JACOBIAN__FULL__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],IDX2__]
+                          }
+                          
+                        } #end FULLNEWTON
+                       
+                        #restore ALL vfeed value
+                        for (IDX2__ in 1:LENGTH__MODEL__VFEED)
+                        {
+                          localE[[MODEL__VFEED[IDX2__]]][ MODEL__MAX__LAG__1,]=VFEED__CURRENT__BACKUP[IDX2__,]
+                        }
+                      }
+                      
+                      #restore VFEED__NEXT to old VFEED__CURRENT in order to run again vsim
+                      #(in vsim we init VFEED__CURRENT=VFEED__NEXT)
+                      VFEED__NEXT=VFEED__CURRENT__BACKUP
+                      
+                      #recalculate current vsim
+                      #(we need to restore also all vsim not in vfeed)
+                      eval(vsim_expressions_local) 
+                      
+                      #log operations in case of error
+                      LAST__EVAL__EQ='Jacobian Scaling'
+                      
+                      if (SIM__ALGO=='NEWTON')
+                      {
+                        #extract active vfeed
+                        JACOBIAN__SINGLE__MATRIX__ACTIVE=JACOBIAN__SINGLE__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS,VFEED__ACTIVE__JACOBIAN__IDXS,drop=F]
+                        
+                        #scale jacobian with current scale value
+                        for (IDX1__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
+                          for (IDX2__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
+                          {
+                            JACOBIAN__SINGLE__MATRIX__ACTIVE[IDX1__,IDX2__]=JACOBIAN__SINGLE__MATRIX__ACTIVE[IDX1__,IDX2__]*
+                              JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX2__],1]/
+                              JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],1]
+                          }
+                        
+                        #check singularities and calculate new scale values
+                        #we try max 10 times to normalize jacobian
+                        for (IDX__ in 1:10)
+                        {
+                          DONE__=TRUE
+                          
+                          for (IDX1__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
+                          {
+                            SROW__=sum(JACOBIAN__SINGLE__MATRIX__ACTIVE[IDX1__,]^2)
+                            SCOL__=sum(JACOBIAN__SINGLE__MATRIX__ACTIVE[,IDX1__]^2)
+                            
+                            if (!(is.finite(SROW__) && is.finite(SCOL__))) stop('No convergence, due to numeric overflow in Jacobian matrix scaling.')
+                            
+                            if (SROW__ < 1e-6 || SCOL__ < 1e-6) 
+                              stop(paste0('Jacobian matrix is singular in the variable "',
+                                          MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__]],'". Try to drop "',strsplit(MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__]],'__LEAD__')[[1]][1],
+                                          '" variable from the Jacobian matrix by using the "JacobianDrop" argument.'))
+                            
+                            FAC__=sqrt(sqrt(SROW__ / SCOL__))
+                            
+                            if (FAC__ < 0.5 || FAC__ > 2)
+                            {
+                              DONE__=FALSE
+                              
+                              JACOBIAN__SINGLE__MATRIX__ACTIVE[IDX1__,]=JACOBIAN__SINGLE__MATRIX__ACTIVE[IDX1__,]/FAC__
+                              JACOBIAN__SINGLE__MATRIX__ACTIVE[,IDX1__]=JACOBIAN__SINGLE__MATRIX__ACTIVE[,IDX1__]*FAC__
+                              
+                              JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],]=JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],1]*FAC__
+                              
+                              if (any(! is.finite(JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],])))
+                                stop('No convergence, due to numeric overflow in Jacobian matrix scaling.')
+                            }
+                            
+                          }#end cycle in active vfeed
+                          
+                          if (DONE__) break
+                          
+                        }#end 10 tries
+                        
+                        if (IDX__==10) 
+                          .MODEL_outputText(outputText=verbose,paste0('\n',callerName,'warning, 10 iterations not sufficent to normalize the Jacobian matrix in',ifelse(hasLeads,'',paste0(' simulation period ',simIterLoopIdx,', year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),',')),' block ', IDXB__ ,', iteration ',IDX__ITER,'.\n')) 
+                      
+                      } else {#FULLNEWTON scaling
+                        
+                        #extract active vfeed
+                        JACOBIAN__FULL__MATRIX__ACTIVE=JACOBIAN__FULL__MATRIX[VFEED__ACTIVE__JACOBIAN__IDXS,VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F]
+                        
+                        #scale jacobian with current scale value
+                        for (IDX3__ in 1:REPLICA__)
+                          for (IDX1__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
+                            for (IDX2__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
+                            {
+                                JACOBIAN__FULL__MATRIX__ACTIVE[IDX1__,IDX2__,IDX3__]=JACOBIAN__FULL__MATRIX__ACTIVE[IDX1__,IDX2__,IDX3__]*
+                                JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX2__],IDX3__]/
+                                JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],IDX3__]
+                            }
+                        
+                        #check singularities and calculate new scale values
+                        #we try max 10 times to normalize jacobian
+                        for (IDX__ in 1:10)
+                        {
+                          DONE__=TRUE
+                          
+                          for (IDX3__ in 1:REPLICA__)
+                          for (IDX1__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
+                          {
+                            SROW__=sum(JACOBIAN__FULL__MATRIX__ACTIVE[IDX1__,,IDX3__]^2)
+                            SCOL__=sum(JACOBIAN__FULL__MATRIX__ACTIVE[,IDX1__,IDX3__]^2)
+                            
+                            if (!(is.finite(SROW__) && is.finite(SCOL__))) stop('No convergence, due to numeric overflow in Jacobian array scaling.')
+                            
+                            if (SROW__ < 1e-6 || SCOL__ < 1e-6) 
+                              stop(paste0('Jacobian array is singular in the variable "',
+                                          MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__]],'". Try to drop "',strsplit(MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__]],'__LEAD__')[[1]][1],
+                                          '" variable from the Jacobian array by using the "JacobianDrop" argument.'))
+                            
+                            FAC__=sqrt(sqrt(SROW__ / SCOL__))
+                            
+                            if (FAC__ < 0.5 || FAC__ > 2)
+                            {
+                              DONE__=FALSE
+                              
+                              JACOBIAN__FULL__MATRIX__ACTIVE[IDX1__,,IDX3__]=JACOBIAN__FULL__MATRIX__ACTIVE[IDX1__,,IDX3__]/FAC__
+                              JACOBIAN__FULL__MATRIX__ACTIVE[,IDX1__,IDX3__]=JACOBIAN__FULL__MATRIX__ACTIVE[,IDX1__,IDX3__]*FAC__
+                              
+                              JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],IDX3__]=JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],IDX3__]*FAC__
+                              
+                              if (any(! is.finite(JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS[IDX1__],IDX3__])))
+                                stop('No convergence, due to numeric overflow in Jacobian array scaling.')
+                            }
+                            
+                          }#end cycle in active vfeed
+                          
+                          if (DONE__) break
+                          
+                        }#end 10 tries
+                        
+                      }
+                      
+                      RECALCULATE__JACOBIAN__ARRAY[IDXB__]=FALSE
+                      
+                    }
+                    
+                    # eval Jacobian ----------------------------------------
+                    
+                    #log operations in case of error
+                    LAST__EVAL__EQ='Jacobian Inversion'
+                    
+                    if (SIM__ALGO=='NEWTON')
+                    { 
+                      #solve(J,X) works well also with replicas, given J a single Jacobian matrix and X a matrix(vfeed,replica) 
+                      VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS,]=solve(JACOBIAN__SINGLE__MATRIX__ACTIVE,
+                                                                            (VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F]-VFEED__CURRENT[VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F])/
+                                                                            JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F]
+                                                                        )*JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F]*
+                                                                  JACOBIAN__RELAX__VALUE+
+                                                                  VFEED__CURRENT[VFEED__ACTIVE__JACOBIAN__IDXS,,drop=F]
+                      
+                    } else { #FULLNEWTON
+                    
+                      #must avoid drop=T in jacobian array in solve  
+                      for (IDX__ in 1:REPLICA__)
+                        VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS,IDX__]=solve(JACOBIAN__FULL__MATRIX__ACTIVE[,,IDX__],
+                                                                                  (VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS,IDX__,drop=F]-VFEED__CURRENT[VFEED__ACTIVE__JACOBIAN__IDXS,IDX__,drop=F])/
+                                                                                  JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS,IDX__,drop=F]
+                                                                              )*JACOBIAN__SCALE__VALUE[VFEED__ACTIVE__JACOBIAN__IDXS,IDX__]*
+                                                                                JACOBIAN__RELAX__VALUE+
+                                                                                VFEED__CURRENT[VFEED__ACTIVE__JACOBIAN__IDXS,IDX__]
+                        
+                    }  
+                    
+                    if (any(!is.finite(VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS,]))) stop('No convergence, due to non-finite solution in Jacobian feedback variables update.')
+                    
+                    #update active vfeed
+                    for (IDX__ in 1:LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS)
+                    {
+                      localE[[MODEL__VFEED[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__]]]][MODEL__MAX__LAG__1,]=VFEED__NEXT[VFEED__ACTIVE__JACOBIAN__IDXS[IDX__],]
+                    }
+                    
+                  }#end length vfeed active
+                  
+                })#end with localE
+                
+              }
+              
+              if (verbose && verboseSincePeriod<=simIterLoopIdx && length(verboseVars)>0)
+              {
+                  .printVerboseSim('VSIM',
+                                   ConstantAdjustment,
+                                   verboseVars,
+                                   frequency,
+                                   TSRANGE,
+                                   simSteps,
+                                   simIterLoopIdx,
+                                   idxB,
+                                   idxIter,
+                                   model_max_lag_1,
+                                   length_model_vexog,
+                                   model_vendog,
+                                   model_vexog,
+                                   replica,
+                                   localE,
+                                   model_vpre,
+                                   model_vsim,
+                                   model_vpost,
+                                   hasLeads)
+                
+              }
+              
+              #eval convergence expression 
+              with(localE,{
+                
+                TMPV__=abs(VFEED__CURRENT)
+                TMPV__[which(TMPV__<1)]=1
+                
+              if (max(
+                         abs((VFEED__NEXT - VFEED__CURRENT))
+                         /TMPV__ 
+                       ) < CONVERGENCE__VALUE
+                  )
+                    {
+                      #if convergence...exit loop  
+                      FC__=1
+                    }
+              
+              })
+              
+              if (localE$FC__==1)
+              { 
+                flagConvergence=1
+                break
+              }
+              
+            }#main convergence vsim for
+            
+            #store jacobians proxies
+            with(localE,{
+              
+              if ((SIM__ALGO!='GAUSS-SEIDEL') && (LENGTH__VFEED__ACTIVE__JACOBIAN__IDXS > 0)  )
+              {
+                if (SIM__ALGO=='NEWTON')
+                {
+                  JACOBIAN__SINGLE__MATRIX__ACTIVE__LIST[[IDXB__]]=JACOBIAN__SINGLE__MATRIX__ACTIVE
+                  
+                } else{#FULLNEWTON
+                  
+                  JACOBIAN__FULL__MATRIX__ACTIVE__LIST[[IDXB__]]=JACOBIAN__FULL__MATRIX__ACTIVE
+                }
+                
+                JACOBIAN__SCALE__VALUE__LIST[[IDXB__]]=JACOBIAN__SCALE__VALUE
+              }
+              
+            })
+            
+          }# length vsim > 0
+          
+          # eval vpost ------------------------------
+          
+          if ( length_model_vpost[idxB]>0 )
+          {
+            #eval vpost expressions
+            eval(vpost_expressions[[simIterLoopIdx]][[idxB]],envir=localE) 
             
             if (verbose && verboseSincePeriod<=simIterLoopIdx && length(verboseVars)>0)
             {
-              cat('\nVSIM eval.:\n')
-              cat('VSIM vars: ',paste0(model_vsim,collapse=', '),'\n')
-              
-              .printVerboseSim(ConstantAdjustment,
-                               verboseVars,
-                               frequency,
-                               TSRANGE,
-                               simIterLoopIdx,
-                               idxIter,
-                               model_max_lag_1,
-                               length_model_vexog,
-                               model_vexog,
-                               replica,
-                               localE,
-                               model_vpre,
-                               model_vsim,
-                               model_vpost)
+                .printVerboseSim('VPOST',
+                                 ConstantAdjustment,
+                                 verboseVars,
+                                 frequency,
+                                 TSRANGE,
+                                 simSteps,
+                                 simIterLoopIdx,
+                                 idxB,
+                                 idxIter,
+                                 model_max_lag_1,
+                                 length_model_vexog,
+                                 model_vendog,
+                                 model_vexog,
+                                 replica,
+                                 localE,
+                                 model_vpre,
+                                 model_vsim,
+                                 model_vpost,
+                                 hasLeads)
               
             }
-            
-            #eval convergence expression 
-            if (with(localE,
-                     max(
-                       abs((VFEED__NEXT - VFEED__CURRENT))
-                       /
-                       ifelse(abs(VFEED__CURRENT)>1,abs(VFEED__CURRENT),1) 
-                     ) < CONVERGENCE__VALUE
-            ))
+          }
+          
+          #...messages
+          if (flagConvergence==1) 
+          {
+            if (verbose) 
             {
-              #if convergence...exit loop  
-              flagConvergence=1 
-              break 
+              if (hasLeads) 
+              {
+                .MODEL_outputText(outputText = !quietly,paste0('\n',callerName,'convergence reached in block ', idxB, ', iteration ',idxIter,'.\n')) 
+              }
+              else {
+                .MODEL_outputText(outputText = !quietly,paste0('\n',callerName,'simulation period ',simIterLoopIdx,', year-period ',
+                           paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),', convergence reached in block ', idxB, ', iteration ',idxIter,'.\n')) 
+              }
             }
-            
-          }#main convergence vsim for
+              
+          } else
+          {
+            if (hasLeads) 
+            {
+              .MODEL_outputText(outputText = !quietly,paste0('\n',callerName,'warning, in block ',idxB,' no convergence in ',idxIter,' iterations.\n')) 
+             }
+            else {
+              .MODEL_outputText(outputText = !quietly,paste0('\n',callerName,'warning, in simulation period ',simIterLoopIdx,', year-period ',
+                                                             paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),', block ',idxB,' no convergence in ',idxIter,' iterations.\n')) 
+            } 
+          }
+          
+        }#end vblocks for
+        
+        if (hasLeads)
+        {
+          if (MULTMATRIX)
+          {.MODEL_outputText(outputText=!quietly,paste0('\r','Multiplier Matrix:'),sprintf("%10.2f",100),'%') 
+          } else if (STOCHSIMULATE)
+          {.MODEL_outputText(outputText=!quietly,paste0('\r','Stochastic Simulation:'),sprintf("%10.2f",100),'%') 
+          } else if (OPTIMIZE)
+          {.MODEL_outputText(outputText=!quietly,paste0('\r','Optimize:'),sprintf("%10.2f",100),'%') 
+          } else
+          {.MODEL_outputText(outputText=!quietly,paste0('\r','Simulation:'),sprintf("%10.2f",100),'%') }
           
         }
+       
+        #store simulated values
+        tmpIdx=simIterLoopIdx+model_max_lag 
         
-        # eval vpost ------------------------------
+        #actual == original + leaded vendog
+        actual_model_vendog=model_vendog
         
-        #eval vpost expressions
-        eval(vpost_expressions[[simIterLoopIdx]],envir=localE) 
+        if (hasLeads && (simSteps>1))
+          for (idxSS in 1:(simSteps-1))
+            actual_model_vendog=c(actual_model_vendog,paste0(model_vendog,'__LEAD__',idxSS))
         
-        if (verbose && verboseSincePeriod<=simIterLoopIdx && length(verboseVars)>0)
-        {
-          cat('\nVPOST eval.:\n') 
-          cat('VPOST vars: ',paste0(model_vpost,collapse=', '),'\n') 
-          
-          .printVerboseSim(ConstantAdjustment,
-                           verboseVars,
-                           frequency,
-                           TSRANGE,
-                           simIterLoopIdx,
-                           idxIter,
-                           model_max_lag_1,
-                           length_model_vexog,
-                           model_vexog,
-                           replica,
-                           localE,
-                           model_vpre,
-                           model_vsim,
-                           model_vpost)
-          
-        }
-        
-        #...messages
-        if (flagConvergence==1) 
-        {
-          if (verbose) cat(paste0('Prd. ',sprintf("%4i",simIterLoopIdx),', ',
-                                  paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),' convergence reached in iter ',idxIter,'\n')) 
-        } else
-        {
-          #if (verbose) 
-          .MODEL_outputText(outputText = !quietly,paste0('\n',callerName,'warning, at prd ',sprintf("%4i",simIterLoopIdx),' no convergence in ',idxIter,' iterations.\n')) 
-        }
-        
-      }#not RESCHECK
-      
-      #store simulated values
-      tmpIdx=simIterLoopIdx+model_max_lag 
-      
-      for (currentVendog in (model_vendog))
-      { #cycle in endogenous
-        
-        #get simulated values
-        tmpValue = localE[[currentVendog]][drop=FALSE,1+model_max_lag,] 
-        
-        #store in simulation list (each row is a sim period)
-        if (simType!='RESCHECK')  
-          simulation[[currentVendog]]=rbind(simulation[[currentVendog]],tmpValue) 
-        
-        #if dynamic or forecast sim type is requested
-        #then store simulated values also as lagged values in ORIGINAL vendogs
-        if (simType=='DYNAMIC' || simType=='FORECAST')
+        #export to simulation list
+        for (idxI in 1:length(actual_model_vendog))
         { 
-          #get ORIGINAL values
-          tmpArr = localE[[paste0(currentVendog,'__ORIGINAL')]]
+          currentVendog = (actual_model_vendog)[idxI]
           
-          #insert simulated value
-          tmpArr[tmpIdx,] = tmpValue 
+          #cycle in endogenous
           
-          #store in ORIGNAL for next iterations
-          localE[[paste0(currentVendog,'__ORIGINAL')]]=tmpArr
-        }
-        
-      }#end for save simulate observation
+          #get simulated values
+          tmpValue=localE[[currentVendog]][model_max_lag_1,,drop=F] 
+          
+          #store in simulation list (each row is a sim period)
+          simulation[[currentVendog]]=rbind(simulation[[currentVendog]],tmpValue) 
+          
+          #if dynamic or forecast sim type is requested
+          #then store simulated values also as lagged values in ORIGINAL vendogs
+          if (!hasLeads)
+          if (simType=='DYNAMIC' || simType=='FORECAST')
+          { 
+            #get ORIGINAL values
+            tmpArr=localE[[paste0(currentVendog,'__ORIGINAL__EXTENDED')]]
+            
+            #insert simulated value
+            tmpArr[tmpIdx,] = tmpValue 
+            
+            #store in ORIGNAL for next iterations
+            localE[[paste0(currentVendog,'__ORIGINAL__EXTENDED')]]=tmpArr
+          }
+          
+        }#end for save simulate observation
       
+      }#not RESCHECK
       
       # deal with optimize function -------------------------------------
       
       if (OPTIMIZE)
       {
         #time series of OPTIMIZE FUNs results
+        #must be initialized with NA
+        #zeros values could provide misleading information
         optFunTSRow=rep(NA,replica-1) 
         
+        #deal with no lead case
         for (idxIE in 1:length(OptimizeFunctions))
         {
           #check if we are inside optimize function tsrange
           if ((model_max_lag+simIterLoopIdx) %in% OptimizeFunctions[[idxIE]]$TSRANGE)
           {
+            
             tryCatch({
               
               #in RESCHECK localE does not contain simulated ts
@@ -8099,13 +9899,15 @@ SIMULATE <- function(model=NULL,
                 localE_BK=localE
                 
                 #store simulated in localE
-                for (idxS in names(simulation))
+                for (idxI in 1:length(simulation))
                 {
+                  idxS=names(simulation)[idxI]
                   #get original endo in localE
                   tempM=localE[[idxS]]
+                 
                   
                   #check simulated obs are coherent 
-                  if ( (length((model_max_lag+2-simIterLoopIdx)  : (  model_max_lag_1)) != dim(simulation[[idxS]])[1]) ||
+                  if ( (simIterLoopIdx != dim(simulation[[idxS]])[1]) ||
                        (dim(tempM)[2] != dim(simulation[[idxS]])[2] ))
                     stop('error in adjusting localE in RESCHECK.')
                   
@@ -8116,12 +9918,12 @@ SIMULATE <- function(model=NULL,
                   localE[[idxS]]=tempM
                 }
               }
-              
+             
               #eval OPTIMIZ FUNCTION idxIE in current simIterLoopIdx period
               localE$LAST__EVAL__EQ=paste0('OptimizeFunctions$',names(OptimizeFunctions)[idxIE])
-              currentFunctionResults=eval(OptimizeFunctions[[idxIE]]$funExpr,envir = localE)
+              currentFunctionResults=eval(OptimizeFunctions[[idxIE]]$funExpr,envir=localE)
               
-              if (length(currentFunctionResults)==0 ) stop('function must be computable.')
+              if (length(currentFunctionResults)==0) stop('function must be computable.')
               
               if (length(optFunResults) != length(currentFunctionResults[-1])) stop('unknown error.')
               
@@ -8145,13 +9947,112 @@ SIMULATE <- function(model=NULL,
             
           }#end if inside opt fun tsrange
           
-        }# end cycle opt funs
+        }#end cycle opt funs
+        
+        #deal with lead cases
+        if (hasLeads && simSteps>1)
+        {
+          for (idxSS in 1:(simSteps-1))
+          {
+            #init leaded optimize function results
+            assign(paste0('optFunTSRow__LEAD__',idxSS),rep(NA,replica-1))
+          }
+          
+          for (idxIE in 1:length(OptimizeFunctions))
+          {
+            eqInExprText=as.character(OptimizeFunctions[[idxIE]]$funExpr)
+            
+            leadedFunExprsTemp=lapply(.leadEqSim(names(OptimizeFunctions)[idxIE],
+                                          eqInExprText,
+                                          model_max_lag_1,
+                                         simSteps
+                                          ),
+                                      function(x) parse(text=x))
+            
+            for (idxSS in 1:(simSteps-1))
+            {
+              #idxSS period of simulation tsrange is in optimize function tsrange
+              if ((model_max_lag+idxSS+1) %in% OptimizeFunctions[[idxIE]]$TSRANGE)
+              {
+                
+                tryCatch({
+                  
+                #in RESCHECK localE does not contain simulated ts
+                if (simType=='RESCHECK')
+                {
+                  #backup env
+                  localE_BK=localE
+                  
+                  #store simulated in localE
+                  for (idxI in 1:length(simulation))
+                  {
+                    idxS=names(simulation)[idxI]
+                    
+                    #get original endo in localE
+                    tempM=localE[[idxS]]
+                    
+                    #check simulated obs are coherent 
+                    if ( (simIterLoopIdx != dim(simulation[[idxS]])[1]) ||
+                         (dim(tempM)[2] != dim(simulation[[idxS]])[2] ))
+                      stop('error in adjusting localE in RESCHECK.')
+                    
+                    #modify endo obs with simulated
+                    tempM[(model_max_lag+2-simIterLoopIdx)  : (  model_max_lag_1),]=simulation[[idxS]]
+                    
+                    #assign to localE
+                    localE[[idxS]]=tempM
+                  }
+                }
+                
+                #get name of leaded opt fun
+                tempName=paste0(names(OptimizeFunctions)[idxIE],'__LEAD__',idxSS)
+                
+                #eval OPTIMIZ FUNCTION idxIE in current simIterLoopIdx period
+                localE$LAST__EVAL__EQ=paste0('OptimizeFunctions$',tempName)
+                currentFunctionResults=eval(leadedFunExprsTemp[[tempName]],envir=localE)
+                
+                if (length(currentFunctionResults)==0 ) stop('function must be computable.')
+                
+                if (length(optFunResults) != length(currentFunctionResults[-1])) stop('unknown error.')
+                
+                #first unperturbed column must be removed
+                optFunResults=optFunResults + currentFunctionResults[-1]
+                assign(paste0('optFunTSRow__LEAD__',idxSS),currentFunctionResults[-1])
+                
+                if (simType=='RESCHECK')
+                {
+                  #restore env
+                  localE=localE_BK
+                }
+                
+                },error=function(err) stop(paste0('Cannot evaluate "OptimizeFunctions$',
+                                                  names(OptimizeFunctions)[idxIE],
+                                                  '", FUNCTION definition "',
+                                                  OptimizeFunctions[[idxIE]]$FUNCTION,'": ',err$message))
+                ,warning=function(warn) cat(paste0('\n',callerName,'warning on evaluating "OptimizeFunctions$',
+                                                   names(OptimizeFunctions)[idxIE],': ',warn$message),'\n')
+                )
+              }
+            }
+          }
+        }#hasLeads
         
         #build OPTIMIZE FUNs ts by rbind
         optFunTSMM=rbind(optFunTSMM,optFunTSRow)
+        
+        #build TSMM in lead cases
+        if (hasLeads && simSteps>1)
+        {
+          for (idxSS in 1:(simSteps-1))
+          {
+            optFunTSMM=rbind(optFunTSMM,get(paste0('optFunTSRow__LEAD__',idxSS)))
+          }
+        }
+        
         rownames(optFunTSMM)=NULL
-      }
-      
+        
+      }#end if optimize
+       
     }#main cycle
     
     # simulate error message -----------------------------------------------    
@@ -8161,30 +10062,55 @@ SIMULATE <- function(model=NULL,
     #intercept sim algo errors
     
     if (!exists('idxIter')) idxIter=0 
+    if (!exists('idxB')) idxB=0 
     if (!exists('simIterLoopIdx')) simIterLoopIdx=1 
     if (verbose && length(verboseVars)>0) 
     {
-      cat('\nERROR SNAPSHOT:\n') 
-      .printVerboseSim(ConstantAdjustment,
+      .printVerboseSim('ERROR',
+                       ConstantAdjustment,
                        verboseVars,
                        frequency,
                        TSRANGE,
+                       simSteps,
                        simIterLoopIdx,
+                       idxB,
                        idxIter,
                        model_max_lag_1,
                        length_model_vexog,
+                       model_vendog,
                        model_vexog,
                        replica,
                        localE,
                        model_vpre,
                        model_vsim,
-                       model_vpost)
+                       model_vpost,
+                       hasLeads)
     }
     
-    stop(paste0('\n',callerName,'error in simulation of type "',simType,'" at year-period ',
+    if (hasLeads && simSteps>1)
+    {
+      #if error and leads extract varName from varName_LEAD_x
+      if (grepl('__LEAD__',localE$LAST__EVAL__EQ))
+      {
+        tempSplit=strsplit(localE$LAST__EVAL__EQ,'__LEAD__')[[1]]
+        lastEqLogOut=tempSplit[1]
+        simIterLoopIdx=as.integer(tempSplit[2])+1
+      } else {
+        lastEqLogOut=localE$LAST__EVAL__EQ
+        simIterLoopIdx=1
+      }
+       
+    } else {
+      
+      simIterLogOut=simIterLoopIdx
+      lastEqLogOut=localE$LAST__EVAL__EQ
+      
+    }
+    
+    stop(paste0('\n',callerName,'error in simulation of type "',simType,'", ','simulation period ',simIterLoopIdx,', year-period ',
                 paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]+simIterLoopIdx-1),f=frequency),collapse='-'),
-                ' (simulation period ',simIterLoopIdx,') in iteration ',idxIter,' while evaluating "',
-                localE$LAST__EVAL__EQ,'".\n',err$message,
+                ', ','block ', idxB ,', iteration ',idxIter,', while evaluating "',
+                lastEqLogOut,'".\n',err$message,
                 ifelse(quietly==FALSE,'','\nHint: disable "quietly" in order to get insights on lagged missings that could impact on computation.'),
                 ifelse(simType !='RESCHECK','\nHint: try a "RESCHECK" simulation in order to check equations definition and computability.',''),
                 ifelse(replica==1 && simType !='RESCHECK' && simAlgo =='GAUSS-SEIDEL','\nHint: try the "NEWTON" simulation algorithm.',''),
@@ -8193,11 +10119,50 @@ SIMULATE <- function(model=NULL,
                 ifelse(OPTIMIZE,'\nHint: in OPTIMIZE() each realization must be computable in order to avoid errors.','')
     ))
   }) 
+
+  # post SIMULATE -------------------------------------------------------------
+ 
+  #deal with lead rbind
+  if (length(simulation)>0)
+  {
+    #row bind leaded variables back to original one
+    if (hasLeads && simSteps>1)
+    {
+      for ( idxI in 1:length(model_vendog))
+      {
+        vendogName=model_vendog[idxI]
+        
+        for (idxSS in 1:(simSteps-1))
+        { 
+          simulation[[vendogName]]=rbind(simulation[[vendogName]],simulation[[paste0(vendogName,'__LEAD__',idxSS)]])
+          simulation[[paste0(vendogName,'__LEAD__',idxSS)]]=NULL
+        }
+      }
+    }
+  }
   
   # build MULT MATRIX ------------------------------------------------------------
   
   if (MULTMATRIX==TRUE)
   {
+    
+    #restore original INSTRUMENT
+    if (hasLeads && simSteps>1)
+    {
+      for (idxI in 1:length(INSTRUMENT))
+      {  
+        idxN=INSTRUMENT[idxI]
+        
+        for (idxSS in 1:(simSteps-1))
+        { 
+          #deal with leads
+          #row bind leaded variables back to original one
+          localE[[paste0(idxN,'__ORIGINAL__EXTENDED')]]=rbind(localE[[paste0(idxN,'__ORIGINAL__EXTENDED')]],
+                                                              localE[[paste0(idxN,'__LEAD__',idxSS)]][model_max_lag_1,,drop=F])
+          localE[[paste0(idxN,'__LEAD__',idxSS)]]=NULL
+        }
+      }
+    }
     
     lenT=length(TARGET)
     lenI=length(INSTRUMENT)
@@ -8235,7 +10200,7 @@ SIMULATE <- function(model=NULL,
     tmpIA=list()
     for (idxI in 1:lenI)
     {
-      tmpIA[[idxI]]=localE[[paste0(INSTRUMENT[[idxI]],'__ORIGINAL')]]
+      tmpIA[[idxI]]=localE[[paste0(INSTRUMENT[[idxI]],'__ORIGINAL__EXTENDED')]]
     }
     
     #build matrix MM
@@ -8245,27 +10210,30 @@ SIMULATE <- function(model=NULL,
       
       for (idxTS in 1:simSteps)
       {
+        rowMM=idxT+(idxTS-1)*lenT 
+        
         for (idxI in 1:lenI)
         {
           tmpI=tmpIA[[idxI]] 
           
+          colTbase=1+(idxI-1)*simSteps
+          
           for (idxIS in 1:simSteps)
           {
-            rowT=idxTS 
-            colT=1+(idxI-1)*simSteps+idxIS 
+            colT=colTbase+idxIS 
             
-            dy=tmpT[rowT,colT]-tmpT[rowT,1] 
+            dy=tmpT[idxTS,colT]-tmpT[idxTS,1] 
             
             rowI=model_max_lag+idxIS 
             colI=1+(idxI-1)*simSteps+idxIS 
             
-            dx=tmpI[rowI,colI]-tmpI[rowI,1]
+            dx=tmpI[rowI,colT]-tmpI[rowI,1]
             
-            rowMM=idxT+(idxTS-1)*lenT 
-            colMM=idxI+(idxIS-1)*lenI 
+            colMM=idxI+(idxIS-1)*lenI  
             
             #dx cannot be 0 because of shocks
-            MultiplierMatrix[rowMM,colMM]=ifelse(dy==0,0,dy/dx)
+            if (dy==0)
+            {MultiplierMatrix[rowMM,colMM]=0} else {MultiplierMatrix[rowMM,colMM]=dy/dx} 
             
           }
         }
@@ -8277,8 +10245,6 @@ SIMULATE <- function(model=NULL,
   
   .MODEL_outputText(outputText=!quietly,'\n') 
   
-  # post SIMULATE -------------------------------------------------------------
-  
   #convert results to time series if replica==1
   if (length(simulation)>0)
   {
@@ -8288,12 +10254,10 @@ SIMULATE <- function(model=NULL,
       {
         simulation[[idxSL]]=TSERIES(simulation[[idxSL]],
                                     START=TSRANGE[1:2],
-                                    FREQ=frequency,
-                                    avoidCompliance = TRUE) 
+                                    FREQ=frequency) 
       }
     } else
     {
-      
       #if MULTMATRIX keep as simulation the first column (the unperturbed one)
       if (MULTMATRIX)
       {
@@ -8302,46 +10266,73 @@ SIMULATE <- function(model=NULL,
         
         for (idxSL in 1:length(simulation))
         {
-          
           simulation[[idxSL]]=TSERIES(simulation[[idxSL]][,1],
                                       START=TSRANGE[1:2],
-                                      FREQ=frequency,
-                                      avoidCompliance = TRUE) 
+                                      FREQ=frequency) 
         }
       }#end multmatrix
       
       if (STOCHSIMULATE)
       {
+        if (hasLeads && simSteps>1)
+        {
+          for (idxI in 1:length(StochStructure))
+          { 
+            idxN=names(StochStructure)[idxI]
+            
+            for (idxSS in 1:(simSteps-1))
+            { 
+              #deal with leads
+              #row bind leaded variables back to original one
+              INSTRUMENT_MM[[idxN]]=rbind(INSTRUMENT_MM[[idxN]],INSTRUMENT_MM[[paste0(idxN,'__LEAD__',idxSS)]])
+              INSTRUMENT_MM[[paste0(idxN,'__LEAD__',idxSS)]]=NULL
+            }
+          }
+        }
         
         #store simulation list as matrix in model
         simulation_MM=simulation 
         stochastic_simulation=list() 
         
-        #for (idxSL in 1:length(simulation))
-        for (idxSL in names(simulation))
+        for (idxI in 1:length(simulation))
         {
+          idxSL=names(simulation)[idxI]
+          
           simulation[[idxSL]]=TSERIES(simulation_MM[[idxSL]][,1],
                                       START=TSRANGE[1:2],
-                                      FREQ=frequency,
-                                      avoidCompliance = TRUE) 
+                                      FREQ=frequency) 
           
           #mean all rows but first (not noised)
           stochastic_simulation[[idxSL]]=list() 
-          stochastic_simulation[[idxSL]]$mean=TSERIES(rowMeans(simulation_MM[[idxSL]][,-1,drop=FALSE]),
+          stochastic_simulation[[idxSL]]$mean=TSERIES(rowMeans(simulation_MM[[idxSL]][,-1,drop=F]),
                                                       START=TSRANGE[1:2],
-                                                      FREQ=frequency,
-                                                      avoidCompliance = TRUE)  
+                                                      FREQ=frequency)  
           
           #sd all rows but first
-          stochastic_simulation[[idxSL]]$sd=TSERIES(apply(simulation_MM[[idxSL]][,-1,drop=FALSE],1,sd),
+          stochastic_simulation[[idxSL]]$sd=TSERIES(apply(simulation_MM[[idxSL]][,-1,drop=F],1,sd),
                                                     START=TSRANGE[1:2],
-                                                    FREQ=frequency,
-                                                    avoidCompliance = TRUE)  
+                                                    FREQ=frequency)  
         }
-      }#end stochmiulation
+      }#end if stochmiulation
       
       if (OPTIMIZE)
       {
+        if (hasLeads && simSteps>1 && length(OptimizeBounds)>0)
+        {
+          for (idxI in 1:length(OptimizeBounds))
+          { 
+            idxN=names(OptimizeBounds)[idxI]
+            
+            for (idxSS in 1:(simSteps-1))
+            { 
+              #deal with leads
+              #row bind leaded variables back to original one
+              INSTRUMENT_MM[[idxN]]=rbind(INSTRUMENT_MM[[idxN]],INSTRUMENT_MM[[paste0(idxN,'__LEAD__',idxSS)]])
+              INSTRUMENT_MM[[paste0(idxN,'__LEAD__',idxSS)]]=NULL
+            }
+          }
+        }
+        
         #store simulation list as matrix in model
         simulation_MM=simulation 
         
@@ -8350,18 +10341,21 @@ SIMULATE <- function(model=NULL,
         optimize$modelData=model$modelData
         optimize$ConstantAdjustment=ConstantAdjustment
         
-        for (idxSL in names(simulation))
+        for (idxI in 1:length(simulation))
         {
+          idxSL=names(simulation)[idxI]
+          
           simulation[[idxSL]]=TSERIES(simulation_MM[[idxSL]][,1],
                                       START=TSRANGE[1:2],
-                                      FREQ=frequency,
-                                      avoidCompliance = TRUE) 
+                                      FREQ=frequency) 
         }
         
         if (length(optColsToBeKept) != length(optFunResults)) stop(callerName,' length mismatch in optimize function results.')
         
         #deal with uncomputable objective function
-        optColsToBeKept = optColsToBeKept & is.finite(optFunResults)
+        #realizations could verify restriction but fail in objective function computability,
+        #so remove realizations not computable in objective functions too
+        optColsToBeKept=optColsToBeKept & is.finite(optFunResults)
         optColsToBeKeptCount=length(which(optColsToBeKept))
         
         #proxy optimize function results
@@ -8379,29 +10373,31 @@ SIMULATE <- function(model=NULL,
         
         if ( optColsToBeKeptCount > 0)
         {
-          
           if (! quietly) cat(callerName,'',optColsToBeKeptCount,' out of ',replica-1,
                              ' objective function realizations (',format(round(optColsToBeKeptCount*100/(replica-1),0),nsmall=0),'%) are finite',ifelse(length(OptimizeRestrictions)>0,' and verify the provided restrictions',''),'.\n',sep='')
           
           #get max value
-          optFunMax=max(optFunResultsFiltered,na.rm = TRUE)
+          optFunMax=max(optFunResultsFiltered,na.rm=TRUE)
           optFunMaxIdx=which.max(optFunResultsFiltered)
           
           #get mean and sd
-          optFunAve=base::mean(optFunResultsFiltered,na.rm = TRUE)
-          optFunSd=stats::sd(optFunResultsFiltered,na.rm = TRUE)
+          optFunAve=base::mean(optFunResultsFiltered,na.rm=TRUE)
+          optFunSd=stats::sd(optFunResultsFiltered,na.rm=TRUE)
           
           #get instruments that allow OPTIMIZE FUNs to be maximized
-          for (idxI in names(OptimizeBounds))
+          if (length(OptimizeBounds)>0) 
+          for (idx in 1:length(OptimizeBounds))
           {
-            #get instrument
+            idxI=names(OptimizeBounds)[idx]
+            
+            #get original instrument
             if (idxI %in% model_vexog)
             {
-              tempINST=localE[[paste0(idxI,'__ORIGINAL')]]
+              tempINST=localE[[paste0(idxI,'__ORIGINAL__EXTENDED')]]
             }
             else if (idxI %in% model_vendog)
             {
-              tempINST=localE[[paste0(idxI,'__ADDFACTOR','__ORIGINAL')]]
+              tempINST=localE[[paste0(idxI,'__ADDFACTOR','__ORIGINAL__EXTENDED')]]
             } else {
               stop(callerName,'error in "optimize$INSTRUMENT" definition. "',idxI,'" is not a model variable.')
             }
@@ -8410,14 +10406,42 @@ SIMULATE <- function(model=NULL,
             tempINSTcol=tempINST[,optFunMaxIdx+1]
             
             #export opt instrument (remove pre-TSRANGE obs)
-            OPT_INSTRUMENT[[idxI]]=TSERIES(tempINSTcol[(  model_max_lag_1):length(tempINSTcol)],START=TSRANGE[1:2],FREQ=frequency)
+            OPT_INSTRUMENT[[idxI]]=TSERIES(tempINSTcol[(model_max_lag_1):length(tempINSTcol)],
+                                           START=TSRANGE[1:2],FREQ=frequency)
+            
+            #get leaded maximing instrument
+            if (hasLeads && simSteps>1)
+            { 
+              for (idxSS in 1:(simSteps-1))
+              {   
+                #get leaded instrument
+                if (idxI %in% model_vexog)
+                {
+                  tempINST=localE[[paste0(idxI,'__LEAD__',idxSS)]]
+                }
+                else if (idxI %in% model_vendog)
+                {
+                  tempINST=localE[[paste0(idxI,'__ADDFACTOR','__LEAD__',idxSS)]]
+                } else {
+                  stop(callerName,'error in "optimize$INSTRUMENT" definition. "',idxI,'" is not a model variable.')
+                }
+                
+                #get column in optFunMaxIdx position
+                tempINSTcol=tempINST[,optFunMaxIdx+1]
+                
+                #export leaded optimize instrument (remove pre-TSRANGE obs) into original var
+                tempStart=normalizeYP(c(TSRANGE[1],TSRANGE[2]+idxSS),frequency)
+                OPT_INSTRUMENT[[idxI]][[tempStart[1],tempStart[2]]]=tempINSTcol[model_max_lag_1]
+                
+              }
+            }
             
             #build modelData and ConstantAdj that allow fun maximum 
             
             #merge selected instrument obs in TSRANGE with his historical data
             if (idxI %in% model_vexog)
             {
-              optimize$modelData[[idxI]]=TSMERGE(OPT_INSTRUMENT[[idxI]],optimize$modelData[[idxI]],avoidCompliance = TRUE)
+              optimize$modelData[[idxI]]=TSMERGE(OPT_INSTRUMENT[[idxI]],optimize$modelData[[idxI]])
             }
             else if (idxI %in% model_vendog)
             {
@@ -8428,20 +10452,18 @@ SIMULATE <- function(model=NULL,
                 
               } else {
                 
-                optimize$ConstantAdjustment[[idxI]]=TSMERGE(OPT_INSTRUMENT[[idxI]],optimize$ConstantAdjustment[[idxI]],avoidCompliance = TRUE)
+                optimize$ConstantAdjustment[[idxI]]=TSMERGE(OPT_INSTRUMENT[[idxI]],optimize$ConstantAdjustment[[idxI]])
               }
               
             } else {
               stop(callerName,'error in "optimize$modelData" definition. "',idxI,'" is not a model variable.')
             }
-            
           }
           
           #create TS with maximum OPTIMIZE FUNs realizations obs
           optFunTS =TSERIES(optFunTSMM[,optFunMaxIdx],
                             START=TSRANGE[1:2],
-                            FREQ=frequency,
-                            avoidCompliance = TRUE) 
+                            FREQ=frequency) 
           
         } else {
           if (! quietly) cat(callerName,'warning, none of the computed realizations are finite and verify the provided restrictions. Try to review inequalities and objective functions definition or try to increase the "StochReplica" argument value. OPTIMIZE() will exit with no solution.\n',sep='')
@@ -8459,9 +10481,69 @@ SIMULATE <- function(model=NULL,
         
       }#end optimize
       
-    } #end replica > 1
+    }#end replica > 1
     
-  }
+    # build add-factor -------------------------------------
+    
+    if (simType=='RESCHECK')
+    {
+      #should never happen
+      if (length(setdiff(names(simulation),names(model$modelData)))>0) 
+        stop(callerName,'unknown error in building ConstantAdjustmentRESCHECK list.')
+      
+      ConstantAdjustmentRESCHECK=list()
+      
+      if (replica==1)
+      {
+       tryCatch({
+       
+       for (idxCA in names(simulation))
+       {
+         if (idxCA %in% names(model$behaviorals))
+         { 
+           funName=model$behaviorals[[idxCA]]$lhsFun$funName
+           args=model$behaviorals[[idxCA]]$lhsFun$args
+         } else 
+         {
+           funName=model$identities[[idxCA]]$multipleLhsFun[[1]]$funName
+           args=model$identities[[idxCA]]$multipleLhsFun[[1]]$args
+         }
+         
+         if (funName =='LOG' )
+         {
+           ConstantAdjustmentRESCHECK[[idxCA]]=log(model$modelData[[idxCA]])-log(simulation[[idxCA]])
+           
+         } else if ( funName=='EXP' )
+         {
+           ConstantAdjustmentRESCHECK[[idxCA]]=exp(model$modelData[[idxCA]])-exp(simulation[[idxCA]])
+           
+         } else if ( funName=='TSDELTAP' )
+         { 
+           localLag=1
+           
+           if (length(args)>1) localLag=as.numeric(args[2])
+           ConstantAdjustmentRESCHECK[[idxCA]]=100*(model$modelData[[idxCA]]-simulation[[idxCA]])/TSLAG(model$modelData[[idxCA]],localLag)
+           
+         } else if ( funName=='TSDELTALOG' )
+         { 
+           localLag=1
+           if (length(args)>1) localLag=as.numeric(args[2])
+           ConstantAdjustmentRESCHECK[[idxCA]]=log(model$modelData[[idxCA]]/simulation[[idxCA]])
+           
+         } else {
+           ConstantAdjustmentRESCHECK[[idxCA]]=model$modelData[[idxCA]]-simulation[[idxCA]]
+         }
+       }
+         
+       },error=function(err){stop(callerName,'error in building ConstantAdjustmentRESCHECK list in behavioral "',idxCA, '". ',err)}) #trycatch
+        
+      #merge past add-factors if any 
+      model$ConstantAdjustmentRESCHECK=.combineList(model$ConstantAdjustmentRESCHECK,ConstantAdjustmentRESCHECK) 
+        
+      }
+    }
+    
+  }#length(simulation)>0
   
   # backfill -----------------------------------------------
   
@@ -8469,17 +10551,20 @@ SIMULATE <- function(model=NULL,
   
   if (BackFill>0 )
   {
-    .MODEL_outputText(outputText = !quietly,paste0('\n',callerName,'"BackFill" enabled.\nSolutions will include up to ',BackFill,' periods (if available) of historical data starting at year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]-BackFill),frequency),collapse = '-'),'\n')) 
-    
+    .MODEL_outputText(outputText = !quietly,paste0('\n',callerName,'"BackFill" enabled.\nSolutions will include up to ',BackFill,' periods (if available) of historical data starting in year-period ',paste0(normalizeYP(c(TSRANGE[1],TSRANGE[2]-BackFill),frequency),collapse = '-'),'\n')) 
+   
     #extend simulation
     if (length(simulation)>0) 
-      for (idxRC in names(simulation))
+      for (idxI in 1:length(simulation))
       {
+        idxRC=names(simulation)[idxI]
+        
         #get original time series
         originalTs=model$modelData[[idxRC]] 
         
         #get original start
-        originalStart=start(originalTs) 
+        outTSL=TSLOOK(originalTs)
+        originalStart=c(outTSL$STARTY,outTSL$STARTP)
         
         #get max between requested and available observations
         periodsToAdd=min(NUMPERIOD(originalStart,TSRANGE[1:2],frequency),BackFill) 
@@ -8490,14 +10575,12 @@ SIMULATE <- function(model=NULL,
         
         #get extra values
         newStaringIndex=1+NUMPERIOD(originalStart,newStart,frequency) 
-        extraValues=originalTs[newStaringIndex:(newStaringIndex-1+periodsToAdd)] 
+        extraValues=coredata(originalTs[newStaringIndex:(newStaringIndex-1+periodsToAdd)])
         
         #save result
         simulation[[idxRC]]=TSERIES(c(extraValues,coredata(simulation[[idxRC]]))
-                                    ,START=newStart,FREQ=frequency,avoidCompliance = TRUE) 
-        
+                                    ,START=newStart,FREQ=frequency) 
       }
-    
   }
   
   #merge past simulations if any
@@ -8532,6 +10615,13 @@ SIMULATE <- function(model=NULL,
   model$simulation[['__SIM_PARAMETERS__']]$MM_SHOCK=MM_SHOCK 
   model$simulation[['__SIM_PARAMETERS__']]$RESCHECKeqList=RESCHECKeqList 
   
+  if (simType=='DYNAMIC' &&  hasLeads)
+  {
+    model$simulation[['__SIM_PARAMETERS__']]$vblocks=model_vblocks 
+    model$simulation[['__SIM_PARAMETERS__']]$vpre=model_vpre 
+    model$simulation[['__SIM_PARAMETERS__']]$incidence_matrix=incidence_matrix
+  }
+  
   if (STOCHSIMULATE)
   {
     model$stochastic_simulation[['__STOCH_SIM_PARAMETERS__']]$STOCHSIMULATE=STOCHSIMULATE 
@@ -8546,7 +10636,7 @@ SIMULATE <- function(model=NULL,
     model$optimize[['__OPT_PARAMETERS__']]$StochReplica=StochReplica 
     model$optimize[['__OPT_PARAMETERS__']]$StochSeed=StochSeed 
     model$optimize[['__OPT_PARAMETERS__']]$OptimizeBounds=OptimizeBounds 
-    model$optimize[['__OPT_PARAMETERS__']]$OptimizeRestrictions=OptimizeRestrictions 
+    model$optimize[['__OPT_PARAMETERS__']]$OptimizeRestrictions=OptimizeRestrictions_original 
     model$optimize[['__OPT_PARAMETERS__']]$OptimizeFunctions=OptimizeFunctions 
   }
   
@@ -8559,56 +10649,13 @@ SIMULATE <- function(model=NULL,
   } else
   {.MODEL_outputText(outputText=!quietly,'...SIMULATE OK\n') }
   
+  },error=function(e) {   
+    setBIMETSconf('BIMETS_CONF_NOC', complianceStatus, suppressOutput=TRUE);stop(e)
+    }) #end main tryCatch for compliance speedup
+  
+  #reset compliance status
+  setBIMETSconf('BIMETS_CONF_NOC', complianceStatus, suppressOutput=TRUE)
+  
   return(model) 
   
 }
-
-# PRINT SUMMARY code ------------------------------------
-
-
-print.BIMETS_MODEL <- function(x=NULL, ...)
-{
-  model=x 
-  
-  if (! inherits(model, "BIMETS_MODEL")) stop("print.BIMETS_MODEL(): model object is not a BIMETS model.") 
-  
-  cat(paste0('\nBIMETS MODEL\n')) 
-  cat(paste0('-----------------------------------\n')) 
-  cat(paste0(sprintf("%-18s",'name:'),model$modelName,'\n')) 
-  cat(paste0(sprintf("%-18s",'behaviorals:'),(model$totNumEqs),'\n')) 
-  cat(paste0(sprintf("%-18s",'identities:'),(model$totNumIds),'\n')) 
-  cat(paste0(sprintf("%-18s",'coefficients:'),(model$eqCoeffNum),'\n')) 
-  
-  tryCatch({
-    .CHECK_MODEL_DATA(model,showWarnings = FALSE) 
-    cat(paste0(sprintf("%-18s",'model data:'),"OK",'\n')) 
-  },error=function(e){cat(paste0(sprintf("%-18s",'model data:'),"not OK",'\n',e$message,"\n")) }) 
-  
-  totCoeffEstimated=0 
-  if (length(model$behaviorals)>0) for (idxEq in 1:length(model$behaviorals))
-  {
-    totCoeffEstimated=totCoeffEstimated+length(model$behaviorals[[idxEq]]$coefficients) 
-  }
-  
-  fullyEstimated=ifelse(totCoeffEstimated<model$eqCoeffNum,FALSE,TRUE) 
-  cat(paste0(sprintf("%-18s",'fully estimated:'),(fullyEstimated),'\n')) 
-  
-  simulated=FALSE 
-  if (! is.null(model$simulation))
-  {
-    namesSim=names(model$simulation) 
-    namesSim=namesSim[-which(namesSim=='__SIM_PARAMETERS__')] 
-    if (length(base::setdiff(model$vendog,namesSim))==0)
-      simulated=TRUE 
-  }
-  
-  cat(paste0(sprintf("%-18s",'simulated:'),(simulated),'\n')) 
-  
-}
-
-summary.BIMETS_MODEL <- function(object,...)
-{
-  return(print.BIMETS_MODEL(object,...))  
-}
-
-

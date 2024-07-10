@@ -44,13 +44,17 @@ A BIMETS model created with the \code{LOAD_MODEL} function can be viewed as a co
 - \bold{behaviorals} and \bold{identities}: sub-lists containing all the information gathered from the behavioral and the identity definitions. This sub lists are described later in this page; \cr\cr
 - \bold{vendog} and \bold{vexog}: string array containing the names of the endogenous and exogenous variables of the model; the former is also subsetted into \bold{vendogBehaviorals} and \bold{vendogIdentities}\cr\cr
 - \bold{totNumEqs}, \bold{totNumIds} and \bold{eqCoeffNum}: integer variables containing the behaviorals count, the identities count and the coefficients count of the model;\cr\cr
-- \bold{incidence_matrix}: the incidence matrix built from the model equations; it is a square matrix in which each row and each column represent an endogenous variable. If the \code{(i,j)} element is equal to \code{1} than in the model definition the current value of the endogenous variable referred by the \code{i}-row directly depends on the current value of the endogenous variable referred by the \code{j}-column. (see example)\cr\cr
-- \bold{vpre}, \bold{vsim}, \bold{vfeed} and \bold{vpost}: the simulation process takes advantage of an appropriate ordering of the equations to increase the performances by iteratively solving only one subset of equations, while the other equations are solved straightforwardly.  (Ref: \emph{Don Gallo - Solving large sparse systems of equations in econometric models - Journal of Forecasting 1987} and \emph{Numerical methods for simulation and optimal control of large-scale macroeconomic models - Nepomiastchy, Rachidi, Ravelli - 1980}). The optimal reordering of the model equations is achieved by using an iterative algorithm applied to the incidence matrix, that produces 4 ordered arrays of endogenous variables: \cr 1. \code{vpre} is the ordered list containing the names of the endogenous pre-recursive variables to be sequentially computed (once per simulation period, by using their \code{EQ>} definition in the \code{MDL}) before the simulation iterative algorithm takes place;\cr
-2. \code{vsim} (the simultaneous block) is the ordered list containing the names of the endogenous variables to be sequentially computed during each iteration of the simulation iterative algorithm; \cr
-3. \code{vfeed} is the list containing the names of the endogenous feedback variables; generally \code{vfeed} are the last variables of the ordered \code{vsim} list; \cr
-4. \code{vpost} is the ordered list containing the names of the endogenous post-recursive variables to be sequentially computed (once per simulation period, by using their \code{EQ>} definition in the \code{MDL}) after the simulation iterative algorithm has found a solution in the simultaenous block (more details in \code{\link[=SIMULATE]{SIMULATE}} help pages);\cr\cr
 - \bold{max_lag}: the max lag of the model, i.e. the highest number of periods a time series of the model is lagged by in the \code{MDL} definition. It also accounts for recursive lagging\cr (e.g. \code{TSLAG(...TSLAG(...)...)}), PDLs and for the order of the error autocorrelation, if any; \cr\cr
+- \bold{max_lead}: the max lead of the model, i.e. the highest number of periods a time series of the model is leaded by in the \code{MDL} definition. It also accounts for recursive leading\cr (e.g. \code{TSLEAD(...TSLEAD(...)...)}); \cr\cr
 - \bold{modelName}: the name of the model, copied from the input file name or from the input \code{character} variable name containing the model definition; \cr\cr
+- \bold{bimets_version}: the version of the BIMETS package the current model has been built with. \cr\cr
+- \bold{incidence_matrix}: the incidence matrix built from the model equations; it is a square matrix in which each row and each column represent an endogenous variable. If the \code{(i,j)} element is equal to \code{1} then in the model definition the current value of the endogenous variable referred by the \code{i}-row directly depends on the current value of the endogenous variable referred by the \code{j}-column. (see example)\cr\cr
+- \bold{vpre}, \bold{vblocks}: the simulation process takes advantage of an appropriate ordering of the equations to increase the performances by iteratively solving only one subset of equations, while the other equations are solved straightforwardly. More details in "The Optimal Reordering" section in \code{\link[=SIMULATE]{SIMULATE}} help pages (Ref: \emph{Don Gallo - Solving large sparse systems of equations in econometric models - Journal of Forecasting 1987} and \emph{Numerical methods for simulation and optimal control of large-scale macroeconomic models - Nepomiastchy, Rachidi, Ravelli - 1980}). The optimal reordering of the model equations is achieved by using an iterative algorithm applied to the incidence matrix, that produces \code{1+3*N} ordered arrays of endogenous variables, given \code{N} the length of the \code{vblocks} list: \cr 
+1. \code{vpre} is the ordered list containing the names of the endogenous pre-recursive variables to be sequentially computed (once per simulation period) before the simulation iterative algorithm takes place;\cr
+2. \code{vblocks[[i]]$vsim, i=1..N} (the simultaneous subset) is the ordered list containing the names of the endogenous variables to be sequentially computed during each iteration of the simulation iterative algorithm in the current block \code{i}; \cr
+3. \code{vblocks[[i]]$vfeed, i=1..N} is the list containing the names of the endogenous feedback variables in the current block \code{i}; generally \code{vfeed} are the last variables in the ordered \code{vsim} list; \cr
+4. \code{vblocks[[i]]$vpost, i=1..N} is the ordered list containing the names of the endogenous post-recursive variables to be sequentially computed (once per simulation period) after the simulation iterative algorithm has found a solution in the simultaneous subset  in the current block \code{i};\cr\cr
+In forward-looking models, the incidence matrix and the equations reordering depend on the simulation periods count, therefore the attributes \bold{incidence_matrix}, \bold{vpre} and \bold{vblocks} will be available only after a simulation has been completed, and will be available to users in the \cr \code{model$simulation[['__SIM_PARAMETERS__']]} lists.\cr\cr
 BEHAVIORALS and IDENTITIES\cr\cr
 The elements \bold{'behaviorals'} and \bold{'identities'} of the BIMETS model are named lists that contain information on behaviorals and identities of the model. In both of this two lists, the name of each element is the name of the behavioral or the identity the data refer to, as specified in the model definition file: e.g. given a BIMETS model named \code{myModel}, the information on a behavioral named \code{cn} (i.e there exists a "BEHAVIORAL> cn" in the \code{MDL} definition of the model) is stored into  \code{myModel$behaviorals$cn}.\cr\cr
 Behavioral elements have the following components:\cr\cr
@@ -67,7 +71,8 @@ Behavioral elements have the following components:\cr\cr
 - \bold{errorRaw}: the original definition of the error autocorrelation, if any (see \code{\link[=MDL]{MDL}});\cr\cr
 - \bold{errorType}: the type of the error structure;\cr\cr
 - \bold{errorDim}: the dimension of the error autocorrelation;\cr\cr
-- \bold{eqSimExp}: the \code{R} optimized \code{expression} of the behavioral equation that is used in the simulation algorithm;\cr\cr
+- \bold{eqSimExp}: the \code{R} optimized \code{expression} of the current behavioral equation; it is used in the simulation algorithm and is derived by parsing the \bold{eqSimExpText} text element;\cr\cr
+- \bold{eqSimExpLeadedText}: it is derived by transforming the leaded time series that apper in the current behavioral equation, if any, and it is used, during the simulation of forward-looking models, to build up the \bold{leadsEqSimExpText} and \bold{leadsEqSimExp} elements, that contain, per each period in the simulation \code{TSRANGE}, the leaded and accordingly transformed equation (see "Rational Expectation Models" section in \code{\link[=SIMULATE]{SIMULATE}} help page));\cr\cr
 - \bold{matrixR}: the \code{R} Lagrange matrix that is used in restriction analysis (see \code{\link[=MDL]{MDL}});\cr\cr
 - \bold{vectorR}: the \code{r} Lagrange vector that is used in restriction analysis (see \code{\link[=MDL]{MDL}});\cr\cr
 - \bold{restrictRaw}: the original definition of the coefficient restrictions, if any.\cr\cr
@@ -75,15 +80,18 @@ Behavioral elements have the following components:\cr\cr
 - \bold{pdlRestrictionMatrix}: the \code{R} Lagrange matrix that is used in PDL restriction analysis (see example and \code{\link[=MDL]{MDL}});\cr\cr
 - \bold{IVComponentsNames}: the names of endogenous and exogenous variables that appear in the instrumental variables equations, if any;\cr\cr
 - \bold{iv}: the original definitions of instrumental variables, if any.\cr\cr
+- \bold{lhsFun}: the LHS function that appers in the current behavioral equations;\cr\cr
 For example, given a BIMETS model named \code{myModel}, the information on a technical identity named \code{y} (i.e there exists an "IDENTITY> y" in the \code{MDL} definition of the model) is stored in \code{myModel$identities$y}.\cr\cr Identity elements have the following components:\cr\cr
 - \bold{eqRaw}: the original equations  of the identity (more than one if the identity has multiple equations and has \code{IF>} conditions), as a \code{character} variable (see example and \code{\link[=MDL]{MDL}});\cr\cr
-- \bold{ifRaw}: the original \code{IF>} conditions, if any, of the identity, as a \code{character} variable;\cr\cr
+- \bold{ifRaw}, \bold{ifCondition}: the original and the optimized \code{IF>} conditions, if any, of the identity, as a \code{character} variable;\cr\cr
 - \bold{eqFull}: the full expression of the identity, composed with \code{IF>} conditions and related equations (see example), as a \code{character} variable;\cr\cr
 - \bold{eqComponentsNames}: the names of endogenous and exogenous variables that appear in the identity equation;\cr\cr
 - \bold{eqComponentsNamesBehaviorals}: the names of behavioral endogenous variables that appear in the identity equation;\cr\cr
 - \bold{eqComponentsNamesIdentities}: the names of identity endogenous variables that appear in the identity equation;\cr\cr
-- \bold{eqSimExp}: the \code{R} optimized \code{expression} of the identity equation that is used in the simulation algorithm;\cr\cr
+- \bold{eqSimExp}: the \code{R} optimized \code{expression} of the current identity equation; it is used in the simulation algorithm and is derived by parsing the \bold{eqSimExpText} text element;\cr\cr
+- \bold{eqSimExpLeadedText}: it is derived by transforming the leaded time series that apper in the current identity equation, if any, and it is used, during the simulation of forward-looking models, to build up the \bold{leadsEqSimExpText} and \bold{leadsEqSimExp} elements, that contain, per each period in the simulation \code{TSRANGE}, the leaded and accordingly transformed equation (see "Rational Expectation Models" section in \code{\link[=SIMULATE]{SIMULATE}} help page));\cr\cr
 - \bold{hasIF}: boolean, \code{TRUE} if the identity has an \code{IF>} condition;\cr\cr
+- \bold{multipleLhsFun}: the list of the LHS functions that apper in the equations related to the current identity;\cr\cr
 
 
 
@@ -208,11 +216,11 @@ myModel$incidence_matrix
 #get the optimal reordering arrays
 myModel$vpre
 #NULL
-myModel$vsim
-#[1] "w1" "p"  "cn" "i"  "y" 
-myModel$vfeed
+myModel$vblocks[[1]]$vsim
+#[1] "w1" "p"  "i" "cn" "y" 
+myModel$vblocks[[1]]$vfeed
 #[1] "y"
-myModel$vpost
+myModel$vblocks[[1]]$vpost
 #[1] "k"
 
 #get the model max lag and the model name

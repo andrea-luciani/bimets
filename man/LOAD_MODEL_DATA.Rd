@@ -28,7 +28,7 @@ Backward compatibility.
   }
 
 \value{
-This function add a new named element, i.e. \code{modelData}, into the output model object.\cr\cr The new \code{modelData} element is a named list that contains all the input time series. Each element name of this list is set equal to the name of the endogenous or exogenous variable the time series data refer to.\cr\cr
+This function add two new named element, i.e. \code{modelData} and \code{frequency}, into the output model object.\cr\cr The new \code{modelData} element is a named list that contains all the input time series. Each element name of this list is set equal to the name of the endogenous or exogenous variable the time series data refer to.\cr\cr The new \code{frequency} element is an integer that represent the frequency of the time series model data.
 
 
 }

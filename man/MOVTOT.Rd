@@ -12,8 +12,8 @@ Moving Sum
 This function returns the moving sum of the elements of the input array or the input time series. The result is an object of the same class of the input, and its elements are the moving sum of length \code{L} of the input values. If the input is a time series, the \code{DIRECTION} of the moving sum, i.e backward, forward or centered, can be provided. \code{MTOT} and \code{MSUM} are alias for \code{MOVTOT} and \code{MOVSUM}
 }
 \usage{
-MOVSUM(x = NULL, L = NULL, DIRECTION = NULL, avoidCompliance = FALSE, ...)
-MOVTOT(x = NULL, L = NULL, DIRECTION = NULL, avoidCompliance = FALSE, ...)
+MOVSUM(x = NULL, L = NULL, DIRECTION = NULL, ignoreNA=FALSE, avoidCompliance = FALSE, ...)
+MOVTOT(x = NULL, L = NULL, DIRECTION = NULL, ignoreNA=FALSE, avoidCompliance = FALSE, ...)
 }
 
 \arguments{
@@ -28,6 +28,7 @@ Length of the sum. It must be a positive integer.
 \bold{CENTER}: the output observation value in index \code{n} will be \cr \code{y[n] = sum(x[n-trunc(L/2)],...x[n],x[n+1],...,x[n+trunc(L/2)])}.\cr
 \bold{NULL} o \bold{BACK}: (default) the output observation value in index \cr \code{n} will be \code{y[n] = sum(x[n+1-L],...,x[n-1],x[n])}.\cr 
 }
+\item{ignoreNA}{Ignore missing values.}
   \item{avoidCompliance}{
 If \code{TRUE}, compliance control check of input time series will be skipped. See \code{\link[=is.bimets]{is.bimets}}
 }

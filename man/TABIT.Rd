@@ -11,9 +11,10 @@ This function prints, in a human-readable format, the content of a list of time 
 }
 \usage{
 TABIT(..., 
-      TSRANGE=NULL, 
-      digits=getOption('digits'),
-      avoidCompliance=FALSE)
+  TSRANGE=NULL, 
+  headers=NULL,
+  digits=getOption('digits'), 
+avoidCompliance=FALSE)
 }
 
 \arguments{
@@ -24,6 +25,9 @@ Input list of time series that must satisfy the compliance control check defined
   \item{TSRANGE}{
 The optional date range of data presentation. \code{TSRANGE} must be specified as a numerical array composed by starting year, staring period, ending year and ending period of projection, \cr i.e. \code{TSRANGE=c(START_YEAR,START_PERIOD,END_YEAR,END_PERIOD)}. 
 }
+  \item{headers}{
+  Optional column headers.
+  }
   \item{digits}{
   Controls the number of digits to print out. Valid values are 1 to 22 with a default of 7.
   }
@@ -119,5 +123,10 @@ ts4<-TSERIES(rep(NA,25),START=c(2000,30),FREQ=366)
 TABIT(ts1,ts2,ts3,ts4,TSRANGE=c(2000,5,2000,35))
 
 #...print data
+
+#headers
+TABIT(ts1,ts2,ts3,ts4,
+    TSRANGE=c(2000,25,2000,35),
+    headers=c('LOREM','IPSUM','DOLOR','SIT'))
 
 }

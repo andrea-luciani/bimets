@@ -9,7 +9,7 @@ bimets :: Time Series And Econometric Modeling In R
 }
 \description{
 
-BIMETS is a software framework developed by using \code{R} language and designed for time series analysis and econometric modeling, which allows creating and manipulating time series, specifying simultaneous equation models of any size by using a kind of high-level description language, and performing model estimation and structural stability analysis, deterministic and stochastic simulation and forecasting, optimal control.\cr\cr
+BIMETS is a software framework developed by using \code{R} language and designed for time series analysis and econometric modeling, which allows creating and manipulating time series, specifying simultaneous equation models of any size by using a kind of high-level description language, and performing model estimation and structural stability analysis, deterministic and stochastic simulation and forecasting, also on rational expectations model, and optimal control.\cr\cr
 Besides, BIMETS computational capabilities provide many tools to pre-process data and post-process results, designed for statisticians and economists. These operations are fully integrated with the \code{R} environment.\cr \cr
 The package can be installed and loaded in \code{R} with the following commands (with \code{R>} as the \code{R} command prompt):
 \preformatted{
@@ -41,8 +41,8 @@ The main BIMETS time series capabilities are:\cr\cr
 
 
 The BIMETS package extends R indexing capabilities in order to ease time series analysis and manipulation. Users can access and modify time series data:\cr\cr
+- \emph{by year-period}: users can select and modify observations by providing the requested years and periods, i.e. \code{ts[[year,period]]}, \code{ts[[start]]} and \code{ts[[start,end]]}, given \code{start <- c(year1,period1); end <- c(year2,period2)};\cr\cr
 - \emph{by date}:  users can select and modify a single observation by date by using the syntax \code{ts['Date']}, or multiple observations by using \code{ts['StartDate/EndDate']}; \cr\cr
-- \emph{by year-period}: users can select and modify observations by providing the year and the period requested, i.e. \code{ts[[Year,Period]]};\cr\cr
 - \emph{by observation index}: users can select and modify observations by simply providing the array of requested indices, i.e. \code{ts[indices]};\cr\cr
 Example:
 \preformatted{
@@ -50,18 +50,25 @@ R> #create a daily time series
 R> myTS <- TIMESERIES((1:100),START=c(2000,1),FREQ='D')
 
 R> myTS[1:3]                      #get first three obs.
+R> myTS[[2000,14]]                #get year 2000 period 14
+R> start <- c(2000,20)
+R> end <- c(2000,30)
+R> myTS[[start]]                  #get year 2000 period 20
+R> myTS[[start,end]]              #get from year-period 2000-20 to 2000-30
 R> myTS['2000-01-12']             #get Jan 12, 2000 data
 R> myTS['2000-02-03/2000-02-14']  #get Feb 3 up to Feb 14
-R> myTS[[2000,14]]                #get year 2000 period 14
 
 R> myTS['2000-01-15'] <- NA        #assign to Jan 15, 2000
 R> myTS[[2000,42]] <- NA           #assign to Feb 11, 2000
 R> myTS[[2000,100]] <- c(-1,-2,-3) #extend time series starting from period 100
-
+R> myTS[[start]] <- NA             #assign to year-period 2000-20
+R> myTS[[start,end]] <- 3.14       #assign from year-period 2000-20 to 2000-30
+R> myTS[[start,end]] <- -(1:11)    #assign multiple values 
+                                   #from year-period 2000-20 to 2000-30
 
 }
 \tabular{c}{\emph{Time Series Aggregation / Disaggregation} }
-The BIMETS package provides advanced (dis)aggregation capabilities, having linear interpolation capabilities in disaggregation, and aggregation functions (e.g. \code{STOCK}, \code{SUM}, \code{AVE}, etc.) while reducing the time series frequency. \cr\cr
+The BIMETS package provides advanced (dis)aggregation capabilities, having linear interpolation capabilities in disaggregation, and several aggregation functions (e.g. \code{STOCK}, \code{SUM}, \code{AVE}, etc.) while reducing the time series frequency. \cr\cr
 Example:
 \preformatted{
 R> #create a monthly time series
@@ -137,16 +144,18 @@ Dec 2004, 12  , 3.706247   , 60
 \tabular{c}{\bold{ECONOMETRIC MODELING} } 
 
 BIMETS econometric modeling capabilities comprehend:\cr\cr
-- \emph{Model Definition Language} \cr
+- \emph{Model Description Language} \cr
 - \emph{Estimation} \cr
 - \emph{Structural Stability} \cr
 - \emph{Simulation} \cr
+- \emph{Rational Expectations} \cr
 - \emph{Stochastic Simulation} \cr
 - \emph{Multipliers Analysis} \cr
 - \emph{Endogenous Targeting } \cr
 - \emph{Optimal Control } \cr\cr
-We will go through each item of the list with a simple Klein model example (ref: \emph{"Economic Fluctuations in the United States 1921-1941"} by L. R. Klein, Wiley and Sons Inc., New York, 1950). \cr
-\tabular{c}{\emph{Model Definition Language} }
+We will go through each item of the list with a simple Klein model example (ref: \emph{"Economic Fluctuations in the United States 1921-1941"} by L. R. Klein, Wiley and Sons Inc., New York, 1950). \cr \cr
+For more realistic scenarios, several advanced econometric exercises on the US Federal Reserve FRB/US econometric model (e.g., dynamic simulation in a monetary policy shock, rational expectations, endogenous targeting, stochastic simulation, etc.) are available in the \href{https://cran.r-project.org/package=bimets/vignettes/frb2bimets.pdf}{"US Federal Reserve quarterly model (FRB/US) in R with bimets"} vignette. \cr \cr
+\tabular{c}{\emph{Model Description Language} }
 
 BIMETS provides a language to specify an econometric model unambiguously. This section describes how to create a model and its general structure. The specification of an econometric model is translated and identified by keyword statements which are grouped in a model file, i.e. a plain text file or a \code{character} variable with a specific syntax. Collectively, these keyword statements constitute the BIMETS Model Description Language (from now on \code{\link[=MDL]{MDL}}). The model specifications consist of groups of statements. Each statement begins with a keyword. The keyword classifies the component of the model which is being specified.\cr\cr
 Below is an example of Klein's model, which can either be stored in an \code{R} variable of class \code{character} or in a plain text file with an \code{MDL} compliant syntax. \cr\cr
@@ -224,6 +233,7 @@ As shown in the code, the model definition is quite intuitive. The first keyword
 - \bold{COMMENT>} can be used to insert comments into a model;\cr \cr
 The mathematical expression in the EQ> and IF> definitions can include the standard arithmetic operators, parentheses, and the following MDL time series functions: \cr \cr
 - \code{TSLAG(ts,i)}: lag the \code{ts} time series by \code{i}-periods;\cr \cr
+- \code{TSLEAD(ts,i)}: lead the \code{ts} time series by \code{i}-periods;\cr \cr
 - \code{TSDELTA(ts,i)}: \code{i}-periods difference of the \code{ts} time series;\cr \cr
 - \code{TSDELTAP(ts,i)}: \code{i}-periods percentage difference of the \code{ts} time series;\cr \cr
 - \code{TSDELTALOG(ts,i)}: \code{i}-periods logarithmic difference of the \code{ts} time series;\cr \cr
@@ -233,8 +243,9 @@ The mathematical expression in the EQ> and IF> definitions can include the stand
 - \code{EXP(ts)}: exponential of the \code{ts} time series; \cr \cr
 - \code{ABS(ts)}: absolute values of the \code{ts} time series;\cr \cr
 
-More details are available in \code{\link[=MDL]{MDL}} and \code{\link[=LOAD_MODEL]{LOAD_MODEL}} help pages. \code{LOAD_MODEL()} is the BIMETS function that reads an MDL model file and creates an equivalent R data structure.\cr \cr
-Back to Klein's model example, the BIMETS \code{\link[=LOAD_MODEL]{LOAD_MODEL}} function reads the \emph{klein1.txt} model as previously defined:
+More details about the Model Description Language are available in \code{\link[=MDL]{MDL}} help pages. \cr\cr 
+Note that BIMETS classifies a model as a forward-looking model if any model equation contains the \code{TSLEAD} time series function. More details about forward-looking models are available in the "Rational Expectations Models" section of the \code{\link[=SIMULATE]{SIMULATE}} help pages.\cr \cr
+\code{LOAD_MODEL()} is the BIMETS function that reads an MDL model file and creates an equivalent R data structure. Back to Klein's model example, the BIMETS \code{\link[=LOAD_MODEL]{LOAD_MODEL}} function reads the \emph{klein1.txt} model as previously defined:
 \preformatted{
 R> kleinModel <- LOAD_MODEL(modelText = klein1.txt)
 
@@ -275,7 +286,7 @@ p[2, ] + cn__a3 * (p[1, ]) + cn__a4 * (w1[2, ] + w2[2, ]))
 etc...
 }
 
-Users can always read (or carefully change) any model parameters. The \code{\link[=LOAD_MODEL]{LOAD_MODEL}} function parses behavioral and identity expressions of the \code{\link[=MDL]{MDL}} definition, but it also does a significant optimization. Properly reordering the model equations is a key preparatory step in the later phase of the simulation, in order to guarantee performance and convergence, if any, with the aim of minimizing the number of \emph{feedback} endogenous variables (see \code{\link[=SIMULATE]{SIMULATE}}).\cr\cr
+Users can always read (or carefully change) any model parameters. The \code{\link[=LOAD_MODEL]{LOAD_MODEL}} function parses behavioral and identity expressions of the \code{\link[=MDL]{MDL}} definition, but it also does a significant optimization. Properly reordering the model equations is a key preparatory step in the later phase of the simulation, in order to guarantee performance and convergence, if any, with the aim of minimizing the number of \emph{feedback} endogenous variables (see "The Optimal Reordering" section in \code{\link[=SIMULATE]{SIMULATE}}).\cr\cr
 The \code{\link[=LOAD_MODEL]{LOAD_MODEL}} function builds the model's incidence matrix, and uses this matrix to calculate the proper evaluation order of the model equations during the simulation.\cr\cr Back to the Klein's model example, the incidence matrix and the reordering of the equations are stored in the following variables:
 \preformatted{
 R> kleinModel$incidence_matrix
@@ -292,22 +303,22 @@ R> kleinModel$vpre
 
 NULL
 
-R> kleinModel$vsim
+R> kleinModel$vblocks[[1]]$vsim
 
-[1] "w1" "p" "cn" "i" "y"
+[1] "w1" "p" "i" "cn" "y"
 
-R> kleinModel$vfeed
+R> kleinModel$vblocks[[1]]$vfeed
 
 [1] "y"
 
-R> kleinModel$vpost
+R> kleinModel$vblocks[[1]]$vpost
 
 [1] "k"
 
 }
 
-While simulating the Klein's model, BIMETS will iterate on the computation of, in order,\cr \code{w1 -> p -> cn -> i -> y} (the \code{vsim} variables), by looking for convergence on \code{y} (the \code{vfeed} variable, only one in this example) that is the feedback variable. If the convergence is achieved, it will calculate \code{k} (the \code{vpost} variable). The \code{vpre} array in this example is empty; therefore, no equation has to be evaluated before the iterative algorithm.\cr\cr
-More details on the equations reordering are available in \code{\link[=SIMULATE]{SIMULATE}} and \code{\link[=LOAD_MODEL]{LOAD_MODEL}} help pages.\cr\cr
+While simulating the Klein's model, BIMETS will iterate on the computation of, in order,\cr \code{w1 -> p -> i -> cn -> y} (the \code{vsim} variables in the single block of equations \code{vblocks[[1]]}), by looking for convergence on \code{y} (the \code{vfeed} variable, only one in this example) that is the feedback variable for the block. If the convergence in the block is achieved, it will calculate \code{k} (the \code{vpost} variable). The \code{vpre} array in this example is empty; therefore, no equation has to be evaluated before the iterative algorithm is applied to each block of equations.\cr\cr
+More details on the equations reordering are available in "The Optimal Reordering" section in \code{\link[=SIMULATE]{SIMULATE}} and in \code{\link[=LOAD_MODEL]{LOAD_MODEL}} help pages.\cr\cr
 Once the model has been parsed, users need to load the data of all the time series involved in the model, by using the \code{\link[=LOAD_MODEL_DATA]{LOAD_MODEL_DATA}} function. In the following example, the code defines a list of time series and loads this list into the Klein's model previously defined:
 \preformatted{
 R> kleinModelData <- list(  
@@ -899,6 +910,72 @@ R> kleinModel <- SIMULATE(kleinModel
                   )
 }
 
+\tabular{c}{\emph{Rational Expectations}}
+BIMETS classifies a model as a forward-looking model if any model equation contains the \code{TSLEAD} time series function. Forward-looking models assume that economic agents have complete knowledge of an economic system and calculate the future value of economic variables correctly according to that knowledge. Thus, forward-looking models are called also rational expectations models and, in macro-econometric models, model-consistent
+expectations.\cr\cr
+In forward-looking models, simulation complexity arises, and all simulation periods must be solved simultaneously because equations can contain references to past and future values. Thus, given \code{N} simulation periods requested by the user, each model equation must be replicated \code{N-1} times and modified before the simulation takes place, accounting for lead transformations. Finally, the extended model must be simulated as a single block of equations. \cr\cr
+Internal data structures, such as the incidence and the Jacobian matrix, and the reordering arrays \code{vpre} and \code{vblocks} (described in the "The Optimal Reordering" section in \code{\link[=SIMULATE]{SIMULATE}} help page), grow with the number of simulation periods requested. Therefore, they can only be calculated when a new simulation is requested rather than when the model \code{MDL} definition is parsed, further extending computational time.\cr\cr
+For technical details, see "Rational Expectations" section in \code{\link[=SIMULATE]{SIMULATE}}. An example for a Klein-like forward-looking model simulation follows:\cr\cr
+
+\preformatted{
+########################################################
+#EXAMPLE OF FORWARD-LOOKING KLEIN-LIKE MODEL 
+#HAVING RATIONAL EXPECTATION ON INVESTMENTS
+
+#define model
+kleinLeadModelDefinition<-
+"MODEL 
+COMMENT> Klein Model 1 of the U.S. Economy 
+
+COMMENT> Consumption
+BEHAVIORAL> cn
+TSRANGE 1921 1 1941 1
+EQ> cn =  a1 + a2*p + a3*TSLAG(p,1) + a4*(w1+w2) 
+COEFF> a1 a2 a3 a4
+
+COMMENT> Investment with TSLEAD
+IDENTITY> i
+EQ> i = (MOVAVG(i,2)+TSLEAD(i))/2
+
+COMMENT> Demand for Labor
+BEHAVIORAL> w1 
+TSRANGE 1921 1 1941 1
+EQ> w1 = c1 + c2*(y+t-w2) + c3*TSLAG(y+t-w2,1) + c4*time
+COEFF> c1 c2 c3 c4
+
+COMMENT> Gross National Product
+IDENTITY> y
+EQ> y = cn + i + g - t
+
+COMMENT> Profits
+IDENTITY> p
+EQ> p = y - (w1+w2)
+
+COMMENT> Capital Stock
+IDENTITY> k
+EQ> k = TSLAG(k,1) + i
+
+END"
+
+#load model and model data
+kleinLeadModel<-LOAD_MODEL(modelText=kleinLeadModelDefinition)
+kleinLeadModel<-LOAD_MODEL_DATA(kleinLeadModel,kleinModelData)
+
+#estimate model
+kleinLeadModel<-ESTIMATE(kleinLeadModel, quietly = TRUE)
+
+#set expected value of 2 for Investment in 1931
+#(note that simulation TSRANGE spans up to 1930)
+kleinLeadModel$modelData$i[[1931,1]]<-2 
+
+#simulate model
+kleinLeadModel<-SIMULATE(kleinLeadModel
+                  ,TSRANGE=c(1924,1,1930,1))
+                  
+#print simulated investments
+TABIT(kleinLeadModel$simulation$i)
+
+}
 \tabular{c}{\emph{Stochastic Simulation}}
 Forecasts produced by structural econometric models are subject to several sources of error, such as random disturbance term of each stochastic equation, errors in estimated coefficients, errors in forecasts of exogenous variables, errors in preliminary data and mis-specification of the model.\cr\cr
 The forecast error depending on the structural disturbances can be analyzed by using the stochastic simulation procedure.\cr\cr
@@ -1273,6 +1350,7 @@ The models used in the comparison have more than:\cr\cr
 +1000 time series of endogenous and exogenous variables;\cr\cr
 In these models, there are equations with restricted coefficients, polynomial distributed lags, error autocorrelation, and conditional evaluation of technical identities; all models have been simulated in \emph{static}, \emph{dynamic}, and \emph{forecast} mode, with exogenization and constant adjustments of endogenous variables through the use of BIMETS capabilities.\cr\cr
 In the +800 endogenous simulated time series over the +20 simulated periods (i.e. more than 16.000 simulated observations), the average \emph{percentage} difference between BIMETS and leading commercial software results has a magnitude of \eqn{10^{-7} \% }{10^(-7) \%}. The difference between results calculated by using different commercial software has the same average magnitude.\cr\cr
+Several advanced econometric exercises on the US Federal Reserve FRB/US econometric model (e.g., dynamic simulation in a monetary policy shock, rational expectations, endogenous targeting, stochastic simulation, etc.) are available in the \href{https://cran.r-project.org/package=bimets/vignettes/frb2bimets.pdf}{"US Federal Reserve quarterly model (FRB/US) in R with bimets"} vignette. \cr \cr
 BIMETS stands for Bank of Italy Model Easy Time Series; it does not depend on compilers or third-party software so it can be freely downloaded and installed on Linux, MS Windows(R) and Mac OSX(R), without any further requirements. \cr\cr
 More details in:\cr\cr
 - \code{\link[=MDL]{MDL}}\cr
