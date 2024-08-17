@@ -30,10 +30,10 @@
 .onAttach <- function(...) {
   
   #set version
-  options('BIMETS_VERSION'='4.0.1') 
+  options('BIMETS_VERSION'='4.0.2') 
   
   #clear console
-  packageStartupMessage("\014 ") 
+  #packageStartupMessage("\014 ") 
   packageStartupMessage(gsub("\\$","",paste0('bimets is active - version ',getOption('BIMETS_VERSION'),'\nFor help type \'?bimets\'\n')))
   
 }
@@ -74,18 +74,19 @@
       {
         if ((!(missing(idx))) && (!(is.null(idx)))  && all(is.finite(idx)) ) 
         {
-          if (! avoidCompliance ) 
-          {
-            tryCatch({.isCompliant(x) },error=function(e){stop('ts[[c(year,period)]]: ',e$message) }) 
-          }
-          
           #deal with vector input
           if ( length(idx)==2 ){
+          	
+          	if (! avoidCompliance ) 
+          	{
+          		tryCatch({.isCompliant(x) },error=function(e){stop('ts[[c(year,period)]]: ',e$message) }) 
+          	}
             
             return(x[[idx[1],idx[2],avoidCompliance=TRUE]])
             
           } else {
-            stop('ts[[c(year,period)]]: year and period must be positive integer. ')
+            
+          	return(NextMethod()) 
           }
         }
         
@@ -98,16 +99,16 @@
           && all(is.finite(idx)) && all(is.finite(jdx))  ) 
       {
         
-        if (! avoidCompliance ) 
-        {
-          tryCatch({.isCompliant(x) },error=function(e){stop('ts[[year,period]]: ',e$message) }) 
-        }
-        
         #deal with scalar inputs
         if ( length(idx)==1 && length(jdx)==1 )
         {
           if ( (idx %%1 !=0 ) || (jdx %%1 !=0 ) ) 
             stop('ts[[year,period]]: year and period must be positive integer. ')  
+        	
+        	if (! avoidCompliance ) 
+        	{
+        		tryCatch({.isCompliant(x) },error=function(e){stop('ts[[year,period]]: ',e$message) }) 
+        	}
           
           tryCatch({
             outI=(1+NUMPERIOD(start(x),normalizeYP(c(idx,jdx),frequency(x)),frequency(x))) 
@@ -124,12 +125,17 @@
           },error=function(e){stop('ts[[year,period]]: unknown error. ',e$message)}) 
           return(NULL)  
           
-        } else if ( length(idx)==2 && length(jdx)==2 ){
-          
+        } else if ( length(idx)==2 && length(jdx)==2 )
+        {
           #deal with vector inputs
           if ( (idx[1] %%1 !=0 ) || (jdx[1] %%1 !=0 ) || (idx[2] %%1 !=0 ) || (jdx[2] %%1 !=0 )) 
             stop('ts[[c(year1,period1),c(year2,period2)]]: year1, year2, period1, period2 must be positive integer. ')  
           
+        	if (! avoidCompliance ) 
+        	{
+        		tryCatch({.isCompliant(x) },error=function(e){stop('ts[[year,period]]: ',e$message) }) 
+        	}
+        	
           tryCatch({
             outTS=TSPROJECT(x, TSRANGE=c(idx,jdx), EXTEND=EXTEND, avoidCompliance=TRUE)
           },error=function(e){stop('ts[[c(year1,period1),c(year2,period2)]]: ',e$message)}) 
@@ -137,7 +143,8 @@
           return(outTS)
           
         } else {
-          stop('ts[[year,period]], or ts[[c(year1,period1),c(year2,period2)]]: years and periods must be positive integer. ')
+          
+        	return(NextMethod()) 
         }
         
       }
@@ -153,18 +160,19 @@
       {
         if ((!(missing(idx))) && (!(is.null(idx)))  && all(is.finite(idx)) ) 
         {
-          if (! avoidCompliance ) 
-          {
-            tryCatch({.isCompliant(x) },error=function(e){stop('xts[[c(year,period)]]: ',e$message) }) 
-          }
-          
           #deal with vector input
           if ( length(idx)==2 ){
+          	
+          	if (! avoidCompliance ) 
+          	{
+          		tryCatch({.isCompliant(x) },error=function(e){stop('xts[[c(year,period)]]: ',e$message) }) 
+          	}
             
             return(x[[idx[1],idx[2],avoidCompliance=TRUE]])
             
           } else {
-            stop('xts[[c(year,period)]]: year and period must be positive integer.')
+            
+          	return(NextMethod()) 
           }
         }
         
@@ -177,14 +185,14 @@
           && all(is.finite(idx)) && all(is.finite(jdx))  ) 
       {
         
-        if (! avoidCompliance ) 
-        {
-          tryCatch({.isCompliant(x) },error=function(e){stop('xts[[year,period]]: ',e$message) }) 
-        }
-        
         #deal with scalar inputs
         if ( length(idx)==1 && length(jdx)==1 )
         {
+        	
+        	if (! avoidCompliance ) 
+        	{
+        		tryCatch({.isCompliant(x) },error=function(e){stop('xts[[year,period]]: ',e$message) }) 
+        	}
           
           #get xts frequency
           xtsF=frequency(x) 
@@ -215,12 +223,17 @@
           
           return(NULL) 
           
-        } else if ( length(idx)==2 && length(jdx)==2 ){
-          
+        } else if ( length(idx)==2 && length(jdx)==2 )
+        {
           #deal with vector inputs
           if ( (idx[1] %%1 !=0 ) || (jdx[1] %%1 !=0 ) || (idx[2] %%1 !=0 ) || (jdx[2] %%1 !=0 )) 
             stop('xts[[c(year1,period1),c(year2,period2)]]: year1, year2, period1, period2 must be positive integer. ') 
           
+        	if (! avoidCompliance ) 
+        	{
+        		tryCatch({.isCompliant(x) },error=function(e){stop('xts[[year,period]]: ',e$message) }) 
+        	}
+        	
           tryCatch({
             outTS=TSPROJECT(x, TSRANGE=c(idx,jdx), EXTEND=EXTEND, avoidCompliance=TRUE)
           },error=function(e){stop('xts[[c(year1,period1),c(year2,period2)]]: ',e$message)}) 
@@ -228,7 +241,8 @@
           return(outTS)
           
         } else {
-          stop('xts[[year,period]], or xts[[c(year1,period1),c(year2,period2)]]: years and periods must be positive integer. ')
+          
+        	return(NextMethod()) 
         } 
       }
       
@@ -236,8 +250,8 @@
     }) 
     
     #address ts data by date
-    registerS3method('[','ts' , function (x, idx, jdx, avoidCompliance=FALSE) {
-       
+    registerS3method('[','ts' , function (x, idx, jdx, drop=TRUE, avoidCompliance=FALSE) {
+    	
       #if not numeric take in charge
       if ((!(missing(idx))) && (!(is.null(idx))) && 
           ((is.character(idx) || inherits(idx,'Date') || inherits(idx,'yearmon') || inherits(idx,'yearqtr')  )))
@@ -273,19 +287,20 @@
       {
         if ((!(missing(idx))) && (!(is.null(idx)))  && all(is.finite(idx)) ) 
         {
-          if (! avoidCompliance ) 
-          {
-            tryCatch({.isCompliant(x) },error=function(e){stop('ts[[c(year,period)]] <- value: ',e$message) }) 
-          }
-          
           #deal with vector input
           if ( length(idx)==2 ){
+          	
+          	if (! avoidCompliance ) 
+          	{
+          		tryCatch({.isCompliant(x) },error=function(e){stop('ts[[c(year,period)]] <- value: ',e$message) }) 
+          	}
             
             x[[idx[1],idx[2],avoidCompliance=TRUE]]=value
             return(x)
               
           } else {
-            stop('ts[[c(year,period)]] <- value: year and period must be positive integer.')
+            
+          	return(NextMethod()) 
           }
         }
         
@@ -297,14 +312,15 @@
       if ((!(missing(idx))) && (!(missing(jdx))) && (!(is.null(idx))) && (!(is.null(jdx))) 
           && all(is.finite(idx)) && all(is.finite(jdx))) 
       {
-        if (! avoidCompliance ) 
-        {
-          tryCatch({.isCompliant(x) },error=function(e){stop('ts[[i,j]] <- value: ',e$message) }) 
-        }
         
         #deal with scalar inputs
         if ( length(idx)==1 && length(jdx)==1 )
         {
+        	if (! avoidCompliance ) 
+        	{
+        		tryCatch({.isCompliant(x) },error=function(e){stop('ts[[i,j]] <- value: ',e$message) }) 
+        	}
+        	
           fTS=frequency(x) 
           tryCatch({
             outI=(1+NUMPERIOD(start(x),normalizeYP(c(idx,jdx),fTS),fTS)) 
@@ -324,11 +340,17 @@
           
           return(outF) 
           
-        } else if ( length(idx)==2 && length(jdx)==2 ){
+        } else if ( length(idx)==2 && length(jdx)==2 )
+        {
           #deal with vector inputs
           if ( (idx[1] %%1 !=0 ) || (jdx[1] %%1 !=0 ) || (idx[2] %%1 !=0 ) || (jdx[2] %%1 !=0 )) 
             stop('ts[[c(year1,period1),c(year2,period2)]] <- value: year1, year2, period1, period2 must be positive integer.')  
           
+        	if (! avoidCompliance ) 
+        	{
+        		tryCatch({.isCompliant(x) },error=function(e){stop('ts[[i,j]] <- value: ',e$message) }) 
+        	}
+        	
           #project x in requested range
           tryCatch({
             outTS=TSPROJECT(x, TSRANGE=c(idx,jdx), EXTEND=EXTEND, avoidCompliance=TRUE)
@@ -354,7 +376,8 @@
           return(outTS)
           
         } else {
-          stop('ts[[year,period]], or ts[[c(year1,period1),c(year2,period2)]] <- value: years and periods must be positive integer.')
+          
+        	return(NextMethod()) 
         }
       }
       
@@ -385,9 +408,10 @@
           
         },error=function(e){stop(e$message) }) 
       
-        return() 
+        return(NULL) 
       }
     )
+    
     #assign ts data by date
     registerS3method('[<-','ts' , function (x, idx, jdx, value, avoidCompliance=FALSE) {
        

@@ -308,7 +308,7 @@
 #if different from current bimets version issues a warning
 .checkModelBimetsVersion <- function(model,callerName='.checkModelBimetsVersion')
 {
-  if (is.null(model$bimets_version) || model$bimets_version != getOption('BIMETS_VERSION'))
+  if (is.null(model$bimets_version)) # || model$bimets_version != getOption('BIMETS_VERSION'))
     warning(paste0(callerName,'(): warning, current model "',model$modelName,'" has been built with an outdated BIMETS version. Please recreate the model via the LOAD_MODEL() function.\n')) 
   
   return(NULL)

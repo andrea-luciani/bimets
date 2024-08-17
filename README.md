@@ -137,7 +137,7 @@ More details are available in the [reference manual](https://CRAN.R-project.org/
 - *Endogenous Targeting* - the "renormalization" function `RENORM()` performs the endogenous targeting of econometric models, which consists of solving the model while interchanging the role of one or more endogenous variables with an equal number of exogenous variables. The procedure determines the values for the `INSTRUMENT` exogenous variables that allow achieving the desired values for the `TARGET` endogenous variables, subject to the constraints given by the equations of the model. This is an approach to economic and monetary policy analysis.
 - *Optimal Control* - The optimization consists of maximizing a social welfare function, i.e. the objective-function, depending on exogenous and (simulated) endogenous variables, subject to user constraints plus the constraints imposed by the econometric model equations. Users are allowed to define constraints and objective-functions of any degree, and are allowed to provide different constraints and objective-functions in different optimization time periods.
 
-A Klein's model example, having restrictions, error autocorrelation, and conditional evaluations, follows. For more realistic scenarios, several advanced econometric exercises on the US Federal Reserve FRB/US econometric model (e.g., dynamic simulation in a monetary policy shock, rational expectations, endogenous targeting, stochastic simulation, etc.) are available in the ["US Federal Reserve quarterly model (FRB/US) in R with bimets"](https://cran.r-project.org/package=bimets/) vignette: 
+A Klein's model example, having restrictions, error autocorrelation, and conditional evaluations, follows. For more realistic scenarios, several advanced econometric exercises on the US Federal Reserve FRB/US econometric model (e.g., dynamic simulation in a monetary policy shock, rational expectations, endogenous targeting, stochastic simulation, etc.) are available in the ["US Federal Reserve quarterly model (FRB/US) in R with bimets"](https://cran.r-project.org/package=bimets/vignettes/frb2bimets.pdf) vignette: 
 
 
 ```r
@@ -752,7 +752,7 @@ In these models, we can find equations with restricted coefficients, polynomial 
 
 In the +800 endogenous simulated time series over the +20 simulated periods (i.e. more than 16.000 simulated observations), the average percentage difference between **bimets** and leading commercial software results has a magnitude of `10E-7 %`. The difference between results calculated by using different commercial software has the same average magnitude.
 
-Several advanced econometric exercises on the US Federal Reserve FRB/US econometric model (e.g., dynamic simulation in a monetary policy shock, rational expectations, endogenous targeting, stochastic simulation, etc.) are available in the ["US Federal Reserve quarterly model (FRB/US) in R with bimets"](https://cran.r-project.org/package=bimets/) vignette.
+Several advanced econometric exercises on the US Federal Reserve FRB/US econometric model (e.g., dynamic simulation in a monetary policy shock, rational expectations, endogenous targeting, stochastic simulation, etc.) are available in the ["US Federal Reserve quarterly model (FRB/US) in R with bimets"](https://cran.r-project.org/package=bimets/vignettes/frb2bimets.pdf) vignette.
 
 ## Installation
 

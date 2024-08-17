@@ -1,3 +1,9 @@
+# bimets 4.0.2
+
+Jul. 2024
+
+* fixed compatibility with R base `ts` time series class. Selection operation now supports the `drop` argument and the `NextMethod` redirection.
+
 # bimets 4.0.1
 
 Jun. 2024

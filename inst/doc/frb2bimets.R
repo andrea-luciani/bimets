@@ -977,7 +977,7 @@ sampleHistoricalResidual <- sample(1:residualsLength,stochSimLength*nrepl,replac
 ### code chunk number 80: frb2bimets.Rnw:1280-1293
 ###################################################
 # Create BIMETS stochastic structure  
-modelStochStructure=list()
+modelStochStructure <- list()
 for (tmpStochVar in stochasticVars)
 {
     #see BIMETS reference manual for details on STOCHSIMULATE and StochStructure
