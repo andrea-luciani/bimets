@@ -1171,7 +1171,7 @@ The \code{stochsim} procedure begins by drawing \code{nrepl} sequences of quarte
 
 \bigskip
 
-In a similar way in \proglang{R}, the \pkg{bimets} \code{STOCHSIMULATE} procedure allow users to shock, with arbitrary values, all the \code{StochReplica} replicas of variables that appear in the \code{StochStructure} list; the shocks, in this exercise, are the randomly sampled historical residuals in the time range from \code{residstart} to \code{residend}, and are added up to the 64 constant adjustment of the related endogenous variable listed as stochastic, thus replicating the \proglang{python} code. The initial mapping per period, between historical residuals and stochastic realizations, is stored in the \code{sampleHistoricalResidual} variable.
+In a similar way in \proglang{R}, the \pkg{bimets} \code{STOCHSIMULATE} procedure allows users to shock, with arbitrary values, all the \code{StochReplica} replicas of variables that appear in the \code{StochStructure} list; the shocks, in this exercise, are the randomly sampled historical residuals in the time range from \code{residstart} to \code{residend}, and are added up to the 64 constant adjustment of the related endogenous variable listed as stochastic, thus replicating the \proglang{python} code. The initial mapping per period, between historical residuals and stochastic realizations, is stored in the \code{sampleHistoricalResidual} variable.
 
 \bigskip
 
@@ -1316,7 +1316,7 @@ stochsim_plot(model,c(simstart,simend))
 
 \clearpage
 
-On the other hand, \pkg{bimets} code produces similar results, despite the random numbers generator is different between \proglang{R} and \proglang{python}:
+On the other hand, \pkg{bimets} code produces similar results, despite the random numbers generator being different between \proglang{R} and \proglang{python}:
 
 \bigskip
 

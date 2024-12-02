@@ -1,3 +1,10 @@
+# bimets 4.0.3
+
+Nov. 2024
+
+* fixed minor bug on `LOAD_MODEL` reordering algo. Models with only `vpre` equations and a single `vsim` block are now correctly loaded.
+
+
 # bimets 4.0.2
 
 Jul. 2024

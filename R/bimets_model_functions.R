@@ -199,7 +199,7 @@
   }
   
   #if not in a acyclic graph
-  if (!(length(vpre)>0 && idx==1) )
+  if (!(length(vpre)>0 && idx==1 && length(localT$lists[[1]])==1) )
   {
     idxBlock=0
     
@@ -1672,18 +1672,18 @@
   
   #copy incidence matrix into envornment
   localT$incidence_matrix=incidence_matrix
-  nvar=dim(incidence_matrix)[1]
+  nvar=dim(incidence_matrix)[1] #V
   
-  localT$stack=c() 
+  localT$stack=c() #S
   localT$lists=list()
   
   #refs:
-  #tarjanMatrix[v,1] == v.index
+  #tarjanMatrix[v,1] == v.index, -1==undefined
   #tarjanMatrix[v,2] == v.lowlink
   #tarjanMatrix[v,3] == v.onStack
   localT$tarjanMatrix=matrix(0,nrow=nvar,ncol=3)
   localT$tarjanMatrix[,1]=-1 
-  localT$index=0
+  localT$index=0 #index != v.index
   
   for (vv in 1:nvar)
   {

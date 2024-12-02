@@ -30,10 +30,8 @@
 .onAttach <- function(...) {
   
   #set version
-  options('BIMETS_VERSION'='4.0.2') 
+  options('BIMETS_VERSION'='4.0.3') 
   
-  #clear console
-  #packageStartupMessage("\014 ") 
   packageStartupMessage(gsub("\\$","",paste0('bimets is active - version ',getOption('BIMETS_VERSION'),'\nFor help type \'?bimets\'\n')))
   
 }
