@@ -30,7 +30,7 @@
 .onAttach <- function(...) {
   
   #set version
-  options('BIMETS_VERSION'='4.0.3') 
+  options('BIMETS_VERSION'='4.0.4') 
   
   packageStartupMessage(gsub("\\$","",paste0('bimets is active - version ',getOption('BIMETS_VERSION'),'\nFor help type \'?bimets\'\n')))
   
@@ -250,28 +250,35 @@
     #address ts data by date
     registerS3method('[','ts' , function (x, idx, jdx, drop=TRUE, avoidCompliance=FALSE) {
     	
+      out = NextMethod("[")
+      
       #if not numeric take in charge
-      if ((!(missing(idx))) && (!(is.null(idx))) && 
+      if ((!(missing(idx))) && (!(is.null(idx))) &&
           ((is.character(idx) || inherits(idx,'Date') || inherits(idx,'yearmon') || inherits(idx,'yearqtr')  )))
-      {
-        xtsT=NULL 
+      { 
+        xtsT=NULL
         
-        if (! avoidCompliance ) 
+        if (! avoidCompliance )
         {
-          tryCatch({.isCompliant(x) },error=function(e){stop('ts[date]: ',e$message) }) 
+          tryCatch({.isCompliant(x) },error=function(e){stop('ts[date]: ',e$message) })
         }
         
         #transform in xts
         tryCatch({
-          xtsT=fromTStoXTS(x,avoidCompliance=TRUE) 
-        },error=function(e){stop('ts[date]: error in fromTStoXTS. ',e$message) }) 
+          xtsT=fromTStoXTS(x,avoidCompliance=TRUE)
+        },error=function(e){stop('ts[date]: error in fromTStoXTS. ',e$message) })
         
-        #return requested data      
-        if (length(xtsT[idx])==0) stop('ts[date]: index out of bounds.') 
-        return(coredata(xtsT[idx])[,1]) 
+        #return requested data
+        if (length(xtsT[idx])==0) stop('ts[date]: index out of bounds.')
+        return(coredata(xtsT[idx])[,1])
       }
       
-      return(NextMethod()) 
+      #deal with multi-variate time series input
+      if (missing(idx)) {
+        return(ts(out, start = start(x), frequency = frequency(x)))
+      }
+      
+      return(out)
       
     }) 
     
@@ -412,7 +419,7 @@
     
     #assign ts data by date
     registerS3method('[<-','ts' , function (x, idx, jdx, value, avoidCompliance=FALSE) {
-       
+      
       #if not numeric take in charge
       if ((!(missing(idx))) && (!(is.null(idx))) && ((is.character(idx) || inherits(idx,'Date') || inherits(idx,'yearmon') || inherits(idx,'yearqtr') )))
       {

@@ -2011,7 +2011,7 @@ LOAD_MODEL <- function(modelFile=NULL,
   #max_lag:       contains max lag required for all eqs
   #oldStyleModel  removes starting dollar signs if there 
   #               is another dollar sign at the end of the line
-  
+   
   #main output
   model=list() 
   class(model)='BIMETS_MODEL' 
@@ -5132,6 +5132,7 @@ ESTIMATE <- function(model=NULL,
         },error=function(e){}) 
       }
       
+      
       baseBehavioral=currentBehavioral 
       extendedBehavioral=second_model$behaviorals[[eqList[eqIdx]]] 
       
@@ -5165,6 +5166,25 @@ ESTIMATE <- function(model=NULL,
       #out of sample simulation RESCHECK
       outOfSampleTSRANGE=c(normalizeYP(c(first_estimation_tsrange[3],first_estimation_tsrange[4]+1),f=model$frequency),CHOWPAR) 
       predOutSample=NULL 
+      
+      #eqList[eqIdx] is a behavioral
+      #extend all eq components up to outOfSampleTSRANGE's end: previous ESTIMATE run guarantees that
+      #components extension is safe
+      
+      if (model$max_lead==0)
+      for (idxExt in model$behaviorals[[eqList[eqIdx]]]$eqComponentsNames)
+      {
+        tryCatch({
+          
+          model$modelData[[idxExt]]=TSEXTEND(model$modelData[[idxExt]],
+                                             UPTO = outOfSampleTSRANGE[3:4],
+                                             EXTMODE = 'CONSTANT',
+                                             avoidCompliance = TRUE);
+        },error=function(){
+          .MODEL_outputText(outputText=!quietly,paste0('ESTIMATE(): warning, cannot extend component ',idxExt,' in ',eqList[eqIdx],' equation.\n')) 
+        });
+        
+      }
       
       tryCatch({
         predOutSample=SIMULATE( model,

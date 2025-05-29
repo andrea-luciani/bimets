@@ -1,3 +1,11 @@
+# bimets 4.0.4
+
+May. 2025
+
+* added automated exogenous extension on `CHOW` test. 
+* fixed compatibility with multivariate time series in `registerS3method` for the R base `[.ts` time series selection. Multivariate time series are now correctly propagated to the `NextMethod` function.
+
+
 # bimets 4.0.3
 
 Nov. 2024
