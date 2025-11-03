@@ -48,6 +48,8 @@ This function set or read global BIMETS options, and return a NULL value.
 \code{\link[=fromBIMETStoXTS]{fromBIMETStoXTS}}\cr
 \code{\link[=fromBIMETStoTS]{fromBIMETStoTS}}\cr
 \code{\link[=idxOver]{BIMETS indexing}}\cr
+\code{\link[=BIMETS2CSV]{BIMETS2CSV}}\cr
+\code{\link[=CSV2BIMETS]{CSV2BIMETS}}\cr
 }
 
 

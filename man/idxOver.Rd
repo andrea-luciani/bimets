@@ -15,7 +15,7 @@ Users can select observations also by using a single bi-dimensional argument, e.
 }
 
 
-
+\value{No return value.}
 
 
 \seealso{
@@ -30,6 +30,8 @@ Users can select observations also by using a single bi-dimensional argument, e.
 \code{\link[=NAMELIST]{NAMELIST}}\cr
 \code{\link[=TABIT]{TABIT}}\cr
 \code{\link[=ELIMELS]{ELIMELS}}\cr
+\code{\link[=BIMETS2CSV]{BIMETS2CSV}}\cr
+\code{\link[=CSV2BIMETS]{CSV2BIMETS}}\cr
 }
 
 \examples{

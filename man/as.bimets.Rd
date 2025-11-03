@@ -46,6 +46,8 @@ This function returns a BIMETS time series (see also \code{\link[=bimetsConf]{BI
 \code{\link[=bimetsConf]{BIMETS configuration}}\cr
 \code{\link[=fromBIMETStoXTS]{fromBIMETStoXTS}}\cr
 \code{\link[=fromBIMETStoTS]{fromBIMETStoTS}}\cr
+\code{\link[=BIMETS2CSV]{BIMETS2CSV}}\cr
+\code{\link[=CSV2BIMETS]{CSV2BIMETS}}\cr
 }
 
 \examples{

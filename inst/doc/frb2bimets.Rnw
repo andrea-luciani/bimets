@@ -58,7 +58,7 @@ However, the Federal Reserve publicly distributes source codes only for \proglan
 % pdl, simulation, multipliers, renormalization, forecasting, rational expectations}
 %\VignettePackage{bimets}
 <<echo=FALSE>>=
-options( prompt = "R> ", continue = "   " )
+oldOptions <- options( prompt = "R> ", continue = "   " )
 @
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -526,7 +526,7 @@ cat(substring(FRB__MODEL,1,1615))
 \begin{footnotesize}
 <<eval=FALSE>>=
 #define file path
-modelDefinitionFile <- file('~/FRB__MODEL.txt')
+modelDefinitionFile <- file('FRB__MODEL.txt')
 
 #save FRB definition in the text file
 writeLines(FRB__MODEL,modelDefinitionFile)    
@@ -1325,6 +1325,11 @@ On the other hand, \pkg{bimets} code produces similar results, despite the rando
 stochsim_plot(model,c(simstart,simend))
 @
 
+
+<<echo=FALSE>>=
+# reset options
+options(oldOptions)
+@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Computational details and capabilities: pyfrbus vs bimets} \label{ssec:6}

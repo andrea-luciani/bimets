@@ -34,6 +34,7 @@ cumulative sum `CUMSUM()`,
 moving average `MOVAVG()`, 
 moving sum `MOVSUM()`, 
 time series data presentation `TABIT()`. 
+- *Import/Export* - users can import/export time series lists, also having different frequency and time range, from/to CSV (Comma-Separated Values) files, using `BIMETS2CSV()` and `CSV2BIMETS()`.
 
 
 Example:
@@ -117,6 +118,14 @@ TABIT(myMovAveTS,myTS1)
 # ...
 # Mar 2008, 3   ,                ,  99            
 # Apr 2008, 4   ,                ,  100 
+
+#save to CSV
+csvOut <- list(
+  mySeries1=myTS1,
+  mySeries2=myMovAveTS
+)
+
+BIMETS2CSV(csvOut, filePath='temp.csv', mergeList=TRUE, overWrite=TRUE)
 
 ```
 
@@ -360,6 +369,12 @@ TABIT(kleinModel$simulation$y)
 #      1929, 1   ,  37.57604      
 #      1930, 1   ,  37.44899 
 
+#save simulated time series to csv
+BIMETS2CSV(
+  kleinModel$simulation[kleinModel$vendog], 
+  filePath='temp.csv', 
+  mergeList=TRUE, 
+  overWrite=TRUE)
 
 # MODEL STOCHASTIC FORECAST ####################################################
 

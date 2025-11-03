@@ -12,6 +12,7 @@ BIMETS Internal Datasets
 BIMETS package contains example datasets in order to execute code in vignettes, and hidden technical datasets in order to allow a faster performance in time series analysis.
 }
 
+\value{No return value.}
 
 \seealso{
 \code{\link[=TSERIES]{TIMESERIES}}\cr

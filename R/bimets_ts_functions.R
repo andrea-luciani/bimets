@@ -30,7 +30,7 @@
 .onAttach <- function(...) {
   
   #set version
-  options('BIMETS_VERSION'='4.0.4') 
+  options('BIMETS_VERSION'='4.1.2') 
   
   packageStartupMessage(gsub("\\$","",paste0('bimets is active - version ',getOption('BIMETS_VERSION'),'\nFor help type \'?bimets\'\n')))
   
@@ -358,11 +358,11 @@
         	
           #project x in requested range
           tryCatch({
-            outTS=TSPROJECT(x, TSRANGE=c(idx,jdx), EXTEND=EXTEND, avoidCompliance=TRUE)
+            tmpTS=TSPROJECT(x, TSRANGE=c(idx,jdx), EXTEND=EXTEND, avoidCompliance=TRUE)
           },error=function(e){stop('ts[[c(year1,period1),c(year2,period2)]] <- value: ',e$message)}) 
           
           #check value has length 1 or same length than range
-          if (length(value)!=1 && length(value) != length(outTS))
+          if (length(value)!=1 && length(value) != length(tmpTS))
           {
             stop('ts[[c(year1,period1),c(year2,period2)]] <- value: number of items to replace is not equal to replacement length.')  
           }
@@ -370,13 +370,24 @@
           #assign values to subrange
           if (length(value==1))
           {
-            outTS[]=value
+            tmpTS[]=value
           } else {
-            coredata(outTS)=value
+            coredata(tmpTS)=value
           }
           
           #merge original and modified ts
-          outTS=TSMERGE(outTS,x,avoidCompliance=TRUE)
+          outTS=TSMERGE(tmpTS,x,avoidCompliance=TRUE)
+          
+          #deal with missings
+          if (any(is.na(value)))
+          {
+            tmpDelta=NUMPERIOD(start(outTS),idx,frequency(x))
+            
+            for (kdx in 1:length(tmpTS))
+            {
+              outTS[kdx+tmpDelta]=tmpTS[kdx]
+            }  
+          }
           
           return(outTS)
           
@@ -1166,7 +1177,7 @@ as.bimets <- function(x=NULL,FILLVALUE=NA,VERBOSE=FALSE,...)
   },error=function(e){stop('as.bimets(): ',e$message)}) 
   if (! isUv) 
   {
-    cat('as.bimets(): warning, input time series is multivariate. Only the first column of data will be returned.\n') 
+    warning('as.bimets(): input time series is multivariate. Only the first column of data will be returned.') 
     coreD=coredata(x)[,1] 
   } else {	
     coreD=coredata(x) 
@@ -1652,7 +1663,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -1675,7 +1686,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -1694,7 +1705,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -1719,7 +1730,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -1738,7 +1749,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -1763,7 +1774,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -1791,7 +1802,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -1815,7 +1826,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -1834,7 +1845,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -1859,7 +1870,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -1878,7 +1889,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -1903,7 +1914,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -1932,7 +1943,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -1956,7 +1967,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -1975,7 +1986,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -2001,7 +2012,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -2021,7 +2032,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -2046,7 +2057,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -2087,7 +2098,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -2109,7 +2120,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -2146,7 +2157,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -2186,7 +2197,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -2226,7 +2237,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -2275,7 +2286,7 @@ ANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('ANNUAL(): input time series does not span a year. Nothing defined.') 
-        if (length(outCD)<2) cat('ANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('ANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=1) 
       }
@@ -4304,7 +4315,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.') 
-        if (length(outCD)<2) cat('MONTHLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('MONTHLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12) 
       }
@@ -4333,7 +4344,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.') 
-        if (length(outCD)<2) cat('MONTHLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('MONTHLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12) 
       }
@@ -4375,7 +4386,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.') 
-        if (length(outCD)<2) cat('MONTHLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('MONTHLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12) 
       }
@@ -4420,7 +4431,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.') 
-        if (length(outCD)<2) cat('MONTHLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('MONTHLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12) 
       }
@@ -4465,7 +4476,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.') 
-        if (length(outCD)<2) cat('MONTHLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('MONTHLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12) 
       }
@@ -4522,7 +4533,7 @@ MONTHLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('MONTHLY(): input time series does not span a month. Nothing defined.') 
-        if (length(outCD)<2) cat('MONTHLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('MONTHLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=12) 
       }
@@ -4940,7 +4951,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('QUARTERLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -4966,7 +4977,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('QUARTERLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -4988,7 +4999,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('QUARTERLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -5016,7 +5027,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('QUARTERLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -5038,7 +5049,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('QUARTERLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -5066,7 +5077,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('QUARTERLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -5114,7 +5125,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('QUARTERLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -5143,7 +5154,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('QUARTERLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -5184,7 +5195,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('QUARTERLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -5228,7 +5239,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('QUARTERLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -5272,7 +5283,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('QUARTERLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -5331,7 +5342,7 @@ QUARTERLY <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('QUARTERLY(): input time series does not span a quarter. Nothing defined.') 
-        if (length(outCD)<2) cat('QUARTERLY(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('QUARTERLY(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=4) 
       }
@@ -5425,7 +5436,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 quarters. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5449,7 +5460,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5469,7 +5480,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 quarters. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5495,7 +5506,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 quarters. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5515,7 +5526,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 quarters. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5541,7 +5552,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 2 quarters. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5570,7 +5581,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5594,7 +5605,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5614,7 +5625,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5640,7 +5651,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5660,7 +5671,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5686,7 +5697,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span 6 months. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5733,7 +5744,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5763,7 +5774,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5806,7 +5817,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5852,7 +5863,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5899,7 +5910,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -5957,7 +5968,7 @@ SEMIANNUAL <- function(x=NULL,fun=NULL,avoidCompliance=FALSE,...)
         }
         
         if (is.null(outCD)) stop('SEMIANNUAL(): input time series does not span a semester. Nothing defined.') 
-        if (length(outCD)<2) cat('SEMIANNUAL(): warning, the output time series has only one observation.\n')
+        if (length(outCD)<2) warning('SEMIANNUAL(): the output time series has only one observation.')
         
         outF=ts(outCD,start=c(start(x)[1],outStartP),frequency=2) 
       }
@@ -7016,7 +7027,7 @@ TSLOOK <- function(x=NULL,avoidCompliance=FALSE,...)
 
 #TSMERGE merges two time series.
 TSMERGE <- function(...,fun=NULL,MV=FALSE,avoidCompliance=FALSE)
-{
+{ 
   outF=NULL 
   
   #an input is null
@@ -7141,7 +7152,7 @@ TSMERGE <- function(...,fun=NULL,MV=FALSE,avoidCompliance=FALSE)
         }
         #missing wont be ignored
         else if (MV==TRUE)
-        {
+        { 
           outF[idx]=NA 
           break 
         }
@@ -7240,7 +7251,7 @@ TSTRIM <- function(x=NULL,VALUE=NA,TRAIL=TRUE,LEAD=TRUE,avoidCompliance=FALSE,..
     (!is.na(VALUE) && all(inData==VALUE))
   ) 
   { 
-    cat(paste0('TSTRIM(): warning, all values have been trimmed out. Result will be NULL.\n')) 
+    warning('TSTRIM(): all values have been trimmed out. Result will be NULL.') 
     return(NULL) 
   }
   
@@ -7348,3 +7359,556 @@ VERIFY_MAGNITUDE <- function(x=list(),magnitude=10e-7,verbose=TRUE,...)
   
 }
 
+# CSV2BIMETS ---------------------------------------------
+
+#CSV2BIMETS create bimets list from CSV file
+
+CSV2BIMETS <- function(file=NULL,
+                       cellSeparator=',',
+                       decimalSeparator='.',
+                       mergedList=FALSE,
+                       dateFormat='%Y/%m/%d',
+                       skipLines=NULL,
+                       freqHeaderPrefix='FREQ_',
+                       ...){
+  
+  #verify args
+  if (  is.null(file) == TRUE )  {
+    stop(paste("CSV2BIMETS(): null file name."))
+  }
+   
+  tryCatch(
+    {
+      if ( ! file.exists(file) ) {
+        stop(paste("file ",file," does not exist."))
+      };
+    }
+    ,
+    error=function(e){		
+      stop("CSV2BIMETS(): ",e$message)
+    }
+  );
+  
+  if (!is.character(cellSeparator) || cellSeparator == "") 
+    stop("CSV2BIMETS(): invalid \"cellSeparator\".")
+  
+  if (!is.character(decimalSeparator) || decimalSeparator == "") 
+    stop("CSV2BIMETS(): invalid \"decimalSeparator\".")
+  
+  if (!is.null(skipLines) && ! is.numeric(skipLines) ) 
+    stop("CSV2BIMETS(): \"skipLines\" must be a positive integer.")
+  
+  if (is.null(skipLines)) skipLines=0;
+  
+  if ((!(skipLines %% 1 == 0) || skipLines < 0) ) 
+    stop("CSV2BIMETS(): \"skipLines\" must be a positive integer.")
+  
+  #readlines
+  tryCatch({
+    readlines=readLines(con=file);
+  },error=function(e){ stop("CSV2BIMETS(): error in file reading: ", e$message);}
+  );
+  
+  #is file empty?
+  if (length(readlines)<1) stop("CSV2BIMETS(): selected file is empty.")
+  
+  #trim first line and check if "sep=" exists
+  skipLinesNum=0;
+  trimmedHeader=gsub('\\s','',readlines[1])
+  if (length(grep('^sep=',trimmedHeader))>0)
+  {
+    skipLinesNum=1;
+    implicitCellSeparator=substr(trimmedHeader,5,nchar(trimmedHeader));
+     
+    if (implicitCellSeparator != cellSeparator) stop("CSV2BIMETS(): \"cellSeparator\" does not compare to the one provided in the file header.")
+  }
+  
+  #skip lines...
+  skipLinesNum=skipLinesNum+skipLines;
+  
+  #readlines
+  tryCatch({
+    
+    mainDataset=utils::read.table(file,
+                                  header=TRUE,
+                                  skip=skipLinesNum,
+                                  dec=decimalSeparator,
+                                  stringsAsFactors=FALSE,
+                                  sep=cellSeparator, 
+                                  check.names=FALSE)
+     
+  },error=function(e){ stop("CSV2BIMETS(): error in reading data from selected file: ", e$message);}
+  );
+   
+  if (! mergedList){
+    
+    #check if #cols is even
+    if (ncol(mainDataset) %% 2 != 0) stop("CSV2BIMETS(): if \"mergedList\" is FALSE, the selected csv file must have an even columns count.")
+    
+    #dates columns index
+    indexexOfDatesCols=seq(1, ncol(mainDataset),2)
+    
+    namesList=c()
+    ts.list=list()
+    
+    #cycle in cols
+    for (i in indexexOfDatesCols)
+    {
+      serieDescription=colnames(mainDataset)[i] 
+      
+      if (nchar(serieDescription)==0) stop("CSV2BIMETS(): empty header on column #",i,'.');
+      namesList=c(namesList,serieDescription)   
+      
+      #get frequency value for column i
+      freqStr=colnames(mainDataset)[i+1]
+      trimmedfreqStr=gsub('\\s','',freqStr)
+      
+      frequencyLocal=NULL
+      #remove freqHeaderPrefix from frequency value
+      if (is.null(freqHeaderPrefix) || length(grep(paste0('^',freqHeaderPrefix),trimmedfreqStr))==0) 
+      { 
+        #{stop("CSV2BIMETS(): missing '",freqHeaderPrefix,"' tag in time series ",serieDescription)}
+      } else {
+        #extract frequency
+        frequencyLocal=as.numeric(substr(trimmedfreqStr,nchar(freqHeaderPrefix)+1,nchar(trimmedfreqStr))) 
+        if (is.na(frequencyLocal)) stop("CSV2BIMETS(): non-numeric frequency value in time series ",serieDescription)
+        
+      }
+      
+      #indexes of not null dates on column i
+      notNullDatesIndexes = which((sapply(mainDataset[,i], nchar) > 0) & (! is.na(mainDataset[,i])))
+      
+      #check dates exist
+      if (length(notNullDatesIndexes)==0) stop("CSV2BIMETS(): missing dates array in time series ",serieDescription)
+      
+      datesArrayStr=as.character(mainDataset[notNullDatesIndexes ,i])
+      obsArrayStr=mainDataset[notNullDatesIndexes ,i+1]
+      
+      if (grepl("%q",dateFormat))
+      { #quarterly date format
+        datesArray=as.Date(as.yearqtr(datesArrayStr, format = dateFormat))
+      } else {
+        datesArray=as.Date(datesArrayStr,format=dateFormat)
+      }
+      
+      suppressWarnings({obsArray=as.numeric(obsArrayStr)})
+      
+      if (length(which(is.na(datesArray)))>0) 
+        stop("CSV2BIMETS(): wrong date ",paste(datesArrayStr[which(is.na(datesArray))], collapse=', ')," in time series ",serieDescription)
+      
+      #raw ts
+      tts=xts(obsArray,order.by=datesArray,frequency=frequencyLocal)
+      attr(tts,'.bimetsFreq')=frequencyLocal
+       
+      tryCatch({
+        bimetsTts = as.bimets(tts)
+      },error=function(e){ stop("CSV2BIMETS(): error converting time series ",serieDescription," to bimets: - ", e$message);}
+      )
+      
+      # if(length(bimetsTts) != length(tts)){
+      #   stop('CSV2BIMETS(): time series ', serieDescription, ' is not compliant.')
+      # }
+      
+      #add series to list
+      ts.list[[i]]=bimetsTts 
+      
+      attr(ts.list[[i]], 'OGGETTO') = serieDescription
+      attr(ts.list[[i]], 'Title') = serieDescription
+      attr(ts.list[[i]], 'DESCRIZIONE') = serieDescription
+      
+    }#end for
+    
+    #remove even indexes
+    ts.list=ts.list[indexexOfDatesCols]
+    names(ts.list)= namesList
+    
+  } else { #mergedList ==TRUE    
+    
+    ts.list=list()
+    namesList=c() 
+    
+    freqStr=colnames(mainDataset)[1]
+    trimmedfreqStr=gsub('\\s','',freqStr)
+    
+    frequencyLocal=NULL 
+    if (is.null(freqHeaderPrefix) ||  length(grep(paste0('^',freqHeaderPrefix),trimmedfreqStr))==0) {
+      
+      #if plain table this could be "DATE"
+    } else {
+      frequencyLocal=as.numeric(substr(trimmedfreqStr,nchar(freqHeaderPrefix)+1,nchar(trimmedfreqStr)))      
+      if (is.na(frequencyLocal)) stop("CSV2BIMETS(): non-numeric frequency value.")      
+    }
+    
+    notNullDatesIndexes = which((sapply(mainDataset[,1], nchar) > 0) & (! is.na(mainDataset[,1])))
+   
+    #check dates exist
+    if (length(notNullDatesIndexes)==0) stop("CSV2BIMETS(): missing dates array.")
+    
+    #check dates
+    datesArrayStr=as.character(mainDataset[notNullDatesIndexes ,1])
+    
+    if (grepl("%q",dateFormat))
+    { #quarterly date format
+      datesArray=as.Date(as.yearqtr(datesArrayStr, format = dateFormat))
+    } else {
+      datesArray=as.Date(datesArrayStr,format=dateFormat)
+    }
+    
+    if (length(which(is.na(datesArray)))>0) 
+      stop("CSV2BIMETS(): wrong date ",paste(datesArrayStr[which(is.na(datesArray))], collapse=', '))
+    
+    #cycle cols
+    for (i in 2:ncol(mainDataset)){
+      
+      #get header
+      serieDescription=colnames(mainDataset)[i]
+      if (nchar(serieDescription)==0) stop("CSV2BIMETS(): empty header on column #",i);      
+      namesList=c(namesList,serieDescription)
+      
+      obsArrayStr=mainDataset[notNullDatesIndexes ,i]
+      suppressWarnings({obsArray=as.numeric(obsArrayStr)})
+      
+      tts=xts(obsArray,order.by=datesArray,frequency=frequencyLocal)
+      attr(tts,'.bimetsFreq')=frequencyLocal
+      
+      tryCatch({
+        bimetsTts = as.bimets(tts)
+        
+      },error=function(e){ stop("CSV2BIMETS(): error converting time series ",serieDescription," to bimets: - ", e$message);}
+      );
+      
+      # if(length(bimetsTts) != length(tts)){
+      #   stop('"CSV2BIMETS(): time series ', serieDescription, ' is not compliant.')
+      # } 
+      
+      #create output
+      ts.list[[i-1]]=bimetsTts 
+      attr( ts.list[[i-1]], 'OGGETTO') = serieDescription
+      attr(ts.list[[i-1]], 'Title') = serieDescription
+      attr(ts.list[[i-1]], 'DESCRIZIONE') = serieDescription
+      
+    } 
+    
+    #add names
+    names(ts.list)= namesList
+  } 
+  
+  return(ts.list)
+}
+
+
+# BIMETS2CSV --------------------------------------------
+
+#BIMETS2CSV create CSV from a bimets ts list
+BIMETS2CSV <- function(input=NULL, 
+                       cellSeparator=',', 
+                       decimalSeparator='.', 
+                       filePath=NULL, 
+                       overWrite=FALSE, 
+                       append=FALSE, 
+                       mergeList=FALSE, 
+                       TSRANGE=NULL,  
+                       attributeOfNames=NULL, 
+                       dateFormat='%Y/%m/%d',
+                       missingString='NA',
+                       plainTable=FALSE,
+                       title=NULL, 
+                       freqHeaderPrefix='FREQ_',
+                       avoidCompliance=FALSE, 
+                       ...)
+{
+  if (is.null(input)) stop('BIMETS2CSV(): null input.')
+  
+  #set type of input
+  singleInput=TRUE
+  
+  if (is.list(input))
+  {
+    if (length(input)==0) stop('BIMETS2CSV(): empty input list.')
+    
+    #check compliance
+    if (! avoidCompliance ) 
+    {  
+      tryCatch({lapply(input,is.bimets);},error=function(e){stop('BIMETS2CSV(): ',e$message);})	
+    }
+    
+    singleInput=FALSE
+    
+  } else 
+    if ((! avoidCompliance ) && (! is.bimets(input))) stop('BIMETS2CSV(): input must be a bimets time series.')
+  
+  if (! is.character(cellSeparator) || cellSeparator=='' ) stop('BIMETS2CSV(): invalid "cellSeparator".')
+  if (! is.character(decimalSeparator) || decimalSeparator=='' ) stop('BIMETS2CSV(): invalid "decimalSeparator".')
+  if (! is.character(dateFormat) || dateFormat=='' ) stop('BIMETS2CSV(): invalid "dateFormat".')
+  if (! is.character(filePath) || filePath=='' ) stop('BIMETS2CSV(): invalid "filePath".')
+  if (! is.character(freqHeaderPrefix)) stop('BIMETS2CSV(): invalid "freqHeaderPrefix".')
+  if (! is.character(missingString)) stop('BIMETS2CSV(): invalid "missingString".')
+  
+  if ((! is.null(TSRANGE)) && ((! is.numeric(TSRANGE)) || length(TSRANGE)!=4)) 
+    stop('BIMETS2CSV(): "TSRANGE" must be a 4 elements integer array c(startY,startP,endY,endP).')
+  if ((! is.null(attributeOfNames)) && ((! is.character(attributeOfNames)) )) 
+    stop('BIMETS2CSV(): "attributeOfNames" must be a string.');
+  if (decimalSeparator==cellSeparator ) stop('BIMETS2CSV(): "cellSeparator" and "decimalSeparator" cannot be the same string.')
+  if (missingString==cellSeparator ) stop('BIMETS2CSV(): "missingString" and "cellSeparator" cannot be the same string.')
+  
+  #plainTable has priority
+  if (plainTable==TRUE)
+  {
+    mergeList=TRUE;
+    cellSeparator=';'
+    decimalSeparator='.'
+  }
+  
+  if (singleInput)
+  { 
+    serieTitle='UNKNOWN SERIES'
+    
+    #needed nested ifs because deparse doesnt work in main cycle
+    if (!(is.null(attributeOfNames) || is.null(attr(input,attributeOfNames))))
+    {
+      serieTitle=attr(input,attributeOfNames)
+    }
+    else if (!(is.null(attr(input,'OGGETTO'))))
+    {
+      serieTitle=attr(input,'OGGETTO')
+    }
+    else if (!(is.null(attr(input,'Title'))))
+    {
+      serieTitle=attr(input,'Title')
+    }
+    else if (!(is.null(attr(input,'DESCRIZIONE'))))  
+    {
+      serieTitle=attr(input,'DESCRIZIONE')
+    } else
+      try({
+        serieTitle=deparse(substitute(input))     
+      });
+    
+    input=list(input)
+    names(input)=serieTitle
+  } 
+  
+  if (overWrite == TRUE && append == TRUE) {
+    stop('BIMETS2CSV(): "append" and "overWrite" are both set TRUE.')
+  }
+  
+  if (file.exists(filePath) && overWrite==FALSE && append==FALSE) 
+    stop('BIMETS2CSV(): file "',filePath,'" exists but "overWrite" is FALSE and "append" is FALSE');
+  
+  output_file=NULL
+  
+  tryCatch({      
+    
+    suppressWarnings({
+      if (append) 
+        output_file = file(filePath, "a")
+      else output_file = file(filePath, "w")
+    });
+    
+  },error=function(e){
+    stop('BIMETS2CSV(): cannot create file "',filePath,'". Check path and permissions.')
+  })
+  
+  #plainTable dont pass separator sep=
+  if (plainTable==FALSE) cat('sep=',cellSeparator,'\n',sep='',file=output_file, append=append)
+  
+  #if "title" is not null export it to file
+  if (! is.null(title) && is.character(title) && length(title)>0) 
+    for (idxL in 1:length(title)) 
+      cat(title[idxL], cellSeparator, "\n", sep = "", file = output_file, append=append)
+  
+  #dates list
+  datesList=list()
+  maxLength=-1
+  
+  #merge requested 
+  if (mergeList==TRUE)
+  {
+    #need a proxy
+    inputMod=input
+    
+    tryCatch({
+      #merge input series and get time domain, same frequency required
+      mergedTS=do.call(TSMERGE,inputMod)
+    },error=function(e){stop('BIMETS2CSV(): cannot merge input time series: ',e$message);})
+    
+    #time domain
+    mergedDates=GETDATE(mergedTS,format=dateFormat,avoidCompliance=TRUE)
+    
+    #create base time serires. We need it to extend other time series
+    mergedTS=mergedTS*NA
+    
+    #extend others in time domain
+    for(idx in 1:length(inputMod))
+    {
+      inputMod[[idx]]=TSMERGE(mergedTS,inputMod[[idx]],avoidCompliance=TRUE)
+      
+      #apply TSRANGE
+      if (!is.null(TSRANGE))
+      {
+        tryCatch({
+          #merge input series and get time domain, same frequency required
+          #input list could have no names
+          inputMod[[idx]]=TSPROJECT( inputMod[[idx]],TSRANGE=TSRANGE,avoidCompliance=TRUE);
+        },error=function(e){stop('BIMETS2CSV(): cannot project time series #',idx,' in TSRANGE. ',e$message);})
+        
+      }
+    }    
+  }
+  
+  if (mergeList==TRUE)
+  {
+    #main cycle header
+    if (plainTable==TRUE)
+    {
+      cat('DATE',cellSeparator,sep='',file=output_file, append=append)
+    }
+    else{
+      cat(freqHeaderPrefix,frequency(input[[1]]),cellSeparator,sep='',file=output_file, append=append)
+    }
+    
+    if (is.null(names(input))) 
+      for(idx in 1:length(input))
+      {
+        serieTitle='UNKNOWN SERIES'
+        
+        if (!(is.null(attributeOfNames) || is.null(attr(input[[idx]],attributeOfNames))))
+        {
+          serieTitle=attr(input[[idx]],attributeOfNames)
+        }
+        else if (!(is.null(attr(input[[idx]],'OGGETTO'))))
+        {
+          serieTitle=attr(input[[idx]],'OGGETTO')
+        }
+        else if (!(is.null(attr(input[[idx]],'Title'))))
+        {
+          serieTitle=attr(input[[idx]],'Title')
+        }
+        else if (!(is.null(attr(input[[idx]],'DESCRIZIONE'))))  
+        {
+          serieTitle=attr(input[[idx]],'DESCRIZIONE')
+        }
+        
+        #remove cellSeparator chars in title
+        serieTitle=gsub(cellSeparator,' ',serieTitle)  
+        
+        cat(serieTitle,ifelse(idx==length(input),'',cellSeparator),sep='',file=output_file, append=append)
+        
+      }
+    else for(idx in 1:length(input))
+    {#get col names from list names
+      cat(names(input)[idx],ifelse(idx==length(input),'',cellSeparator),sep='',file=output_file, append=append)    
+    }
+    
+    #end first row
+    cat('\n',file=output_file, append=append)
+    
+    #get dates
+    datesList=GETDATE(inputMod[[1]],format=dateFormat,avoidCompliance=TRUE)
+    
+    for(rowIdx in 1:length(inputMod[[1]]))
+    { 
+      #get row date
+      dateCell=datesList[rowIdx];
+      cat(dateCell,cellSeparator,sep='',file=output_file, append=append)
+      
+      for(colIdx in 1:length(inputMod))
+      {
+        #get data from series
+        dataCell=inputMod[[colIdx]][rowIdx]
+        if (is.na(dataCell)) {
+          dataCell=missingString } else {
+                dataCell=gsub('\\.',decimalSeparator,as.character(dataCell))}
+          
+        cat(dataCell,ifelse(colIdx==length(inputMod),'',
+                            cellSeparator),sep='',file=output_file, append=append)
+      }
+      
+      cat('\n',file=output_file, append=append)
+    }
+  }
+  else
+  {#mergeList==FALSE
+    
+    for(idx in 1:length(input))
+    {
+      tryCatch({
+        datesList[[idx]]=GETDATE(input[[idx]],format=dateFormat,avoidCompliance=TRUE)
+      },error=function(e){
+        stop('BIMETS2CSV(): ',e$message)
+      })
+      
+      #max length of series
+      maxLength=max(maxLength,length(input[[idx]]))
+    }
+    
+    #main cycle header
+    if (is.null(names(input))) 
+      for(idx in 1:length(input))
+      {
+        serieTitle='UNKNOWN SERIES'
+        
+        if (!(is.null(attributeOfNames) || is.null(attr(input[[idx]],attributeOfNames))))
+        {
+          serieTitle=attr(input[[idx]],attributeOfNames)
+        }
+        else if (!(is.null(attr(input[[idx]],'OGGETTO'))))
+        {
+          serieTitle=attr(input[[idx]],'OGGETTO')
+        }
+        else if (!(is.null(attr(input[[idx]],'Title'))))
+        {
+          serieTitle=attr(input[[idx]],'Title')
+        }
+        else if (!(is.null(attr(input[[idx]],'DESCRIZIONE'))))  
+        {
+          serieTitle=attr(input[[idx]],'DESCRIZIONE')
+        }
+        
+        
+        #remove cellSeparator chars in title
+        serieTitle=gsub(cellSeparator,' ',serieTitle)  
+        
+        cat(serieTitle,cellSeparator,freqHeaderPrefix,
+            frequency(input[[idx]]),ifelse(idx==length(input),'',cellSeparator),
+            sep='',file=output_file, append=append)
+        
+      }
+    else for(idx in 1:length(input))
+    { 
+      cat(names(input)[idx],cellSeparator,freqHeaderPrefix,
+          frequency(input[[idx]]),ifelse(idx==length(input),'',cellSeparator),
+          sep='',file=output_file, append=append) 
+    }
+    
+    #end first row
+    cat('\n',file=output_file, append=append)
+    
+    for(rowIdx in 1:maxLength)
+    {
+      for(colIdx in 1:length(input))
+      {
+        dataCell=''
+        dateCell=''
+        
+        if (rowIdx <= length(input[[colIdx]]))
+        {
+          dataCell=input[[colIdx]][rowIdx]
+          if (is.na(dataCell)) {
+            dataCell=missingString } else {
+          dataCell=gsub('\\.',decimalSeparator,as.character(dataCell))}
+          
+          dateCell=datesList[[colIdx]][rowIdx]
+        }
+        cat(dateCell,cellSeparator,dataCell,ifelse(colIdx==length(input),'',cellSeparator),
+            sep='',file=output_file, append=append)
+      }
+      
+      cat('\n',file=output_file, append=append)
+    }
+  } 
+  
+  #close file
+  try({close(output_file)});
+  
+}

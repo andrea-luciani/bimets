@@ -32,6 +32,8 @@ This function returns a time series of class \code{xts()} that has the same obse
 \code{\link[=is.bimets]{is.bimets}}\cr
 \code{\link[=idxOver]{BIMETS indexing}}\cr
 \code{\link[=bimetsConf]{BIMETS configuration}}\cr
+\code{\link[=BIMETS2CSV]{BIMETS2CSV}}\cr
+\code{\link[=CSV2BIMETS]{CSV2BIMETS}}\cr
 }
 \examples{
 	

@@ -343,17 +343,6 @@
   return(outList)
 }
 
-#move vars from local env localE into global, useful in debugging
-.copyLocalEnvInToGlobal <- function(sourceE=NULL,destE=.GlobalEnv,...)
-{
-  if (is.null(sourceE)) 
-  {
-    cat('Please provide a valid environment.\n') 
-  } else {
-    lapply(names(sourceE),function(n){assign(n,get(n,envir=sourceE),envir=destE) }) 
-  }
-}
-
 #return arguments as text (2 or more) and comma positions for the first 
 #occurrence of function fName in string inputS
 .explodeFunctionCall <- function (inputS='',fName='',...)

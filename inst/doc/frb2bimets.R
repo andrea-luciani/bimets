@@ -3,7 +3,7 @@
 ###################################################
 ### code chunk number 1: frb2bimets.Rnw:60-61
 ###################################################
-options( prompt = "R> ", continue = "   " )
+oldOptions <- options( prompt = "R> ", continue = "   " )
 
 
 ###################################################
@@ -360,7 +360,7 @@ cat(substring(FRB__MODEL,1,1615))
 ### code chunk number 6: frb2bimets.Rnw:527-535 (eval = FALSE)
 ###################################################
 ## #define file path
-## modelDefinitionFile <- file('~/FRB__MODEL.txt')
+## modelDefinitionFile <- file('FRB__MODEL.txt')
 ## 
 ## #save FRB definition in the text file
 ## writeLines(FRB__MODEL,modelDefinitionFile)    
@@ -1016,5 +1016,12 @@ model <- STOCHSIMULATE(model,
 ###################################################
 # View results
 stochsim_plot(model,c(simstart,simend))
+
+
+###################################################
+### code chunk number 84: frb2bimets.Rnw:1329-1331
+###################################################
+# reset options
+options(oldOptions)
 
 

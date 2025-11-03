@@ -36,6 +36,7 @@ The main BIMETS time series capabilities are:\cr\cr
 - \emph{Indexing}\cr
 - \emph{Aggregation / Disaggregation}\cr
 - \emph{Manipulation}\cr
+- \emph{Import/Export}\cr
 
 \tabular{c}{\emph{Time Series Indexing} }
 
@@ -138,6 +139,25 @@ Oct 2004, 10  , 3.849002   , 58
 Nov 2004, 11  , 3.776275   , 59
 Dec 2004, 12  , 3.706247   , 60
  
+}
+
+\tabular{c}{\emph{Import/Export}}
+
+Users can import/export time series lists, also having different frequency and time range, from/to CSV (Comma-Separated Values) files, using \code{\link[=BIMETS2CSV]{BIMETS2CSV}} and \code{\link[=CSV2BIMETS]{CSV2BIMETS}} functions.
+
+\preformatted{
+
+R> #save to CSV
+R> csvOut <- list(
+    mySeries1=myTS1,
+    mySeries2=myMovAveTS
+    ) 
+
+R> BIMETS2CSV(csvOut, 
+    filePath='temp.csv', 
+    mergeList=TRUE, 
+    overWrite=TRUE)
+
 }
 
 
@@ -822,8 +842,10 @@ Date, Prd., Actual  , Predict   , Error      , Std. Error, T-stat
 1941, 1   ,  69.7   ,  73.7965  , -4.09655   ,  1.6693   , -2.45405   
           
 
-...ESTIMATE OK                      
+...ESTIMATE OK    
+
 }
+
 \tabular{c}{\emph{Simulation} }
 
 
@@ -869,7 +891,15 @@ Date, Prd., kleinModel$simulation$y
 1941, 1   ,  95.41613      
 1942, 1   ,  106.8923      
 1943, 1   ,  107.4302      
-1944, 1   ,  100.7512     
+1944, 1   ,  100.7512  
+
+R> #save simulated time series to csv
+R> BIMETS2CSV(
+    kleinModel$simulation[kleinModel$vendog], 
+    filePath='temp.csv', 
+    mergeList=TRUE, 
+    overWrite=TRUE)
+    
 }
 
 \figure{KleinGNP.png} \cr \cr
@@ -1335,12 +1365,9 @@ R> abs(sum(TSPROJECT(optFunTest
 }
 \details{
 
-\tabular{ll}{\cr
-Package: \tab bimets - Time Series And Econometric Modeling In R\cr
-Type: \tab Package\cr
-License: \tab GPL-3\cr
-} 
-
+Package: bimets - Time Series And Econometric Modeling In R\cr
+Type: Package\cr
+License: GPL-3\cr
 
 BIMETS estimation and simulation results have been compared to the output results of leading commercial econometric software by using several large and complex models.\cr\cr
 The models used in the comparison have more than:\cr\cr
